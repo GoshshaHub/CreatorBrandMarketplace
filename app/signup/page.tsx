@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { signUpUser, UserRole } from "../../lib/auth";
+import { signupUser } from "../../lib/auth";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -11,7 +11,7 @@ export default function SignupPage() {
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<UserRole>("creator");
+  const [role, setRole] = useState<"creator" | "brand">("creator"); 
 
   const [handle, setHandle] = useState("");
   const [categoriesInput, setCategoriesInput] = useState("");
