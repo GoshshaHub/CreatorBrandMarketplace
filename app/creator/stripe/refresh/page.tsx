@@ -1,67 +1,59 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import ProtectedRoute from "../../../../components/ProtectedRoute";
 
-export default function CreatorStripeRefreshPage() {
+function CreatorStripeRefreshContent() {
   const searchParams = useSearchParams();
-  const accountId = searchParams.get("accountId") || "";
-  const hasRunRef = useRef(false);
-
-  const [message, setMessage] = useState("Refreshing your Stripe onboarding link...");
-
-  useEffect(() => {
-    async function refreshLink() {
-      if (hasRunRef.current) return;
-      hasRunRef.current = true;
-
-      if (!accountId) {
-        setMessage("Missing Stripe account information.");
-        return;
-      }
-
-      try {
-        const res = await fetch("/api/stripe/create-account-link", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ accountId }),
-        });
-
-        const data = await res.json();
-
-        if (!res.ok) {
-          throw new Error(data.error || "Unable to refresh Stripe onboarding.");
-        }
-
-        if (data.url) {
-          window.location.href = data.url;
-          return;
-        }
-
-        throw new Error("Stripe onboarding URL was not returned.");
-      } catch (err: any) {
-        setMessage(err.message || "We couldn’t refresh your onboarding link.");
-      }
-    }
-
-    refreshLink();
-  }, [accountId]);
+  const message =
+    searchParams.get("message") ||
+    "Your Stripe connection needs to be refreshed. Please try again.";
 
   return (
     <ProtectedRoute allowedRole="creator">
-      <main className="app-page">
-        <div className="app-shell" style={{ maxWidth: "760px" }}>
-          <div className="app-card app-card-padding" style={{ marginTop: "40px" }}>
-            <h1 className="app-title">Refreshing Stripe Setup</h1>
-            <p className="app-subtitle" style={{ marginTop: "12px" }}>
-              {message}
-            </p>
+      <main className="min-h-screen p-6 max-w-2xl mx-auto">
+        <div className="rounded-2xl border p-6 shadow-sm">
+          <h1 className="text-3xl font-bold">Reconnect Stripe</h1>
+          <p className="mt-3 text-gray-600">{message}</p>
+
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link
+              href="/creator/profile"
+              className="rounded-lg bg-black text-white px-4 py-2"
+            >
+              Back to Profile
+            </Link>
+
+            <Link
+              href="/creator/dashboard"
+              className="rounded-lg border px-4 py-2"
+            >
+              Back to Dashboard
+            </Link>
           </div>
         </div>
       </main>
     </ProtectedRoute>
+  );
+}
+
+export default function CreatorStripeRefreshPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen p-6 max-w-2xl mx-auto">
+          <div className="rounded-2xl border p-6 shadow-sm">
+            <h1 className="text-3xl font-bold">Loading Stripe Status</h1>
+            <p className="mt-3 text-gray-600">
+              Please wait while we load your Stripe connection status.
+            </p>
+          </div>
+        </main>
+      }
+    >
+      <CreatorStripeRefreshContent />
+    </Suspense>
   );
 }

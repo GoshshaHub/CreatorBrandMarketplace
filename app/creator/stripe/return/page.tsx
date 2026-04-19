@@ -1,101 +1,73 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import ProtectedRoute from "../../../../components/ProtectedRoute";
 
-export default function CreatorStripeReturnPage() {
+function CreatorStripeReturnContent() {
   const searchParams = useSearchParams();
-  const accountId = searchParams.get("accountId") || "";
-  const hasRunRef = useRef(false);
-
-  const [loading, setLoading] = useState(true);
-  const [connected, setConnected] = useState(false);
-  const [message, setMessage] = useState("Checking your Stripe account status...");
+  const [message, setMessage] = useState("Finalizing your Stripe connection...");
 
   useEffect(() => {
-    async function checkAccount() {
-      if (hasRunRef.current) return;
-      hasRunRef.current = true;
+    const status = searchParams.get("status");
+    const detail = searchParams.get("message");
 
-      if (!accountId) {
-        setMessage("Missing Stripe account information.");
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const res = await fetch("/api/stripe/account-status", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ accountId }),
-        });
-
-        const data = await res.json();
-
-        if (!res.ok) {
-          throw new Error(data.error || "Unable to check Stripe account status.");
-        }
-
-        if (data.ready) {
-          setConnected(true);
-          setMessage("Your payout account is connected and ready.");
-        } else {
-          setConnected(false);
-          setMessage(
-            "Your Stripe setup is still incomplete. Continue onboarding to finish account verification."
-          );
-        }
-      } catch (err: any) {
-        setConnected(false);
-        setMessage(err.message || "We couldn’t verify your Stripe account.");
-      } finally {
-        setLoading(false);
-      }
+    if (detail) {
+      setMessage(detail);
+      return;
     }
 
-    checkAccount();
-  }, [accountId]);
+    if (status === "success") {
+      setMessage("Your Stripe account is connected and ready for payouts.");
+    } else {
+      setMessage("Your Stripe connection was updated.");
+    }
+  }, [searchParams]);
 
   return (
     <ProtectedRoute allowedRole="creator">
-      <main className="app-page">
-        <div className="app-shell" style={{ maxWidth: "760px" }}>
-          <div className="app-card app-card-padding" style={{ marginTop: "40px" }}>
-            <h1 className="app-title">
-              {loading
-                ? "Checking Stripe Setup"
-                : connected
-                ? "Payout Account Connected"
-                : "Stripe Setup Incomplete"}
-            </h1>
+      <main className="min-h-screen p-6 max-w-2xl mx-auto">
+        <div className="rounded-2xl border p-6 shadow-sm">
+          <h1 className="text-3xl font-bold">Stripe Connected</h1>
+          <p className="mt-3 text-gray-600">{message}</p>
 
-            <p className="app-subtitle" style={{ marginTop: "12px" }}>
-              {message}
-            </p>
-
-            <div
-              style={{
-                marginTop: "24px",
-                display: "flex",
-                gap: "12px",
-                flexWrap: "wrap",
-              }}
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link
+              href="/creator/profile"
+              className="rounded-lg bg-black text-white px-4 py-2"
             >
-              <Link href="/creator/profile" className="app-button">
-                Back to Profile
-              </Link>
+              Back to Profile
+            </Link>
 
-              <Link href="/creator/dashboard" className="app-button-secondary">
-                Back to Dashboard
-              </Link>
-            </div>
+            <Link
+              href="/creator/dashboard"
+              className="rounded-lg border px-4 py-2"
+            >
+              Back to Dashboard
+            </Link>
           </div>
         </div>
       </main>
     </ProtectedRoute>
+  );
+}
+
+export default function CreatorStripeReturnPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen p-6 max-w-2xl mx-auto">
+          <div className="rounded-2xl border p-6 shadow-sm">
+            <h1 className="text-3xl font-bold">Loading Stripe Result</h1>
+            <p className="mt-3 text-gray-600">
+              Please wait while we load your Stripe connection result.
+            </p>
+          </div>
+        </main>
+      }
+    >
+      <CreatorStripeReturnContent />
+    </Suspense>
   );
 }
