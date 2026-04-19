@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import ProtectedRoute from "../../../../components/ProtectedRoute";
 import { fundCampaign } from "../../../../lib/campaigns";
 
-export default function BrandPaymentSuccessPage() {
+function BrandPaymentSuccessContent() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("session_id") || "";
   const campaignId = searchParams.get("campaignId") || "";
@@ -44,7 +44,7 @@ export default function BrandPaymentSuccessPage() {
         }
 
         if (data.paymentStatus !== "paid") {
-          throw new Error("Payment has not been completed.");
+          throw new Error("Payment has not been completed yet.");
         }
 
         await fundCampaign(campaignId);
@@ -53,7 +53,7 @@ export default function BrandPaymentSuccessPage() {
         setMessage("Payment confirmed. Campaign is now funded.");
       } catch (err: any) {
         setSuccess(false);
-        setMessage(err.message || "We couldn’t confirm your payment.");
+        setMessage(err?.message || "We could not confirm your payment.");
       } finally {
         setLoading(false);
       }
@@ -64,42 +64,56 @@ export default function BrandPaymentSuccessPage() {
 
   return (
     <ProtectedRoute allowedRole="brand">
-      <main className="app-page">
-        <div className="app-shell" style={{ maxWidth: "760px" }}>
-          <div className="app-card app-card-padding" style={{ marginTop: "40px" }}>
-            <h1 className="app-title">
-              {loading
-                ? "Verifying Payment"
-                : success
-                ? "Campaign Funded"
-                : "Payment Not Confirmed"}
-            </h1>
+      <main className="min-h-screen p-6 max-w-3xl mx-auto">
+        <div className="rounded-2xl border p-6 shadow-sm">
+          <h1 className="text-3xl font-bold">
+            {loading
+              ? "Confirming Payment"
+              : success
+              ? "Campaign Funded"
+              : "Payment Check Needed"}
+          </h1>
 
-            <p className="app-subtitle" style={{ marginTop: "12px" }}>
-              {message}
-            </p>
+          <p className="mt-3 text-gray-600">{message}</p>
 
-            <div
-              style={{
-                marginTop: "24px",
-                display: "flex",
-                gap: "12px",
-                flexWrap: "wrap",
-              }}
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link
+              href="/brand/dashboard"
+              className="rounded-lg bg-black text-white px-4 py-2"
             >
-              {campaignId ? (
-                <Link href={`/brand/campaign/${campaignId}`} className="app-button">
-                  Back to Campaign
-                </Link>
-              ) : null}
+              Back to Dashboard
+            </Link>
 
-              <Link href="/brand/dashboard" className="app-button-secondary">
-                Back to Dashboard
+            {campaignId && (
+              <Link
+                href={`/brand/campaign/${campaignId}`}
+                className="rounded-lg border px-4 py-2"
+              >
+                View Campaign
               </Link>
-            </div>
+            )}
           </div>
         </div>
       </main>
     </ProtectedRoute>
+  );
+}
+
+export default function BrandPaymentSuccessPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen p-6 max-w-3xl mx-auto">
+          <div className="rounded-2xl border p-6 shadow-sm">
+            <h1 className="text-3xl font-bold">Loading Payment Result</h1>
+            <p className="mt-3 text-gray-600">
+              Please wait while we load your payment confirmation.
+            </p>
+          </div>
+        </main>
+      }
+    >
+      <BrandPaymentSuccessContent />
+    </Suspense>
   );
 }
