@@ -2,16 +2,16 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import ProtectedRoute from "@/components/ProtectedRoute";
-import StatCard from "@/components/StatCard";
-import StatusPill from "@/components/StatusPill";
-import { auth } from "@/lib/firebase";
+import ProtectedRoute from "../../../components/ProtectedRoute";
+import StatCard from "../../../components/StatCard";
+import StatusPill from "../../../components/StatusPill";
+import { auth } from "../../../lib/firebase";
 import {
   fundCampaign,
   getBrandCampaigns,
   getUserNotifications,
   markNotificationRead,
-} from "@/lib/campaigns";
+} from "../../../lib/campaigns";
 
 type Campaign = {
   id: string;

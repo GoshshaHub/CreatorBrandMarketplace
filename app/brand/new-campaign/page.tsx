@@ -4,9 +4,9 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { doc, getDoc } from "firebase/firestore";
-import ProtectedRoute from "@/components/ProtectedRoute";
-import { auth, db } from "@/lib/firebase";
-import { createCampaign, getCreatorById } from "@/lib/campaigns";
+import ProtectedRoute from "../../../components/ProtectedRoute";
+import { auth, db } from "../../../lib/firebase";
+import { createCampaign, getCreatorById } from "../../../lib/campaigns";
 
 type Creator = {
   id: string;

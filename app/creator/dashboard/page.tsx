@@ -3,17 +3,17 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
-import ProtectedRoute from "@/components/ProtectedRoute";
-import StatCard from "@/components/StatCard";
-import StatusPill from "@/components/StatusPill";
-import { auth } from "@/lib/firebase";
+import ProtectedRoute from "../../../components/ProtectedRoute";
+import StatCard from "../../../components/StatCard";
+import StatusPill from "../../../components/StatusPill";
+import { auth } from "../../../lib/firebase";
 import {
   getCreatorCampaigns,
   getUserNotifications,
   markNotificationRead,
   submitCampaignLink,
   updateCampaignStatus,
-} from "@/lib/campaigns";
+} from "../../../lib/campaigns";
 
 type Campaign = {
   id: string;

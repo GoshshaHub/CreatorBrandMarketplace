@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import ProtectedRoute from "@/components/ProtectedRoute";
-import { getMarketplaceCreators } from "@/lib/campaigns";
+import ProtectedRoute from "../../../components/ProtectedRoute";
+import { getMarketplaceCreators } from "../../../lib/campaigns";
 
 type Creator = {
   id: string;

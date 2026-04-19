@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import ProtectedRoute from "@/components/ProtectedRoute";
-import StatusPill from "@/components/StatusPill";
-import CampaignTimeline from "@/components/CampaignTimeline";
-import { getSubmittedCampaigns, markCampaignLive } from "@/lib/campaigns";
+import ProtectedRoute from "../../../components/ProtectedRoute";
+import StatusPill from "../../../components/StatusPill";
+import CampaignTimeline from "../../../components/CampaignTimeline";
+import { getSubmittedCampaigns, markCampaignLive } from "../../../lib/campaigns";
 
 type Campaign = {
   id: string;

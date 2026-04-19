@@ -3,14 +3,14 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import ProtectedRoute from "@/components/ProtectedRoute";
-import StatusPill from "@/components/StatusPill";
-import CampaignTimeline from "@/components/CampaignTimeline";
+import ProtectedRoute from "../../../../components/ProtectedRoute";
+import StatusPill from "../../../../components/StatusPill";
+import CampaignTimeline from "../../../../components/CampaignTimeline";
 import {
   getCampaignById,
   submitCampaignLink,
   updateCampaignStatus,
-} from "@/lib/campaigns";
+} from "../../../../lib/campaigns";
 
 type Campaign = {
   id: string;
