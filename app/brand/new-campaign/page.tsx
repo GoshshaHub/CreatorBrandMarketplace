@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { doc, getDoc } from "firebase/firestore";
 import ProtectedRoute from "../../../components/ProtectedRoute";
@@ -15,7 +15,7 @@ type Creator = {
   contactEmail?: string;
 };
 
-export default function NewCampaignPage() {
+function NewCampaignContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const creatorId = searchParams.get("creatorId") || "";
@@ -131,10 +131,7 @@ export default function NewCampaignPage() {
             </p>
           </div>
 
-          <Link
-            href="/brand/creators"
-            className="rounded-lg border px-4 py-2"
-          >
+          <Link href="/brand/creators" className="rounded-lg border px-4 py-2">
             Back to Creators
           </Link>
         </div>
@@ -257,5 +254,13 @@ export default function NewCampaignPage() {
         )}
       </main>
     </ProtectedRoute>
+  );
+}
+
+export default function NewCampaignPage() {
+  return (
+    <Suspense fallback={<main className="min-h-screen p-6 max-w-3xl mx-auto">Loading campaign form...</main>}>
+      <NewCampaignContent />
+    </Suspense>
   );
 }
