@@ -1,0 +1,30 @@
+[debug] [2026-03-24T23:56:17.161Z] ----------------------------------------------------------------------
+[debug] [2026-03-24T23:56:17.162Z] Command:       /usr/local/bin/node /usr/local/bin/firebase functions:secrets:set RESEND_API_KEY
+[debug] [2026-03-24T23:56:17.162Z] CLI Version:   15.11.0
+[debug] [2026-03-24T23:56:17.162Z] Platform:      darwin
+[debug] [2026-03-24T23:56:17.162Z] Node Version:  v24.11.1
+[debug] [2026-03-24T23:56:17.162Z] Time:          Tue Mar 24 2026 16:56:17 GMT-0700 (Pacific Daylight Time)
+[debug] [2026-03-24T23:56:17.162Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-03-24T23:56:17.222Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-03-24T23:56:17.222Z] > authorizing via signed-in user (athenaycp@gmail.com)
+[debug] [2026-03-24T23:56:17.222Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-03-24T23:56:17.222Z] > authorizing via signed-in user (athenaycp@gmail.com)
+[debug] [2026-03-24T23:56:17.222Z] [iam] checking project goshsha-9e431 for permissions ["firebase.projects.get","secretmanager.secrets.create","secretmanager.secrets.get","secretmanager.secrets.update","secretmanager.versions.add"]
+[debug] [2026-03-24T23:56:17.222Z] Checked if tokens are valid: true, expires at: 1774400092745
+[debug] [2026-03-24T23:56:17.222Z] Checked if tokens are valid: true, expires at: 1774400092745
+[debug] [2026-03-24T23:56:17.222Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/goshsha-9e431:testIamPermissions [none]
+[debug] [2026-03-24T23:56:17.223Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/goshsha-9e431:testIamPermissions  x-goog-user-project=goshsha-9e431
+[debug] [2026-03-24T23:56:17.223Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/goshsha-9e431:testIamPermissions {"permissions":["firebase.projects.get","secretmanager.secrets.create","secretmanager.secrets.get","secretmanager.secrets.update","secretmanager.versions.add"]}
+[debug] [2026-03-24T23:56:17.390Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/goshsha-9e431:testIamPermissions 200
+[debug] [2026-03-24T23:56:17.390Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/goshsha-9e431:testIamPermissions {"permissions":["firebase.projects.get","secretmanager.secrets.create","secretmanager.secrets.get","secretmanager.secrets.update","secretmanager.versions.add"]}
+[debug] [2026-03-24T23:56:17.391Z] Checked if tokens are valid: true, expires at: 1774400092745
+[debug] [2026-03-24T23:56:17.391Z] Checked if tokens are valid: true, expires at: 1774400092745
+[debug] [2026-03-24T23:56:17.391Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/projects/goshsha-9e431 [none]
+[debug] [2026-03-24T23:56:17.568Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/projects/goshsha-9e431 200
+[debug] [2026-03-24T23:56:17.569Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/projects/goshsha-9e431 {"projectNumber":"341251843257","projectId":"goshsha-9e431","lifecycleState":"ACTIVE","name":"Goshsha","labels":{"firebase":"enabled"},"createTime":"2020-06-30T05:12:28.616Z"}
+[debug] [2026-03-24T23:56:17.570Z] Checked if tokens are valid: true, expires at: 1774400092745
+[debug] [2026-03-24T23:56:17.570Z] Checked if tokens are valid: true, expires at: 1774400092745
+[debug] [2026-03-24T23:56:17.570Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/goshsha-9e431/secrets/RESEND_API_KEY [none]
+[debug] [2026-03-24T23:56:17.771Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/goshsha-9e431/secrets/RESEND_API_KEY 200
+[debug] [2026-03-24T23:56:17.771Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/goshsha-9e431/secrets/RESEND_API_KEY {"name":"projects/341251843257/secrets/RESEND_API_KEY","replication":{"automatic":{}},"createTime":"2026-03-24T23:55:05.232509Z","labels":{"firebase-managed":"functions"},"etag":"\"164dcde169c0ba\""}
