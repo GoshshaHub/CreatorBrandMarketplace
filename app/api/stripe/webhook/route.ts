@@ -27,7 +27,16 @@ export async function POST(req: Request) {
     const event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
 
     if (event.type === "checkout.session.completed") {
-      const session = event.data.object as Stripe.Checkout.Session;
+      const session = event.data.object as {
+        id: string;
+        payment_status?: string;
+        payment_intent?: string | { id?: string } | null;
+        metadata?: {
+          campaignId?: string;
+          [key: string]: string | undefined;
+        };
+      };
+
       const campaignId = session.metadata?.campaignId;
 
       if (campaignId && session.payment_status === "paid") {
