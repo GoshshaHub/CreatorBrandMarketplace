@@ -3,7 +3,11 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { signupUser } from "../../lib/auth";
+import { db } from "../../lib/firebase";
+
+type UserRole = "creator" | "brand";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -11,7 +15,7 @@ export default function SignupPage() {
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"creator" | "brand">("creator"); 
+  const [role, setRole] = useState<UserRole>("creator");
 
   const [handle, setHandle] = useState("");
   const [categoriesInput, setCategoriesInput] = useState("");
@@ -55,6 +59,9 @@ export default function SignupPage() {
     setLoading(true);
 
     try {
+      const credential = await signupUser(email, password, displayName);
+      const uid = credential.user.uid;
+
       const categories =
         role === "creator"
           ? categoriesInput
@@ -63,19 +70,51 @@ export default function SignupPage() {
               .filter(Boolean)
           : [];
 
-      await signUpUser({
-        email,
-        password,
-        displayName,
-        role,
-        handle: role === "creator" ? handle.trim() : undefined,
-        categories,
-        bio: role === "creator" ? bio.trim() : undefined,
-      });
+      await setDoc(
+        doc(db, "users", uid),
+        {
+          email,
+          displayName: displayName.trim(),
+          roles: [role],
+          isActive: true,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
 
       if (role === "creator") {
+        await setDoc(
+          doc(db, "creators", uid),
+          {
+            userId: uid,
+            email,
+            contactEmail: email,
+            displayName: displayName.trim(),
+            handle: handle.trim(),
+            bio: bio.trim(),
+            categories,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
+
         router.push("/creator/dashboard");
       } else {
+        await setDoc(
+          doc(db, "brands", uid),
+          {
+            userId: uid,
+            email,
+            contactEmail: email,
+            brandName: displayName.trim(),
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
+
         router.push("/brand/dashboard");
       }
     } catch (err: any) {
