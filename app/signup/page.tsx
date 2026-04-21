@@ -64,6 +64,8 @@ export default function SignupPage() {
     setLoading(true);
 
     try {
+      const normalizedEmail = email.trim().toLowerCase();
+
       const categories =
         role === "creator"
           ? categoriesInput
@@ -72,13 +74,18 @@ export default function SignupPage() {
               .filter(Boolean)
           : [];
 
-      const credential = await signupUser(email, password, displayName.trim());
+      const credential = await signupUser(
+        normalizedEmail,
+        password,
+        displayName.trim()
+      );
+
       const uid = credential.user.uid;
 
       await setDoc(
         doc(db, "users", uid),
         {
-          email: email.trim().toLowerCase(),
+          email: normalizedEmail,
           displayName: displayName.trim(),
           roles: [role],
           isActive: true,
@@ -94,8 +101,8 @@ export default function SignupPage() {
           doc(db, "creators", uid),
           {
             userId: uid,
-            email: email.trim().toLowerCase(),
-            contactEmail: email.trim().toLowerCase(),
+            email: normalizedEmail,
+            contactEmail: normalizedEmail,
             displayName: displayName.trim(),
             handle: handle.trim(),
             bio: bio.trim(),
@@ -121,8 +128,8 @@ export default function SignupPage() {
           doc(db, "brands", uid),
           {
             userId: uid,
-            email: email.trim().toLowerCase(),
-            contactEmail: email.trim().toLowerCase(),
+            email: normalizedEmail,
+            contactEmail: normalizedEmail,
             brandName: displayName.trim(),
             displayName: displayName.trim(),
             createdAt: serverTimestamp(),

@@ -11,22 +11,19 @@ type Creator = {
   handle?: string;
   bio?: string;
   categories?: string[];
+  campaignsCompleted?: number;
   totalCampaignViews?: number;
-  totalCampaigns?: number;
 };
 
 export default function BrandCreatorsPage() {
   const [creators, setCreators] = useState<Creator[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
   useEffect(() => {
     async function loadCreators() {
       try {
         const data = await getMarketplaceCreators();
         setCreators(data as Creator[]);
-      } catch (err: any) {
-        setError(err.message || "We couldn’t load creators right now.");
       } finally {
         setLoading(false);
       }
@@ -37,102 +34,68 @@ export default function BrandCreatorsPage() {
 
   return (
     <ProtectedRoute allowedRole="brand">
-      <main className="app-page">
-        <div className="app-shell">
-          <div className="app-header">
-            <div>
-              <h1 className="app-title">Creator Marketplace</h1>
-              <p className="app-subtitle">
-                Discover creators and invite the right fit for your next campaign.
-              </p>
-            </div>
-
-            <Link href="/brand/dashboard" className="app-button-secondary">
-              Back to Dashboard
-            </Link>
+      <main className="min-h-screen p-6 max-w-6xl mx-auto">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-4xl font-bold">Creator Marketplace</h1>
+            <p className="mt-2 text-gray-600">
+              Discover creators and invite the right fit for your next campaign.
+            </p>
           </div>
 
-          {loading && (
-            <p className="app-subtitle" style={{ marginTop: "24px" }}>
-              Loading creators...
-            </p>
-          )}
-          {error && !loading && (
-            <p style={{ marginTop: "24px", color: "#dc2626" }}>{error}</p>
-          )}
-
-          {!loading && creators.length === 0 ? (
-            <div className="app-section">
-              <div className="app-card app-card-padding">
-                <p className="app-text" style={{ margin: 0, fontWeight: 600 }}>
-                  No creators available yet
-                </p>
-                <p className="app-text-soft" style={{ marginTop: "8px", marginBottom: 0 }}>
-                  Creator profiles that are visible in the marketplace will appear here.
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div
-              style={{
-                marginTop: "32px",
-                display: "grid",
-                gap: "16px",
-                gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-              }}
-            >
-              {creators.map((creator) => (
-                <div key={creator.id} className="app-card app-card-padding">
-                  <h2
-                    className="app-text"
-                    style={{ margin: 0, fontSize: "1.25rem", fontWeight: 700 }}
-                  >
-                    {creator.handle || creator.displayName || "Unnamed Creator"}
-                  </h2>
-
-                  <p className="app-text-soft" style={{ marginTop: "12px" }}>
-                    {creator.bio || "This creator has not added a bio yet."}
-                  </p>
-
-                  <div
-                    style={{
-                      marginTop: "16px",
-                      display: "flex",
-                      flexWrap: "wrap",
-                      gap: "8px",
-                    }}
-                  >
-                    {creator.categories?.length ? (
-                      creator.categories.map((category) => (
-                        <span key={category} className="app-pill">
-                          {category}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="app-text-faint">No categories listed yet</span>
-                    )}
-                  </div>
-
-                  <div className="app-text-soft" style={{ marginTop: "16px" }}>
-                    <p style={{ margin: 0 }}>Campaigns completed: {creator.totalCampaigns ?? 0}</p>
-                    <p style={{ marginTop: "6px", marginBottom: 0 }}>
-                      Campaign views: {creator.totalCampaignViews ?? 0}
-                    </p>
-                  </div>
-
-                  <div style={{ marginTop: "20px" }}>
-                    <Link
-                      href={`/brand/new-campaign?creatorId=${creator.id}`}
-                      className="app-button"
-                    >
-                      Invite Creator
-                    </Link>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          <Link
+            href="/brand/dashboard"
+            className="rounded-lg border px-4 py-2"
+          >
+            Back to Dashboard
+          </Link>
         </div>
+
+        {loading ? (
+          <p className="mt-8">Loading creators...</p>
+        ) : creators.length === 0 ? (
+          <p className="mt-8 text-gray-600">No creators available yet.</p>
+        ) : (
+          <div className="mt-8 grid gap-6 md:grid-cols-2">
+            {creators.map((creator) => (
+              <div key={creator.id} className="rounded-2xl border p-6">
+                <h2 className="text-2xl font-semibold">
+                  {creator.displayName || creator.handle || "Unnamed Creator"}
+                </h2>
+
+                {creator.handle && (
+                  <p className="mt-1 text-sm text-gray-500">{creator.handle}</p>
+                )}
+
+                <p className="mt-4 text-gray-700">
+                  {creator.bio?.trim()
+                    ? creator.bio
+                    : "This creator has not added a bio yet."}
+                </p>
+
+                <p className="mt-4 text-gray-700">
+                  {creator.categories && creator.categories.length > 0
+                    ? creator.categories.join(", ")
+                    : "No categories listed yet"}
+                </p>
+
+                <div className="mt-4 space-y-2 text-gray-700">
+                  <p>
+                    Campaigns completed: {creator.campaignsCompleted ?? 0}
+                  </p>
+                  <p>Campaign views: {creator.totalCampaignViews ?? 0}</p>
+                </div>
+
+                <Link
+                  href={`/brand/new-campaign?creatorId=${creator.id}`}
+                  className="mt-6 inline-block rounded-lg bg-black px-4 py-2 text-white"
+                >
+                  Invite Creator
+                </Link>
+              </div>
+            ))}
+          </div>
+        )}
       </main>
     </ProtectedRoute>
   );
