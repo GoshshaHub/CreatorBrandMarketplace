@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { doc, getDoc } from "firebase/firestore";
 import ProtectedRoute from "../../../components/ProtectedRoute";
@@ -16,7 +16,7 @@ type Creator = {
   email?: string;
 };
 
-export default function NewCampaignPage() {
+function NewCampaignPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const creatorId = searchParams.get("creatorId") || "";
@@ -283,5 +283,13 @@ export default function NewCampaignPage() {
         )}
       </main>
     </ProtectedRoute>
+  );
+}
+
+export default function NewCampaignPage() {
+  return (
+    <Suspense fallback={<div className="p-6">Loading...</div>}>
+      <NewCampaignPageContent />
+    </Suspense>
   );
 }
