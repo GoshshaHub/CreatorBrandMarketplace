@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { doc, getDoc } from "firebase/firestore";
 import ProtectedRoute from "../../../components/ProtectedRoute";
@@ -13,9 +13,10 @@ type Creator = {
   handle?: string;
   bio?: string;
   contactEmail?: string;
+  email?: string;
 };
 
-function NewCampaignContent() {
+export default function NewCampaignPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const creatorId = searchParams.get("creatorId") || "";
@@ -64,7 +65,10 @@ function NewCampaignContent() {
           const brandSnap = await getDoc(doc(db, "brands", user.uid));
 
           if (brandSnap.exists()) {
-            const brandData = brandSnap.data();
+            const brandData = brandSnap.data() as {
+              brandName?: string;
+              contactEmail?: string;
+            };
             setBrandName(brandData.brandName || "");
             setContactEmail(brandData.contactEmail || user.email || "");
           } else {
@@ -112,6 +116,28 @@ function NewCampaignContent() {
         agreedPrice: Number(agreedPrice),
       });
 
+      const creatorEmail = creator.contactEmail || creator.email;
+
+      if (creatorEmail) {
+        const emailRes = await fetch("/api/send-campaign-invite", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            to: creatorEmail,
+            brandName,
+            campaignTitle,
+            productName,
+          }),
+        });
+
+        if (!emailRes.ok) {
+          const emailData = await emailRes.json().catch(() => null);
+          console.error("Invite email failed:", emailData);
+        }
+      }
+
       router.push("/brand/dashboard");
     } catch (err: any) {
       setError(err.message || "Failed to create campaign.");
@@ -131,7 +157,10 @@ function NewCampaignContent() {
             </p>
           </div>
 
-          <Link href="/brand/creators" className="rounded-lg border px-4 py-2">
+          <Link
+            href="/brand/creators"
+            className="rounded-lg border px-4 py-2"
+          >
             Back to Creators
           </Link>
         </div>
@@ -254,13 +283,5 @@ function NewCampaignContent() {
         )}
       </main>
     </ProtectedRoute>
-  );
-}
-
-export default function NewCampaignPage() {
-  return (
-    <Suspense fallback={<main className="min-h-screen p-6 max-w-3xl mx-auto">Loading campaign form...</main>}>
-      <NewCampaignContent />
-    </Suspense>
   );
 }

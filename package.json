@@ -12,6 +12,7 @@
     "@stripe/stripe-js": "^9.2.0",
     "firebase": "^12.12.0",
     "next": "16.1.7",
+    "postmark": "^4.0.7",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "resend": "^6.9.4",
