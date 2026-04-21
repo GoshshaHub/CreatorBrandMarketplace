@@ -11,6 +11,7 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { createNotification, markNotificationRead } from "./notifications";
+import { sendEmail } from "./postmark";
 
 export async function createCampaign(params: {
   brandId: string;
@@ -96,6 +97,37 @@ export async function createCampaign(params: {
     message: `${brandName} invited you to "${campaignTitle}".`,
     campaignId: docRef.id,
   });
+
+  const creatorRef = doc(db, "creators", creatorId);
+  const creatorSnap = await getDoc(creatorRef);
+
+  if (creatorSnap.exists()) {
+    const creatorData = creatorSnap.data() as any;
+    const creatorEmail = creatorData.email || creatorData.contactEmail;
+
+    if (creatorEmail) {
+      await sendEmail({
+        to: creatorEmail,
+        subject: `New campaign invite from ${brandName}`,
+        htmlBody: `
+          <h2>You’ve been invited to a campaign</h2>
+          <p><strong>${brandName}</strong> invited you to collaborate.</p>
+          <p><strong>Campaign:</strong> ${campaignTitle}</p>
+          <p><strong>Product:</strong> ${productName}</p>
+          <p>Please log in to your creator dashboard to review and respond.</p>
+        `,
+        textBody: `
+You've been invited to a campaign.
+
+Brand: ${brandName}
+Campaign: ${campaignTitle}
+Product: ${productName}
+
+Log in to your creator dashboard to review and respond.
+        `.trim(),
+      });
+    }
+  }
 
   return docRef;
 }
