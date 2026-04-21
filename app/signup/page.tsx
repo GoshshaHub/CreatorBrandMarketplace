@@ -44,6 +44,11 @@ export default function SignupPage() {
     e.preventDefault();
     setError("");
 
+    if (!displayName.trim()) {
+      setError("Display name is required.");
+      return;
+    }
+
     if (role === "creator") {
       if (!handle.trim()) {
         setError("Creator handle is required.");
@@ -59,9 +64,6 @@ export default function SignupPage() {
     setLoading(true);
 
     try {
-      const credential = await signupUser(email, password, displayName);
-      const uid = credential.user.uid;
-
       const categories =
         role === "creator"
           ? categoriesInput
@@ -70,13 +72,17 @@ export default function SignupPage() {
               .filter(Boolean)
           : [];
 
+      const credential = await signupUser(email, password, displayName.trim());
+      const uid = credential.user.uid;
+
       await setDoc(
         doc(db, "users", uid),
         {
-          email,
+          email: email.trim().toLowerCase(),
           displayName: displayName.trim(),
           roles: [role],
           isActive: true,
+          photoURL: null,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         },
@@ -88,12 +94,21 @@ export default function SignupPage() {
           doc(db, "creators", uid),
           {
             userId: uid,
-            email,
-            contactEmail: email,
+            email: email.trim().toLowerCase(),
+            contactEmail: email.trim().toLowerCase(),
             displayName: displayName.trim(),
             handle: handle.trim(),
             bio: bio.trim(),
             categories,
+            isMarketplaceVisible: true,
+            campaignsCompleted: 0,
+            totalCampaignViews: 0,
+            topProductSlug: null,
+            socialLinks: {
+              instagram: "",
+              tiktok: "",
+              youtube: "",
+            },
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
           },
@@ -106,9 +121,10 @@ export default function SignupPage() {
           doc(db, "brands", uid),
           {
             userId: uid,
-            email,
-            contactEmail: email,
+            email: email.trim().toLowerCase(),
+            contactEmail: email.trim().toLowerCase(),
             brandName: displayName.trim(),
+            displayName: displayName.trim(),
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
           },
