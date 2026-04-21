@@ -6,6 +6,7 @@ const token = process.env.POSTMARK_API_TOKEN;
 export async function POST(req: Request) {
   try {
     if (!token) {
+      console.error("POSTMARK_API_TOKEN is missing");
       return NextResponse.json(
         { error: "Missing POSTMARK_API_TOKEN" },
         { status: 500 }
@@ -16,15 +17,16 @@ export async function POST(req: Request) {
     const { to, brandName, campaignTitle, productName } = body;
 
     if (!to || !brandName || !campaignTitle || !productName) {
+      console.error("Missing required fields", body);
       return NextResponse.json(
-        { error: "Missing required fields" },
+        { error: "Missing required fields", body },
         { status: 400 }
       );
     }
 
     const client = new postmark.ServerClient(token);
 
-    await client.sendEmail({
+    const result = await client.sendEmail({
       From: "Athena from Goshsha <athena@goshsha.com>",
       To: to,
       Subject: `New campaign invite from ${brandName}`,
@@ -47,11 +49,25 @@ Log in to your creator dashboard to review and respond.
       MessageStream: "outbound",
     });
 
-    return NextResponse.json({ ok: true });
+    console.log("Postmark success:", result);
+
+    return NextResponse.json({ ok: true, result });
   } catch (err: any) {
-    console.error("Postmark invite email error:", err);
+    console.error("Postmark invite email full error:", {
+      name: err?.name,
+      message: err?.message,
+      code: err?.code,
+      statusCode: err?.statusCode,
+      stack: err?.stack,
+      raw: err,
+    });
+
     return NextResponse.json(
-      { error: err?.message || "Failed to send email" },
+      {
+        error: err?.message || "Failed to send email",
+        code: err?.code || null,
+        statusCode: err?.statusCode || null,
+      },
       { status: 500 }
     );
   }
