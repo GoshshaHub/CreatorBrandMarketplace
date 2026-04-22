@@ -7,7 +7,6 @@ import StatCard from "../../../components/StatCard";
 import StatusPill from "../../../components/StatusPill";
 import { auth } from "../../../lib/firebase";
 import {
-  fundCampaign,
   getBrandCampaigns,
   getUserNotifications,
   markNotificationRead,
@@ -22,6 +21,10 @@ type Campaign = {
   deliveryEndDate?: string;
   status?: string;
   fundingStatus?: string;
+  completionStatus?: string;
+  payoutReleaseStatus?: string;
+  totalViews?: number;
+  agreedPrice?: number;
 };
 
 type NotificationItem = {
@@ -36,21 +39,30 @@ export default function BrandDashboardPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [workingNotificationId, setWorkingNotificationId] = useState("");
   const [error, setError] = useState("");
-  const [busyCampaignId, setBusyCampaignId] = useState("");
 
   async function loadDashboard() {
+    setLoading(true);
+    setError("");
+
     try {
       const user = auth.currentUser;
-      if (!user) throw new Error("You must be logged in.");
 
-      const campaignData = await getBrandCampaigns(user.uid);
-      setCampaigns(campaignData as Campaign[]);
+      if (!user) {
+        setLoading(false);
+        return;
+      }
 
-      const notificationData = await getUserNotifications(user.uid);
-      setNotifications(notificationData as NotificationItem[]);
+      const [campaignData, notificationData] = await Promise.all([
+        getBrandCampaigns(user.uid),
+        getUserNotifications(user.uid),
+      ]);
+
+      setCampaigns((campaignData || []) as Campaign[]);
+      setNotifications((notificationData || []) as NotificationItem[]);
     } catch (err: any) {
-      setError(err.message || "We couldn’t load your dashboard.");
+      setError(err?.message || "Failed to load dashboard.");
     } finally {
       setLoading(false);
     }
@@ -60,227 +72,213 @@ export default function BrandDashboardPage() {
     loadDashboard();
   }, []);
 
-  async function handleFund(campaignId: string) {
-    try {
-      setBusyCampaignId(campaignId);
-      await fundCampaign(campaignId);
-      await loadDashboard();
-    } catch (err: any) {
-      setError(err.message || "We couldn’t fund this campaign.");
-    } finally {
-      setBusyCampaignId("");
-    }
-  }
+  const invitedCount = useMemo(
+    () => campaigns.filter((c) => c.status === "invited").length,
+    [campaigns]
+  );
 
-  async function handleMarkRead(notificationId: string) {
+  const acceptedAwaitingFundingCount = useMemo(
+    () =>
+      campaigns.filter(
+        (c) => c.status === "accepted" && c.fundingStatus !== "funded"
+      ).length,
+    [campaigns]
+  );
+
+  const fundedInProgressCount = useMemo(
+    () =>
+      campaigns.filter(
+        (c) =>
+          c.fundingStatus === "funded" &&
+          c.status !== "live" &&
+          c.completionStatus !== "live"
+      ).length,
+    [campaigns]
+  );
+
+  const liveCount = useMemo(
+    () => campaigns.filter((c) => c.status === "live").length,
+    [campaigns]
+  );
+
+  const unreadNotifications = useMemo(
+    () => notifications.filter((n) => !n.isRead),
+    [notifications]
+  );
+
+  async function handleMarkAsRead(notificationId: string) {
     try {
+      setWorkingNotificationId(notificationId);
       await markNotificationRead(notificationId);
-      await loadDashboard();
+
+      setNotifications((prev) =>
+        prev.map((item) =>
+          item.id === notificationId ? { ...item, isRead: true } : item
+        )
+      );
     } catch (err: any) {
-      setError(err.message || "We couldn’t update this notification.");
+      setError(err?.message || "Failed to mark notification as read.");
+    } finally {
+      setWorkingNotificationId("");
     }
   }
-
-  const stats = useMemo(() => {
-    const total = campaigns.length;
-    const awaitingResponse = campaigns.filter((c) => c.status === "invited").length;
-    const awaitingFunding = campaigns.filter(
-      (c) => c.status === "accepted" && c.fundingStatus === "not_funded"
-    ).length;
-    const live = campaigns.filter((c) => c.status === "live").length;
-
-    return { total, awaitingResponse, awaitingFunding, live };
-  }, [campaigns]);
-
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   return (
     <ProtectedRoute allowedRole="brand">
-      <main className="app-page">
-        <div className="app-shell">
-          <div className="app-header">
-            <div>
-              <h1 className="app-title">Brand Dashboard</h1>
-              <p className="app-subtitle">
-                Track creator outreach, funding, and campaign delivery in one place.
-              </p>
-            </div>
+      <main className="min-h-screen p-6 max-w-6xl mx-auto">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-4xl font-bold">Brand Dashboard</h1>
+            <p className="mt-2 text-gray-600">
+              Manage your creator campaigns, funding, submissions, and live
+              activity.
+            </p>
+          </div>
 
-            <Link href="/brand/creators" className="app-button">
-              Find Creators
+          <div className="flex items-center gap-3">
+            <Link
+              href="/brand/creators"
+              className="rounded-lg border px-4 py-2"
+            >
+              Creator Marketplace
             </Link>
           </div>
+        </div>
 
-          {loading && (
-            <p className="app-subtitle" style={{ marginTop: "24px" }}>
-              Loading your dashboard...
-            </p>
-          )}
-          {error && !loading && (
-            <p style={{ marginTop: "24px", color: "#dc2626" }}>{error}</p>
-          )}
+        {error && <p className="mt-6 text-red-600">{error}</p>}
 
-          <div className="app-stat-grid">
-            <StatCard label="Total Campaigns" value={stats.total} />
-            <StatCard label="Awaiting Response" value={stats.awaitingResponse} />
-            <StatCard label="Ready to Fund" value={stats.awaitingFunding} />
-            <StatCard label="Live Campaigns" value={stats.live} />
-          </div>
-
-          <section className="app-section">
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              <h2 className="app-section-title">Updates</h2>
-              {unreadCount > 0 && (
-                <span className="app-badge">{unreadCount} unread</span>
-              )}
+        {loading ? (
+          <p className="mt-8">Loading dashboard...</p>
+        ) : (
+          <>
+            <div className="mt-8 grid gap-4 md:grid-cols-4">
+              <StatCard label="New Invites" value={invitedCount} />
+              <StatCard label="Awaiting Funding" value={acceptedAwaitingFundingCount} />
+              <StatCard label="In Progress" value={fundedInProgressCount} />
+              <StatCard label="Live Campaigns" value={liveCount} />
             </div>
 
-            {notifications.length === 0 ? (
-              <div className="app-card app-card-padding" style={{ marginTop: "16px" }}>
-                <p className="app-text" style={{ margin: 0, fontWeight: 600 }}>
-                  You’re all caught up
-                </p>
-                <p className="app-text-soft" style={{ marginTop: "8px", marginBottom: 0 }}>
-                  Creator replies, submissions, and live campaign updates will appear here.
-                </p>
+            <section className="mt-10">
+              <div className="flex items-center gap-3">
+                <h2 className="text-2xl font-semibold">Updates</h2>
+                {unreadNotifications.length > 0 && (
+                  <span className="rounded-full bg-black px-3 py-1 text-sm text-white">
+                    {unreadNotifications.length} unread
+                  </span>
+                )}
               </div>
-            ) : (
-              <div className="app-list">
-                {notifications.map((notification) => (
-                  <div
-                    key={notification.id}
-                    className={`app-card app-card-padding ${
-                      notification.isRead ? "" : "app-notification-unread"
-                    }`}
-                  >
+
+              {notifications.length === 0 ? (
+                <p className="mt-4 text-gray-600">No updates yet.</p>
+              ) : (
+                <div className="mt-4 space-y-4">
+                  {notifications.map((item) => (
                     <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        gap: "16px",
-                        alignItems: "flex-start",
-                      }}
+                      key={item.id}
+                      className="rounded-2xl border p-5 flex items-start justify-between gap-4"
                     >
                       <div>
-                        {notification.campaignId ? (
-                          <Link href={`/brand/campaign/${notification.campaignId}`}>
-                            <p
-                              className="app-text"
-                              style={{ margin: 0, fontWeight: 600, textDecoration: "underline" }}
-                            >
-                              {notification.title || "Update"}
-                            </p>
-                          </Link>
-                        ) : (
-                          <p className="app-text" style={{ margin: 0, fontWeight: 600 }}>
-                            {notification.title || "Update"}
-                          </p>
-                        )}
-
-                        <p
-                          className="app-text-soft"
-                          style={{ marginTop: "8px", marginBottom: 0 }}
-                        >
-                          {notification.message || ""}
+                        <h3 className="font-semibold">
+                          {item.title || "Notification"}
+                        </h3>
+                        <p className="mt-1 text-gray-700">
+                          {item.message || ""}
                         </p>
+
+                        {item.campaignId && (
+                          <div className="mt-4">
+                            <Link
+                              href={`/brand/campaign/${item.campaignId}`}
+                              className="inline-block rounded-lg border px-4 py-2"
+                            >
+                              View Campaign
+                            </Link>
+                          </div>
+                        )}
                       </div>
 
-                      {!notification.isRead && (
+                      {!item.isRead && (
                         <button
-                          onClick={() => handleMarkRead(notification.id)}
-                          className="app-button-secondary"
+                          onClick={() => handleMarkAsRead(item.id)}
+                          disabled={workingNotificationId === item.id}
+                          className="rounded-lg border px-4 py-2 whitespace-nowrap"
                         >
-                          Mark as Read
+                          {workingNotificationId === item.id
+                            ? "Marking..."
+                            : "Mark as Read"}
                         </button>
                       )}
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-
-          <section className="app-section">
-            <h2 className="app-section-title">Campaigns</h2>
-
-            {campaigns.length === 0 && !loading ? (
-              <div className="app-card app-card-padding" style={{ marginTop: "16px" }}>
-                <p className="app-text" style={{ margin: 0, fontWeight: 600 }}>
-                  No campaigns yet
-                </p>
-                <p className="app-text-soft" style={{ marginTop: "8px" }}>
-                  Start by choosing a creator and sending your first campaign invite.
-                </p>
-                <div style={{ marginTop: "16px" }}>
-                  <Link href="/brand/creators" className="app-button">
-                    Browse Creators
-                  </Link>
+                  ))}
                 </div>
+              )}
+            </section>
+
+            <section className="mt-10">
+              <div className="flex items-center justify-between gap-4">
+                <h2 className="text-2xl font-semibold">Campaigns</h2>
+                <Link
+                  href="/brand/creators"
+                  className="rounded-lg bg-black px-4 py-2 text-white"
+                >
+                  Invite Creator
+                </Link>
               </div>
-            ) : (
-              <div className="app-campaign-grid">
-                {campaigns.map((campaign) => (
-                  <div key={campaign.id} className="app-card app-card-padding">
-                    <div className="app-campaign-top">
-                      <div>
-                        <Link href={`/brand/campaign/${campaign.id}`}>
-                          <h3
-                            className="app-text"
-                            style={{
-                              margin: 0,
-                              fontSize: "1.5rem",
-                              fontWeight: 700,
-                              textDecoration: "underline",
-                            }}
-                          >
+
+              {campaigns.length === 0 ? (
+                <p className="mt-4 text-gray-600">No campaigns yet.</p>
+              ) : (
+                <div className="mt-4 space-y-4">
+                  {campaigns.map((campaign) => (
+                    <div
+                      key={campaign.id}
+                      className="rounded-2xl border p-6 space-y-4"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <h3 className="text-xl font-semibold">
                             {campaign.campaignTitle || "Untitled Campaign"}
                           </h3>
+                          <p className="mt-1 text-gray-600">
+                            Creator: {campaign.creatorHandle || "—"}
+                          </p>
+                          <p className="text-gray-600">
+                            Product: {campaign.productName || "—"}
+                          </p>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2 justify-end">
+                          <StatusPill status={campaign.status || "—"} />
+                          <StatusPill status={campaign.fundingStatus || "not_funded"} />
+                          <StatusPill status={campaign.completionStatus || "not_submitted"} />
+                          <StatusPill status={campaign.payoutReleaseStatus} />
+                        </div>
+                      </div>
+
+                      <div className="grid gap-3 md:grid-cols-4 text-sm text-gray-700">
+                        <p>
+                          Start: {campaign.deliveryStartDate || "Not set"}
+                        </p>
+                        <p>End: {campaign.deliveryEndDate || "Not set"}</p>
+                        <p>Views: {campaign.totalViews ?? 0}</p>
+                        <p>Budget: ${campaign.agreedPrice ?? 0}</p>
+                      </div>
+
+                      <div className="pt-2">
+                        <Link
+                          href={`/brand/campaign/${campaign.id}`}
+                          className="inline-block rounded-lg border px-4 py-2"
+                        >
+                          View Campaign
                         </Link>
-                        <p className="app-text-soft" style={{ marginTop: "12px" }}>
-                          Creator: {campaign.creatorHandle || "Unknown creator"}
-                        </p>
-                        <p className="app-text-soft">Product: {campaign.productName || "-"}</p>
-                        <p className="app-text-faint" style={{ marginTop: "8px" }}>
-                          Delivery Window: {campaign.deliveryStartDate || "-"} →{" "}
-                          {campaign.deliveryEndDate || "-"}
-                        </p>
-                      </div>
-
-                      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                        <StatusPill status={campaign.status} />
-                        <span className="app-text-faint">
-                          Funding: {campaign.fundingStatus || "not_funded"}
-                        </span>
                       </div>
                     </div>
-
-                    <div className="app-inline-actions">
-                      <Link
-                        href={`/brand/campaign/${campaign.id}`}
-                        className="app-button-secondary"
-                      >
-                        View Campaign
-                      </Link>
-
-                      {campaign.status === "accepted" &&
-                        campaign.fundingStatus === "not_funded" && (
-                          <button
-                            onClick={() => handleFund(campaign.id)}
-                            disabled={busyCampaignId === campaign.id}
-                            className="app-button"
-                          >
-                            {busyCampaignId === campaign.id
-                              ? "Funding..."
-                              : "Fund Campaign"}
-                          </button>
-                        )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-        </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          </>
+        )}
       </main>
     </ProtectedRoute>
   );
