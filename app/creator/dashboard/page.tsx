@@ -15,6 +15,8 @@ import {
   updateCampaignStatus,
 } from "../../../lib/campaigns";
 
+import type { CampaignStatus } from "../../../lib/campaigns";
+
 type Campaign = {
   id: string;
   brandName?: string;
@@ -79,7 +81,10 @@ export default function CreatorDashboardPage() {
   async function handleStatusChange(campaignId: string, status: string) {
     try {
       setBusyCampaignId(campaignId);
-      await updateCampaignStatus({ campaignId, status });
+      await updateCampaignStatus({
+        campaignId,
+        status: status as CampaignStatus,
+      });
 
       const user = auth.currentUser;
       if (user) {
@@ -104,15 +109,13 @@ export default function CreatorDashboardPage() {
       setError("");
       setBusyCampaignId(campaignId);
 
-      await submitCampaignLink({
-        campaignId,
-        arContentUrl: url,
-      });
-
       const user = auth.currentUser;
-      if (user) {
-        await loadDashboardForUser(user.uid);
+      if (!user) {
+        throw new Error("You must be logged in.");
       }
+
+      await submitCampaignLink(campaignId, user.uid, url);
+      await loadDashboardForUser(user.uid);
     } catch (err: any) {
       setError(err.message || "We couldn’t submit your campaign link.");
     } finally {
