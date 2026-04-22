@@ -1,26 +1,29 @@
 import postmark from "postmark";
 
-const client = new postmark.ServerClient(process.env.POSTMARK_API_TOKEN!);
+const token = process.env.POSTMARK_API_TOKEN || "";
 
 export async function sendEmail(params: {
   to: string;
   subject: string;
   htmlBody: string;
   textBody?: string;
+  replyTo?: string;
 }) {
-  const { to, subject, htmlBody, textBody } = params;
+  const { to, subject, htmlBody, textBody, replyTo } = params;
 
-  try {
-    await client.sendEmail({
-      From: "Athena from Goshsha <athena@goshsha.com>",
-      To: to,
-      Subject: subject,
-      HtmlBody: htmlBody,
-      TextBody: textBody || "",
-    });
-
-    console.log("Email sent to:", to);
-  } catch (err) {
-    console.error("Postmark error:", err);
+  if (!token) {
+    throw new Error("Missing POSTMARK_API_TOKEN");
   }
+
+  const client = new postmark.ServerClient(token);
+
+  return client.sendEmail({
+    From: "Athena from Goshsha <athena@goshsha.com>",
+    ReplyTo: replyTo || "athena@goshsha.com",
+    To: to,
+    Subject: subject,
+    HtmlBody: htmlBody,
+    TextBody: textBody || "",
+    MessageStream: "outbound",
+  });
 }

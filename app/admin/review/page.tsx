@@ -1,42 +1,26 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import ProtectedRoute from "../../../components/ProtectedRoute";
-import StatusPill from "../../../components/StatusPill";
-import CampaignTimeline from "../../../components/CampaignTimeline";
-import { getSubmittedCampaigns, markCampaignLive } from "../../../lib/campaigns";
-
-type Campaign = {
-  id: string;
-  brandName?: string;
-  creatorHandle?: string;
-  contactEmail?: string;
-  productName?: string;
-  campaignTitle?: string;
-  campaignBrief?: string;
-  deliveryStartDate?: string;
-  deliveryEndDate?: string;
-  agreedPrice?: number;
-  status?: string;
-  fundingStatus?: string;
-  completionStatus?: string;
-  creatorSubmittedArContentUrl?: string;
-};
+import { Campaign, getSubmittedCampaigns } from "../../../lib/campaigns";
 
 export default function AdminReviewPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
-  const [busyCampaignId, setBusyCampaignId] = useState("");
+  const [workingId, setWorkingId] = useState<string>("");
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
 
   async function loadCampaigns() {
+    setLoading(true);
+    setError("");
+
     try {
-      setError("");
       const data = await getSubmittedCampaigns();
-      setCampaigns(data as Campaign[]);
+      setCampaigns(data);
     } catch (err: any) {
-      setError(err.message || "We couldn’t load submitted campaigns.");
+      setError(err.message || "Failed to load submitted campaigns.");
     } finally {
       setLoading(false);
     }
@@ -47,147 +31,98 @@ export default function AdminReviewPage() {
   }, []);
 
   async function handleMarkLive(campaignId: string) {
+    setWorkingId(campaignId);
+    setError("");
+    setMessage("");
+
     try {
-      setBusyCampaignId(campaignId);
-      await markCampaignLive(campaignId);
+      const res = await fetch("/api/mark-campaign-live", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignId }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to mark campaign live.");
+      }
+
+      setMessage("Campaign marked live.");
       await loadCampaigns();
     } catch (err: any) {
-      setError(err.message || "We couldn’t mark this campaign live.");
+      setError(err.message || "Failed to mark campaign live.");
     } finally {
-      setBusyCampaignId("");
+      setWorkingId("");
     }
   }
 
   return (
     <ProtectedRoute allowedRole="admin">
-      <main className="app-page">
-        <div className="app-shell">
-          <div className="app-header">
-            <div>
-              <h1 className="app-title">Admin Review</h1>
-              <p className="app-subtitle">
-                Review submitted creator links and approve campaigns for launch.
-              </p>
-            </div>
-
-            <Link href="/" className="app-button-secondary">
-              Back to Home
-            </Link>
+      <main className="min-h-screen p-6 max-w-5xl mx-auto">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold">Admin Review</h1>
+            <p className="mt-2 text-gray-600">
+              Review creator submissions and mark approved campaigns live.
+            </p>
           </div>
 
-          {loading && (
-            <p className="app-subtitle" style={{ marginTop: "24px" }}>
-              Loading submissions...
-            </p>
-          )}
+          <Link href="/" className="rounded-lg border px-4 py-2">
+            Back Home
+          </Link>
+        </div>
 
-          {error && !loading && (
-            <p style={{ marginTop: "24px", color: "#dc2626" }}>{error}</p>
-          )}
+        {loading && <p className="mt-8">Loading submitted campaigns...</p>}
+        {error && <p className="mt-8 text-red-600">{error}</p>}
+        {message && <p className="mt-8 text-green-600">{message}</p>}
 
-          {!loading && campaigns.length === 0 && (
-            <div className="app-section">
-              <div className="app-card app-card-padding">
-                <h2 className="app-text" style={{ margin: 0, fontWeight: 700 }}>
-                  No submissions waiting for review
+        {!loading && campaigns.length === 0 && (
+          <p className="mt-8 text-gray-600">No submitted campaigns right now.</p>
+        )}
+
+        <div className="mt-8 space-y-6">
+          {campaigns.map((campaign) => (
+            <div key={campaign.id} className="rounded-2xl border p-6 space-y-3">
+              <div>
+                <h2 className="text-2xl font-semibold">
+                  {campaign.campaignTitle || "Untitled Campaign"}
                 </h2>
-                <p className="app-text-soft" style={{ marginTop: "10px", marginBottom: 0 }}>
-                  When creators submit campaign links, they will appear here for approval.
+                <p className="text-gray-600 mt-1">
+                  Creator: {campaign.creatorHandle || "—"}
                 </p>
               </div>
-            </div>
-          )}
 
-          {campaigns.length > 0 && (
-            <section className="app-section">
-              <h2 className="app-section-title">Submitted Campaigns</h2>
-
-              <div className="app-campaign-grid">
-                {campaigns.map((campaign) => (
-                  <div key={campaign.id} className="app-card app-card-padding">
-                    <div className="app-campaign-top">
-                      <div>
-                        <h3
-                          className="app-text"
-                          style={{ margin: 0, fontSize: "1.5rem", fontWeight: 700 }}
-                        >
-                          {campaign.campaignTitle || "Untitled Campaign"}
-                        </h3>
-
-                        <p className="app-text-soft" style={{ marginTop: "12px" }}>
-                          Brand: {campaign.brandName || "Unknown brand"}
-                        </p>
-                        <p className="app-text-soft">
-                          Creator: {campaign.creatorHandle || "Unknown creator"}
-                        </p>
-                        <p className="app-text-soft">
-                          Product: {campaign.productName || "-"}
-                        </p>
-                        <p className="app-text-faint" style={{ marginTop: "8px" }}>
-                          Delivery Window: {campaign.deliveryStartDate || "-"} →{" "}
-                          {campaign.deliveryEndDate || "-"}
-                        </p>
-                        <p className="app-text-soft" style={{ marginTop: "8px" }}>
-                          Campaign Value: ${campaign.agreedPrice ?? 0}
-                        </p>
-                      </div>
-
-                      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                        <StatusPill status={campaign.status} />
-                        <span className="app-text-faint">
-                          Funding: {campaign.fundingStatus || "-"}
-                        </span>
-                      </div>
-                    </div>
-
-                    <CampaignTimeline status={campaign.status} />
-
-                    <div style={{ marginTop: "24px" }}>
-                      <h4 className="app-text" style={{ margin: 0, fontWeight: 600 }}>
-                        Campaign Brief
-                      </h4>
-                      <p className="app-text-soft" style={{ marginTop: "10px" }}>
-                        {campaign.campaignBrief || "No campaign brief provided."}
-                      </p>
-                    </div>
-
-                    <div style={{ marginTop: "24px" }}>
-                      <h4 className="app-text" style={{ margin: 0, fontWeight: 600 }}>
-                        Submitted Link
-                      </h4>
-
-                      {campaign.creatorSubmittedArContentUrl ? (
-                        <p className="app-text-soft" style={{ marginTop: "10px" }}>
-                          <a
-                            href={campaign.creatorSubmittedArContentUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            style={{ textDecoration: "underline" }}
-                          >
-                            {campaign.creatorSubmittedArContentUrl}
-                          </a>
-                        </p>
-                      ) : (
-                        <p className="app-text-soft" style={{ marginTop: "10px" }}>
-                          No submitted link found.
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="app-inline-actions" style={{ marginTop: "24px" }}>
-                      <button
-                        onClick={() => handleMarkLive(campaign.id)}
-                        disabled={busyCampaignId === campaign.id}
-                        className="app-button"
-                      >
-                        {busyCampaignId === campaign.id ? "Approving..." : "Approve & Mark Live"}
-                      </button>
-                    </div>
-                  </div>
-                ))}
+              <div className="grid gap-3 md:grid-cols-2">
+                <p>Brand: {campaign.brandName || "—"}</p>
+                <p>Product: {campaign.productName || "—"}</p>
+                <p>Status: {campaign.status || "—"}</p>
+                <p>Review: {campaign.goshshaReviewStatus || "—"}</p>
               </div>
-            </section>
-          )}
+
+              {campaign.normalizedArContentUrl && (
+                <p>
+                  Submission:{" "}
+                  <a
+                    href={campaign.normalizedArContentUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-blue-600 underline"
+                  >
+                    {campaign.normalizedArContentUrl}
+                  </a>
+                </p>
+              )}
+
+              <button
+                onClick={() => handleMarkLive(campaign.id)}
+                disabled={workingId === campaign.id}
+                className="rounded-lg bg-black text-white px-4 py-2"
+              >
+                {workingId === campaign.id ? "Marking live..." : "Approve & Mark Live"}
+              </button>
+            </div>
+          ))}
         </div>
       </main>
     </ProtectedRoute>

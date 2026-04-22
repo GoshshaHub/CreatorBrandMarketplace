@@ -1,282 +1,224 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
-import { doc, getDoc } from "firebase/firestore";
 import ProtectedRoute from "../../../../components/ProtectedRoute";
-import StatusPill from "../../../../components/StatusPill";
-import CampaignTimeline from "../../../../components/CampaignTimeline";
-import { db } from "../../../../lib/firebase";
-
-type Campaign = {
-  id: string;
-  brandId?: string;
-  creatorId?: string;
-  brandName?: string;
-  creatorHandle?: string;
-  contactEmail?: string;
-  productName?: string;
-  campaignTitle?: string;
-  campaignBrief?: string;
-  deliveryStartDate?: string;
-  deliveryEndDate?: string;
-  agreedPrice?: number;
-  platformFeeAmount?: number;
-  status?: string;
-  fundingStatus?: string;
-  creatorSubmittedArContentUrl?: string;
-};
+import { Campaign, getCampaignById } from "../../../../lib/campaigns";
 
 export default function BrandCampaignDetailPage() {
-  const params = useParams();
-  const campaignId = String(params?.id || "");
+  const params = useParams<{ id: string }>();
+  const campaignId = params?.id || "";
 
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [loading, setLoading] = useState(true);
-  const [paying, setPaying] = useState(false);
+  const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
 
-  useEffect(() => {
-    async function loadCampaign() {
-      if (!campaignId) {
-        setError("Missing campaign ID.");
-        setLoading(false);
-        return;
-      }
+  async function loadCampaign() {
+    if (!campaignId) return;
 
-      try {
-        const snap = await getDoc(doc(db, "campaigns", campaignId));
-
-        if (!snap.exists()) {
-          setError("Campaign not found.");
-          setLoading(false);
-          return;
-        }
-
-        setCampaign({
-          id: snap.id,
-          ...(snap.data() as Omit<Campaign, "id">),
-        });
-      } catch (err: any) {
-        setError(err.message || "We couldn’t load this campaign.");
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadCampaign();
-  }, [campaignId]);
-
-  async function handlePayNow() {
-    if (!campaign) return;
-
-    setPaying(true);
+    setLoading(true);
     setError("");
 
     try {
-      const res = await fetch("/api/stripe/create-checkout-session", {
+      const data = await getCampaignById(campaignId);
+      setCampaign(data);
+    } catch (err: any) {
+      setError(err.message || "Failed to load campaign.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadCampaign();
+  }, [campaignId]);
+
+  async function handleFundCampaign() {
+    setWorking(true);
+    setError("");
+    setMessage("");
+
+    try {
+      const res = await fetch("/api/fund-campaign", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          campaignId: campaign.id,
-          campaignTitle: campaign.campaignTitle || "Campaign",
-          brandName: campaign.brandName || "",
-          amount: Number(campaign.agreedPrice || 0),
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignId }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "Unable to create payment session.");
+        throw new Error(data.error || "Failed to fund campaign.");
       }
 
-      if (data.url) {
-        window.location.href = data.url;
-        return;
-      }
-
-      throw new Error("Stripe checkout URL was not returned.");
+      setMessage("Campaign funded successfully.");
+      await loadCampaign();
     } catch (err: any) {
-      setError(err.message || "Unable to start payment.");
-      setPaying(false);
+      setError(err.message || "Failed to fund campaign.");
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function handleSyncViews() {
+    const input = window.prompt("Enter current total views for this campaign:", "1000");
+    if (!input) return;
+
+    const views = Number(input);
+    if (Number.isNaN(views)) {
+      setError("Please enter a valid number.");
+      return;
+    }
+
+    setWorking(true);
+    setError("");
+    setMessage("");
+
+    try {
+      const res = await fetch("/api/sync-campaign-views", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignId, views }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to sync views.");
+      }
+
+      setMessage(
+        data.released
+          ? "Views synced. Payout threshold reached and payment released."
+          : "Views synced successfully."
+      );
+      await loadCampaign();
+    } catch (err: any) {
+      setError(err.message || "Failed to sync views.");
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function handleReleasePaymentNow() {
+    setWorking(true);
+    setError("");
+    setMessage("");
+
+    try {
+      const res = await fetch("/api/release-campaign-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignId }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to release payment.");
+      }
+
+      setMessage("Payment released successfully.");
+      await loadCampaign();
+    } catch (err: any) {
+      setError(err.message || "Failed to release payment.");
+    } finally {
+      setWorking(false);
     }
   }
 
   return (
     <ProtectedRoute allowedRole="brand">
-      <main className="app-page">
-        <div className="app-shell">
-          <div className="app-header">
+      <main className="min-h-screen p-6 max-w-3xl mx-auto">
+        <div className="flex items-center justify-between gap-4">
+          <h1 className="text-3xl font-bold">Campaign Details</h1>
+          <Link href="/brand/dashboard" className="rounded-lg border px-4 py-2">
+            Back to Dashboard
+          </Link>
+        </div>
+
+        {loading && <p className="mt-6">Loading campaign...</p>}
+        {error && <p className="mt-6 text-red-600">{error}</p>}
+        {message && <p className="mt-6 text-green-600">{message}</p>}
+
+        {campaign && (
+          <div className="mt-8 rounded-2xl border p-6 space-y-4">
             <div>
-              <h1 className="app-title">
-                {campaign?.campaignTitle || "Campaign Detail"}
-              </h1>
-              <p className="app-subtitle">
-                Review campaign details, funding, and creator progress.
+              <h2 className="text-2xl font-semibold">
+                {campaign.campaignTitle || "Untitled Campaign"}
+              </h2>
+              <p className="text-gray-600 mt-1">
+                Product: {campaign.productName || "—"}
               </p>
             </div>
 
-            <Link href="/brand/dashboard" className="app-button-secondary">
-              Back to Dashboard
-            </Link>
-          </div>
-
-          {loading && (
-            <p className="app-subtitle" style={{ marginTop: "24px" }}>
-              Loading campaign...
-            </p>
-          )}
-
-          {error && !loading && (
-            <p style={{ marginTop: "24px", color: "#dc2626" }}>{error}</p>
-          )}
-
-          {!loading && campaign && (
-            <div
-              style={{
-                marginTop: "32px",
-                display: "grid",
-                gap: "24px",
-                gridTemplateColumns: "minmax(0, 1.2fr) minmax(280px, 0.8fr)",
-                alignItems: "start",
-              }}
-            >
-              <section className="app-card app-card-padding">
-                <div className="app-campaign-top">
-                  <div>
-                    <h2
-                      className="app-text"
-                      style={{ margin: 0, fontSize: "1.5rem", fontWeight: 700 }}
-                    >
-                      {campaign.campaignTitle || "Untitled Campaign"}
-                    </h2>
-
-                    <p className="app-text-soft" style={{ marginTop: "12px" }}>
-                      Creator: {campaign.creatorHandle || "Unknown creator"}
-                    </p>
-                    <p className="app-text-soft">
-                      Product: {campaign.productName || "-"}
-                    </p>
-                    <p className="app-text-faint" style={{ marginTop: "8px" }}>
-                      Delivery Window: {campaign.deliveryStartDate || "-"} →{" "}
-                      {campaign.deliveryEndDate || "-"}
-                    </p>
-                  </div>
-
-                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                    <StatusPill status={campaign.status} />
-                    <span className="app-text-faint">
-                      Funding: {campaign.fundingStatus || "not_funded"}
-                    </span>
-                  </div>
-                </div>
-
-                <CampaignTimeline status={campaign.status} />
-
-                <div style={{ marginTop: "28px" }}>
-                  <h3
-                    className="app-text"
-                    style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700 }}
-                  >
-                    Campaign Brief
-                  </h3>
-                  <p className="app-text-soft" style={{ marginTop: "12px", lineHeight: 1.7 }}>
-                    {campaign.campaignBrief || "No campaign brief provided."}
-                  </p>
-                </div>
-
-                {campaign.creatorSubmittedArContentUrl ? (
-                  <div style={{ marginTop: "28px" }}>
-                    <h3
-                      className="app-text"
-                      style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700 }}
-                    >
-                      Submitted Content
-                    </h3>
-                    <p className="app-text-soft" style={{ marginTop: "12px" }}>
-                      <a
-                        href={campaign.creatorSubmittedArContentUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        style={{ textDecoration: "underline" }}
-                      >
-                        View submitted content link
-                      </a>
-                    </p>
-                  </div>
-                ) : null}
-              </section>
-
-              <aside
-                className="app-card app-card-padding"
-                style={{ position: "sticky", top: "96px" }}
-              >
-                <h2
-                  className="app-text"
-                  style={{ margin: 0, fontSize: "1.2rem", fontWeight: 700 }}
-                >
-                  Funding Summary
-                </h2>
-
-                <div style={{ marginTop: "18px", display: "grid", gap: "12px" }}>
-                  <div>
-                    <p className="app-text-faint" style={{ margin: 0, fontWeight: 600 }}>
-                      Campaign Amount
-                    </p>
-                    <p className="app-text" style={{ marginTop: "6px", marginBottom: 0 }}>
-                      ${Number(campaign.agreedPrice || 0).toFixed(2)}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="app-text-faint" style={{ margin: 0, fontWeight: 600 }}>
-                      Platform Fee
-                    </p>
-                    <p className="app-text" style={{ marginTop: "6px", marginBottom: 0 }}>
-                      ${Number(campaign.platformFeeAmount || 0).toFixed(2)}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="app-text-faint" style={{ margin: 0, fontWeight: 600 }}>
-                      Payment Status
-                    </p>
-                    <p className="app-text" style={{ marginTop: "6px", marginBottom: 0 }}>
-                      {campaign.fundingStatus === "funded" ? "Funding secured" : "Awaiting payment"}
-                    </p>
-                  </div>
-                </div>
-
-                {campaign.status === "accepted" &&
-                campaign.fundingStatus !== "funded" ? (
-                  <div style={{ marginTop: "24px" }}>
-                    <button
-                      onClick={handlePayNow}
-                      className="app-button"
-                      disabled={paying}
-                    >
-                      {paying ? "Redirecting to Checkout..." : "Fund Campaign"}
-                    </button>
-                  </div>
-                ) : null}
-
-                <div style={{ marginTop: "16px" }}>
-                  <Link
-                    href="/brand/dashboard"
-                    className="app-button-secondary"
-                    style={{ display: "inline-block" }}
-                  >
-                    Back
-                  </Link>
-                </div>
-              </aside>
+            <div className="grid gap-3 md:grid-cols-2">
+              <p>Status: {campaign.status || "—"}</p>
+              <p>Funding: {campaign.fundingStatus || "—"}</p>
+              <p>Completion: {campaign.completionStatus || "—"}</p>
+              <p>Review: {campaign.goshshaReviewStatus || "—"}</p>
+              <p>Payout: {campaign.payoutReleaseStatus || "—"}</p>
+              <p>Creator: {campaign.creatorHandle || "—"}</p>
+              <p>Views: {campaign.totalViews ?? 0}</p>
+              <p>Agreed Price: ${campaign.agreedPrice ?? 0}</p>
+              <p>Release Threshold: {campaign.payoutThresholdViews ?? 1000}</p>
             </div>
-          )}
-        </div>
+
+            {campaign.campaignBrief && (
+              <div>
+                <h3 className="font-semibold">Brief</h3>
+                <p className="text-gray-700 mt-1">{campaign.campaignBrief}</p>
+              </div>
+            )}
+
+            {campaign.normalizedArContentUrl && (
+              <div>
+                <h3 className="font-semibold">Submitted URL</h3>
+                <a
+                  href={campaign.normalizedArContentUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-blue-600 underline"
+                >
+                  {campaign.normalizedArContentUrl}
+                </a>
+              </div>
+            )}
+
+            <div className="flex flex-wrap gap-3 pt-2">
+              {campaign.fundingStatus !== "funded" && (
+                <button
+                  onClick={handleFundCampaign}
+                  disabled={working}
+                  className="rounded-lg bg-black text-white px-4 py-2"
+                >
+                  {working ? "Funding..." : "Fund Campaign"}
+                </button>
+              )}
+
+              <button
+                onClick={handleSyncViews}
+                disabled={working}
+                className="rounded-lg border px-4 py-2"
+              >
+                Sync Views
+              </button>
+
+              {campaign.payoutReleaseStatus !== "released" && (
+                <button
+                  onClick={handleReleasePaymentNow}
+                  disabled={working}
+                  className="rounded-lg border px-4 py-2"
+                >
+                  Release Payment Now
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </main>
     </ProtectedRoute>
   );

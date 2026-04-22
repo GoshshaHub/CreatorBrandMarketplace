@@ -12,6 +12,52 @@ import {
 import { db } from "./firebase";
 import { createNotification, markNotificationRead } from "./notifications";
 
+export type CampaignStatus =
+  | "invited"
+  | "accepted"
+  | "rejected"
+  | "funded"
+  | "submitted"
+  | "live";
+
+export type FundingStatus = "not_funded" | "funded";
+export type CompletionStatus = "not_submitted" | "submitted" | "live";
+export type ReviewStatus = "pending" | "approved" | "rejected";
+export type PayoutReleaseStatus = "locked" | "released";
+
+export type Campaign = {
+  id: string;
+  brandId: string;
+  creatorId: string;
+  brandName?: string;
+  creatorHandle?: string;
+  contactEmail?: string;
+  productName?: string;
+  campaignTitle?: string;
+  campaignBrief?: string;
+  deliveryStartDate?: string;
+  deliveryEndDate?: string;
+  agreedPrice?: number;
+  platformFeeAmount?: number;
+  status?: CampaignStatus;
+  fundingStatus?: FundingStatus;
+  completionStatus?: CompletionStatus;
+  goshshaReviewStatus?: ReviewStatus;
+  payoutReleaseStatus?: PayoutReleaseStatus;
+  payoutThresholdViews?: number;
+  payoutReleasedAt?: any;
+  fundedAt?: any;
+  creatorSubmittedArContentUrl?: string | null;
+  normalizedArContentUrl?: string | null;
+  creatorSubmittedAt?: any;
+  matchedEntryId?: string | null;
+  currentViews?: number;
+  totalViews?: number;
+  lastMetricsSyncAt?: any;
+  createdAt?: any;
+  updatedAt?: any;
+};
+
 export async function createCampaign(params: {
   brandId: string;
   creatorId: string;
@@ -62,23 +108,23 @@ export async function createCampaign(params: {
 
     completionStatus: "not_submitted",
     goshshaReviewStatus: "pending",
-    completedAt: null,
+
+    payoutReleaseStatus: "locked",
+    payoutThresholdViews: 1000,
+    payoutReleasedAt: null,
 
     creatorSubmittedArContentUrl: null,
     normalizedArContentUrl: null,
     creatorSubmittedAt: null,
 
     matchedEntryId: null,
-    validatedCreatorIdFromEntryId: null,
-    matchedCollection: null,
-    matchedArPlaylistIndex: null,
-    validationStatus: "pending",
-    validationFailureReason: null,
 
     currentViews: 0,
+    totalViews: 0,
     lastMetricsSyncAt: null,
 
     creatorAcceptedAt: null,
+    completedAt: null,
 
     adminNotifiedSubmittedAt: null,
     brandNotifiedLiveAt: null,
@@ -135,7 +181,7 @@ export async function getCampaignById(campaignId: string) {
   return {
     id: snap.id,
     ...snap.data(),
-  };
+  } as Campaign;
 }
 
 export async function getCreatorCampaigns(creatorId: string) {
@@ -149,7 +195,7 @@ export async function getCreatorCampaigns(creatorId: string) {
   return snapshot.docs.map((docSnap) => ({
     id: docSnap.id,
     ...docSnap.data(),
-  }));
+  })) as Campaign[];
 }
 
 export async function getBrandCampaigns(brandId: string) {
@@ -163,12 +209,37 @@ export async function getBrandCampaigns(brandId: string) {
   return snapshot.docs.map((docSnap) => ({
     id: docSnap.id,
     ...docSnap.data(),
-  }));
+  })) as Campaign[];
+}
+
+export async function getSubmittedCampaigns() {
+  const q = query(
+    collection(db, "campaigns"),
+    where("status", "==", "submitted")
+  );
+
+  const snapshot = await getDocs(q);
+
+  return snapshot.docs.map((docSnap) => ({
+    id: docSnap.id,
+    ...docSnap.data(),
+  })) as Campaign[];
+}
+
+export async function getLiveCampaigns() {
+  const q = query(collection(db, "campaigns"), where("status", "==", "live"));
+
+  const snapshot = await getDocs(q);
+
+  return snapshot.docs.map((docSnap) => ({
+    id: docSnap.id,
+    ...docSnap.data(),
+  })) as Campaign[];
 }
 
 export async function updateCampaignStatus(params: {
   campaignId: string;
-  status: string;
+  status: CampaignStatus;
 }) {
   const { campaignId, status } = params;
 
@@ -248,102 +319,6 @@ export async function updateCampaignStatus(params: {
       campaignId,
     });
   }
-}
-
-export async function fundCampaign(campaignId: string) {
-  const ref = doc(db, "campaigns", campaignId);
-  const snap = await getDoc(ref);
-
-  if (!snap.exists()) {
-    throw new Error("Campaign not found.");
-  }
-
-  const campaign = snap.data() as any;
-
-  await updateDoc(ref, {
-    status: "funded",
-    fundingStatus: "funded",
-    fundedAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  });
-
-  await createNotification({
-    userId: campaign.creatorId,
-    role: "creator",
-    type: "campaign_funded",
-    title: "Campaign funded",
-    message: `${campaign.brandName} funded "${campaign.campaignTitle}". You can start now.`,
-    campaignId,
-  });
-}
-
-export async function submitCampaignLink(params: {
-  campaignId: string;
-  arContentUrl: string;
-}) {
-  const { campaignId, arContentUrl } = params;
-
-  const ref = doc(db, "campaigns", campaignId);
-  const snap = await getDoc(ref);
-
-  if (!snap.exists()) {
-    throw new Error("Campaign not found.");
-  }
-
-  const campaign = snap.data() as any;
-
-  await updateDoc(ref, {
-    creatorSubmittedArContentUrl: arContentUrl,
-    normalizedArContentUrl: arContentUrl.trim(),
-    status: "submitted",
-    completionStatus: "submitted",
-    creatorSubmittedAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  });
-
-  await createNotification({
-    userId: campaign.brandId,
-    role: "brand",
-    type: "campaign_submitted",
-    title: "Campaign submitted",
-    message: `${campaign.creatorHandle || "A creator"} submitted the campaign link for "${campaign.campaignTitle}".`,
-    campaignId,
-  });
-
-  await createNotification({
-    userId: "admin",
-    role: "admin",
-    type: "campaign_submitted_admin",
-    title: "Campaign ready for review",
-    message: `${campaign.creatorHandle || "A creator"} submitted "${campaign.campaignTitle}" for review.`,
-    campaignId,
-  });
-}
-
-export async function getSubmittedCampaigns() {
-  const q = query(
-    collection(db, "campaigns"),
-    where("status", "==", "submitted")
-  );
-
-  const snapshot = await getDocs(q);
-
-  return snapshot.docs.map((docSnap) => ({
-    id: docSnap.id,
-    ...docSnap.data(),
-  }));
-}
-
-export async function markCampaignLive(campaignId: string) {
-  const ref = doc(db, "campaigns", campaignId);
-
-  await updateDoc(ref, {
-    status: "live",
-    completionStatus: "live",
-    goshshaReviewStatus: "approved",
-    completedAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  });
 }
 
 export async function getUserNotifications(userId: string) {
