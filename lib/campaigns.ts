@@ -266,6 +266,11 @@ export async function updateCampaignStatus(params: {
     updateData.completionStatus = "submitted";
   }
 
+  if (status === "funded") {
+    updateData.fundingStatus = "funded";
+    updateData.fundedAt = serverTimestamp();
+  }
+
   if (status === "live") {
     updateData.completionStatus = "live";
     updateData.completedAt = serverTimestamp();
@@ -319,6 +324,41 @@ export async function updateCampaignStatus(params: {
       campaignId,
     });
   }
+}
+
+export async function fundCampaign(campaignId: string) {
+  const ref = doc(db, "campaigns", campaignId);
+
+  await updateDoc(ref, {
+    fundingStatus: "funded",
+    status: "funded",
+    fundedAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function submitCampaignLink(
+  campaignId: string,
+  creatorId: string,
+  link: string
+) {
+  const ref = doc(db, "campaigns", campaignId);
+
+  await updateDoc(ref, {
+    creatorSubmittedArContentUrl: link,
+    normalizedArContentUrl: link.trim(),
+    completionStatus: "submitted",
+    status: "submitted",
+    creatorSubmittedAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+
+  await addDoc(collection(db, "campaignSubmissions"), {
+    campaignId,
+    creatorId,
+    link,
+    createdAt: serverTimestamp(),
+  });
 }
 
 export async function getUserNotifications(userId: string) {
