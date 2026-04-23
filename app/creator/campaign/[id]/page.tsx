@@ -84,14 +84,14 @@ export default function CreatorCampaignDetailPage() {
 
   const nextAction = useMemo(() => {
     if (!campaign) return "";
-
-    if (campaign.status === "invited") return "Review the campaign and accept or reject the invite.";
-    if (campaign.status === "accepted") return "You accepted. Waiting for the brand to fund the campaign.";
-    if (campaign.status === "funded") return "Campaign is funded. Create your post, then submit the URL here.";
-    if (campaign.status === "submitted") return "Submission received. Waiting for brand approval.";
-    if (campaign.status === "approved") return "Brand approved your work. Waiting for admin to release payout.";
-    if (campaign.status === "completed") return "Payout released. Campaign completed.";
-    if (campaign.status === "rejected") return "Campaign rejected.";
+    const status = campaign.status as string | undefined;
+    if (status === "invited") return "Review the campaign and accept or reject the invite.";
+    if (status === "accepted") return "You accepted. Waiting for the brand to fund the campaign.";
+    if (status === "funded") return "Campaign is funded. Create your post, then submit the URL here.";
+    if (status === "submitted") return "Submission received. Waiting for brand approval.";
+    if (status === "approved") return "Brand approved your work. Waiting for admin to release payout.";
+    if (status === "completed") return "Payout released. Campaign completed.";
+    if (status === "rejected") return "Campaign rejected.";
     return "";
   }, [campaign]);
 

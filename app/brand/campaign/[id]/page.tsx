@@ -38,7 +38,7 @@ function Step({
 }
 
 function getStepState(campaign: Campaign, step: string) {
-  const status = campaign.status;
+  const status = campaign.status as string | undefined;
 
   const order = ["invited", "accepted", "funded", "submitted", "approved", "completed"];
   const currentIndex = order.indexOf(status || "invited");
@@ -79,14 +79,14 @@ export default function BrandCampaignDetailPage() {
 
   const nextAction = useMemo(() => {
     if (!campaign) return "";
-
-    if (campaign.status === "invited") return "Waiting for creator to accept the invite.";
-    if (campaign.status === "accepted" && campaign.fundingStatus !== "funded")
+    const status = campaign.status as string | undefined;
+    if (status === "invited") return "Waiting for creator to accept the invite.";
+    if (status === "accepted" && campaign.fundingStatus !== "funded")
       return "Creator accepted. Fund the campaign so they can begin.";
-    if (campaign.status === "funded") return "Campaign is funded. Waiting for creator submission.";
-    if (campaign.status === "submitted") return "Creator submitted content. Review and approve it.";
-    if (campaign.status === "approved") return "Submission approved. Waiting for admin to release payout.";
-    if (campaign.status === "completed") return "Campaign completed.";
+    if (status === "funded") return "Campaign is funded. Waiting for creator submission.";
+    if (status === "submitted") return "Creator submitted content. Review and approve it.";
+    if (status === "approved") return "Submission approved. Waiting for admin to release payout.";
+    if (status === "completed") return "Campaign completed.";
     return "";
   }, [campaign]);
 
