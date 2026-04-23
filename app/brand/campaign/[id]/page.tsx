@@ -181,7 +181,7 @@ export default function BrandCampaignDetailPage() {
                   </button>
                 )}
 
-                {campaign.status === "submitted" && campaign.brandApprovalStatus !== "approved" && (
+                {status === "submitted" && campaign.brandApprovalStatus !== "approved" && (
                   <button
                     onClick={handleApproveSubmission}
                     disabled={working}

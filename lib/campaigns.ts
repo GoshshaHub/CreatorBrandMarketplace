@@ -18,44 +18,58 @@ export type CampaignStatus =
   | "rejected"
   | "funded"
   | "submitted"
-  | "live";
+  | "approved"
+  | "completed";
 
 export type FundingStatus = "not_funded" | "funded";
-export type CompletionStatus = "not_submitted" | "submitted" | "live";
-export type ReviewStatus = "pending" | "approved" | "rejected";
-export type PayoutReleaseStatus = "locked" | "released";
+export type BrandApprovalStatus = "pending" | "approved" | "rejected";
+export type PayoutStatus = "not_ready" | "ready_to_release" | "released";
 
 export type Campaign = {
   id: string;
   brandId: string;
   creatorId: string;
+
   brandName?: string;
   creatorHandle?: string;
   contactEmail?: string;
+
   productName?: string;
   campaignTitle?: string;
   campaignBrief?: string;
   deliveryStartDate?: string;
   deliveryEndDate?: string;
+
   agreedPrice?: number;
   platformFeeAmount?: number;
-  status?: CampaignStatus;
-  fundingStatus?: FundingStatus;
-  completionStatus?: CompletionStatus;
-  goshshaReviewStatus?: ReviewStatus;
-  payoutReleaseStatus?: PayoutReleaseStatus;
-  payoutThresholdViews?: number;
-  payoutReleasedAt?: any;
+  creatorPayoutAmount?: number;
+
+  creatorAcceptedAt?: any;
   fundedAt?: any;
-  creatorSubmittedArContentUrl?: string | null;
-  normalizedArContentUrl?: string | null;
-  creatorSubmittedAt?: any;
-  matchedEntryId?: string | null;
-  currentViews?: number;
-  totalViews?: number;
-  lastMetricsSyncAt?: any;
+  completedAt?: any;
+
   createdAt?: any;
   updatedAt?: any;
+
+  status?: string;
+
+  fundingStatus?: string;
+
+  completionStatus?: string;
+
+  brandApprovalStatus?: "pending" | "approved" | "rejected";
+
+  payoutStatus?: "locked" | "releasable" | "released";
+
+  creatorSubmittedArContentUrl?: string;
+
+  normalizedArContentUrl?: string;
+
+  creatorSubmittedAt?: any;
+
+  brandApprovedAt?: any;
+
+  payoutReleasedAt?: any;
 };
 
 export async function createCampaign(params: {
@@ -85,6 +99,9 @@ export async function createCampaign(params: {
     agreedPrice,
   } = params;
 
+  const platformFeeAmount = 5;
+  const creatorPayoutAmount = Math.max(agreedPrice - platformFeeAmount, 0);
+
   const docRef = await addDoc(collection(db, "campaigns"), {
     brandId,
     creatorId,
@@ -100,35 +117,23 @@ export async function createCampaign(params: {
     deliveryEndDate,
 
     agreedPrice,
-    platformFeeAmount: 4.99,
+    platformFeeAmount,
+    creatorPayoutAmount,
 
     status: "invited",
     fundingStatus: "not_funded",
-    fundedAt: null,
-
-    completionStatus: "not_submitted",
-    goshshaReviewStatus: "pending",
-
-    payoutReleaseStatus: "locked",
-    payoutThresholdViews: 1000,
-    payoutReleasedAt: null,
+    brandApprovalStatus: "pending",
+    payoutStatus: "not_ready",
 
     creatorSubmittedArContentUrl: null,
     normalizedArContentUrl: null,
-    creatorSubmittedAt: null,
-
-    matchedEntryId: null,
-
-    currentViews: 0,
-    totalViews: 0,
-    lastMetricsSyncAt: null,
 
     creatorAcceptedAt: null,
+    fundedAt: null,
+    creatorSubmittedAt: null,
+    brandApprovedAt: null,
+    payoutReleasedAt: null,
     completedAt: null,
-
-    adminNotifiedSubmittedAt: null,
-    brandNotifiedLiveAt: null,
-    creatorNotifiedLiveAt: null,
 
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -226,8 +231,12 @@ export async function getSubmittedCampaigns() {
   })) as Campaign[];
 }
 
-export async function getLiveCampaigns() {
-  const q = query(collection(db, "campaigns"), where("status", "==", "live"));
+export async function getApprovedCampaignsReadyForPayout() {
+  const q = query(
+    collection(db, "campaigns"),
+    where("brandApprovalStatus", "==", "approved"),
+    where("payoutStatus", "==", "ready_to_release")
+  );
 
   const snapshot = await getDocs(q);
 
@@ -261,24 +270,29 @@ export async function updateCampaignStatus(params: {
     updateData.creatorAcceptedAt = serverTimestamp();
   }
 
+  if (status === "funded") {
+    updateData.fundedAt = serverTimestamp();
+    updateData.fundingStatus = "funded";
+  }
+
   if (status === "submitted") {
     updateData.creatorSubmittedAt = serverTimestamp();
-    updateData.completionStatus = "submitted";
   }
 
-  if (status === "funded") {
-    updateData.fundingStatus = "funded";
-    updateData.fundedAt = serverTimestamp();
+  if (status === "approved") {
+    updateData.brandApprovedAt = serverTimestamp();
+    updateData.brandApprovalStatus = "approved";
+    updateData.payoutStatus = "ready_to_release";
   }
 
-  if (status === "live") {
-    updateData.completionStatus = "live";
+  if (status === "completed") {
+    updateData.payoutReleasedAt = serverTimestamp();
     updateData.completedAt = serverTimestamp();
-    updateData.goshshaReviewStatus = "approved";
+    updateData.payoutStatus = "released";
   }
 
   if (status === "rejected") {
-    updateData.goshshaReviewStatus = "rejected";
+    updateData.brandApprovalStatus = "rejected";
   }
 
   await updateDoc(ref, updateData);
@@ -304,60 +318,160 @@ export async function updateCampaignStatus(params: {
       campaignId,
     });
   }
-
-  if (status === "live") {
-    await createNotification({
-      userId: campaign.brandId,
-      role: "brand",
-      type: "campaign_live",
-      title: "Campaign live",
-      message: `"${campaign.campaignTitle}" is now live.`,
-      campaignId,
-    });
-
-    await createNotification({
-      userId: campaign.creatorId,
-      role: "creator",
-      type: "campaign_live",
-      title: "Campaign live",
-      message: `"${campaign.campaignTitle}" is now live.`,
-      campaignId,
-    });
-  }
 }
 
 export async function fundCampaign(campaignId: string) {
   const ref = doc(db, "campaigns", campaignId);
+  const snap = await getDoc(ref);
+
+  if (!snap.exists()) {
+    throw new Error("Campaign not found.");
+  }
+
+  const campaign = snap.data() as any;
 
   await updateDoc(ref, {
-    fundingStatus: "funded",
     status: "funded",
+    fundingStatus: "funded",
     fundedAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
+
+  await createNotification({
+    userId: campaign.creatorId,
+    role: "creator",
+    type: "campaign_funded",
+    title: "Campaign funded",
+    message: `${campaign.brandName} funded "${campaign.campaignTitle}". You can start now.`,
+    campaignId,
+  });
+
+  await createNotification({
+    userId: "admin",
+    role: "admin",
+    type: "campaign_funded_admin",
+    title: "Campaign funded",
+    message: `"${campaign.campaignTitle}" has been funded and is now active.`,
+    campaignId,
+  });
 }
 
-export async function submitCampaignLink(
-  campaignId: string,
-  creatorId: string,
-  link: string
-) {
+export async function submitCampaignLink(params: {
+  campaignId: string;
+  arContentUrl: string;
+}) {
+  const { campaignId, arContentUrl } = params;
+
   const ref = doc(db, "campaigns", campaignId);
+  const snap = await getDoc(ref);
+
+  if (!snap.exists()) {
+    throw new Error("Campaign not found.");
+  }
+
+  const campaign = snap.data() as any;
+  const normalizedUrl = arContentUrl.trim();
 
   await updateDoc(ref, {
-    creatorSubmittedArContentUrl: link,
-    normalizedArContentUrl: link.trim(),
-    completionStatus: "submitted",
     status: "submitted",
+    creatorSubmittedArContentUrl: arContentUrl,
+    normalizedArContentUrl: normalizedUrl,
     creatorSubmittedAt: serverTimestamp(),
+    brandApprovalStatus: "pending",
+    payoutStatus: "not_ready",
     updatedAt: serverTimestamp(),
   });
 
-  await addDoc(collection(db, "campaignSubmissions"), {
+  await createNotification({
+    userId: campaign.brandId,
+    role: "brand",
+    type: "campaign_submitted",
+    title: "Campaign submitted",
+    message: `${campaign.creatorHandle || "A creator"} submitted the campaign link for "${campaign.campaignTitle}".`,
     campaignId,
-    creatorId,
-    link,
-    createdAt: serverTimestamp(),
+  });
+
+  await createNotification({
+    userId: "admin",
+    role: "admin",
+    type: "campaign_submitted_admin",
+    title: "Campaign ready for review",
+    message: `${campaign.creatorHandle || "A creator"} submitted "${campaign.campaignTitle}" for review.`,
+    campaignId,
+  });
+}
+
+export async function approveCampaignSubmission(campaignId: string) {
+  const ref = doc(db, "campaigns", campaignId);
+  const snap = await getDoc(ref);
+
+  if (!snap.exists()) {
+    throw new Error("Campaign not found.");
+  }
+
+  const campaign = snap.data() as any;
+
+  await updateDoc(ref, {
+    status: "approved",
+    brandApprovalStatus: "approved",
+    brandApprovedAt: serverTimestamp(),
+    payoutStatus: "ready_to_release",
+    updatedAt: serverTimestamp(),
+  });
+
+  await createNotification({
+    userId: "admin",
+    role: "admin",
+    type: "campaign_approved_admin",
+    title: "Brand approved submission",
+    message: `"${campaign.campaignTitle}" was approved by the brand and is ready for payout release.`,
+    campaignId,
+  });
+
+  await createNotification({
+    userId: campaign.creatorId,
+    role: "creator",
+    type: "campaign_approved_creator",
+    title: "Submission approved",
+    message: `Your submission for "${campaign.campaignTitle}" was approved. Payout is pending release.`,
+    campaignId,
+  });
+}
+
+export async function releaseCampaignPayout(campaignId: string) {
+  const ref = doc(db, "campaigns", campaignId);
+  const snap = await getDoc(ref);
+
+  if (!snap.exists()) {
+    throw new Error("Campaign not found.");
+  }
+
+  const campaign = snap.data() as any;
+
+  await updateDoc(ref, {
+    status: "completed",
+    payoutStatus: "released",
+    payoutReleasedAt: serverTimestamp(),
+    completedAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+
+  await createNotification({
+    userId: campaign.creatorId,
+    role: "creator",
+    type: "campaign_paid_out",
+    title: "Payout released",
+    message: `Your payout for "${campaign.campaignTitle}" has been released.`,
+    campaignId,
+  });
+
+  await createNotification({
+    userId: campaign.brandId,
+    role: "brand",
+    type: "campaign_completed",
+    title: "Campaign completed",
+    message: `"${campaign.campaignTitle}" has been completed and payout was released.`,
+    campaignId,
   });
 }
 
