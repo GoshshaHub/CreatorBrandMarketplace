@@ -1,10 +1,56 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import ProtectedRoute from "../../../../components/ProtectedRoute";
-import { Campaign, getCampaignById } from "../../../../lib/campaigns";
+import {
+  Campaign,
+  CampaignStatus,
+  getCampaignById,
+  updateCampaignStatus,
+} from "../../../../lib/campaigns";
+
+function Step({
+  title,
+  description,
+  state,
+}: {
+  title: string;
+  description: string;
+  state: "done" | "current" | "upcoming";
+}) {
+  return (
+    <div className="flex gap-4">
+      <div className="flex flex-col items-center">
+        <div
+          className={`h-5 w-5 rounded-full border ${
+            state === "done"
+              ? "bg-black border-black"
+              : state === "current"
+              ? "bg-white border-black"
+              : "bg-white border-gray-300"
+          }`}
+        />
+        <div className="h-full w-px bg-gray-200" />
+      </div>
+      <div className="pb-6">
+        <p className="font-semibold">{title}</p>
+        <p className="text-sm text-gray-600 mt-1">{description}</p>
+      </div>
+    </div>
+  );
+}
+
+function getStepState(campaign: Campaign, step: string) {
+  const order = ["invited", "accepted", "funded", "submitted", "approved", "completed"];
+  const currentIndex = order.indexOf(campaign.status || "invited");
+  const stepIndex = order.indexOf(step);
+
+  if (stepIndex < currentIndex) return "done";
+  if (stepIndex === currentIndex) return "current";
+  return "upcoming";
+}
 
 export default function CreatorCampaignDetailPage() {
   const params = useParams<{ id: string }>();
@@ -18,11 +64,8 @@ export default function CreatorCampaignDetailPage() {
   const [message, setMessage] = useState("");
 
   async function loadCampaign() {
-    if (!campaignId) return;
-
     setLoading(true);
     setError("");
-    setMessage("");
 
     try {
       const data = await getCampaignById(campaignId);
@@ -36,8 +79,37 @@ export default function CreatorCampaignDetailPage() {
   }
 
   useEffect(() => {
-    loadCampaign();
+    if (campaignId) loadCampaign();
   }, [campaignId]);
+
+  const nextAction = useMemo(() => {
+    if (!campaign) return "";
+
+    if (campaign.status === "invited") return "Review the campaign and accept or reject the invite.";
+    if (campaign.status === "accepted") return "You accepted. Waiting for the brand to fund the campaign.";
+    if (campaign.status === "funded") return "Campaign is funded. Create your post, then submit the URL here.";
+    if (campaign.status === "submitted") return "Submission received. Waiting for brand approval.";
+    if (campaign.status === "approved") return "Brand approved your work. Waiting for admin to release payout.";
+    if (campaign.status === "completed") return "Payout released. Campaign completed.";
+    if (campaign.status === "rejected") return "Campaign rejected.";
+    return "";
+  }, [campaign]);
+
+  async function handleStatus(status: CampaignStatus) {
+    setWorking(true);
+    setError("");
+    setMessage("");
+
+    try {
+      await updateCampaignStatus({ campaignId, status });
+      setMessage(status === "accepted" ? "Campaign accepted." : "Campaign rejected.");
+      await loadCampaign();
+    } catch (err: any) {
+      setError(err?.message || "Could not update campaign.");
+    } finally {
+      setWorking(false);
+    }
+  }
 
   async function handleSubmitContent() {
     if (!submissionUrl.trim()) {
@@ -52,25 +124,17 @@ export default function CreatorCampaignDetailPage() {
     try {
       const res = await fetch("/api/submit-campaign-link", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          campaignId,
-          submissionUrl: submissionUrl.trim(),
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignId, submissionUrl: submissionUrl.trim() }),
       });
 
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to submit content.");
 
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to submit campaign content.");
-      }
-
-      setMessage("Content submitted successfully.");
+      setMessage("Content submitted. Brand and admin have been notified.");
       await loadCampaign();
     } catch (err: any) {
-      setError(err?.message || "Failed to submit campaign content.");
+      setError(err?.message || "Failed to submit content.");
     } finally {
       setWorking(false);
     }
@@ -78,126 +142,105 @@ export default function CreatorCampaignDetailPage() {
 
   return (
     <ProtectedRoute allowedRole="creator">
-      <main className="min-h-screen p-6 max-w-3xl mx-auto">
+      <main className="min-h-screen p-6 max-w-4xl mx-auto">
         <div className="flex items-center justify-between gap-4">
-          <h1 className="text-3xl font-bold">Campaign</h1>
+          <div>
+            <h1 className="text-3xl font-bold">Campaign</h1>
+            <p className="mt-2 text-gray-600">Track what’s done and what’s next.</p>
+          </div>
 
-          <Link
-            href="/creator/dashboard"
-            className="rounded-lg border px-4 py-2"
-          >
-            Back to Dashboard
+          <Link href="/creator/dashboard" className="rounded-lg border px-4 py-2">
+            Back
           </Link>
         </div>
 
-        {loading && <p className="mt-6">Loading campaign...</p>}
+        {loading && <p className="mt-8">Loading campaign...</p>}
         {error && <p className="mt-6 text-red-600">{error}</p>}
         {message && <p className="mt-6 text-green-600">{message}</p>}
 
         {campaign && (
-          <div className="mt-8 rounded-2xl border p-6 space-y-5">
-            <div>
+          <div className="mt-8 grid gap-6 md:grid-cols-[1.2fr_0.8fr]">
+            <section className="rounded-2xl border p-6">
               <h2 className="text-2xl font-semibold">
                 {campaign.campaignTitle || "Untitled Campaign"}
               </h2>
-              <p className="mt-1 text-gray-600">
-                Product: {campaign.productName || "—"}
-              </p>
-            </div>
+              <p className="mt-1 text-gray-600">Product: {campaign.productName || "—"}</p>
+              <p className="mt-4 text-gray-700">{campaign.campaignBrief || "No brief added."}</p>
 
-            <div className="grid gap-3 md:grid-cols-2 text-sm text-gray-700">
-              <p>Status: {campaign.status || "—"}</p>
-              <p>Funding: {campaign.fundingStatus || "—"}</p>
-              <p>Completion: {campaign.completionStatus || "—"}</p>
-              <p>Views: {campaign.totalViews ?? 0}</p>
-              <p>Agreed Price: ${campaign.agreedPrice ?? 0}</p>
-              <p>
-                Delivery Window:{" "}
-                {campaign.deliveryStartDate && campaign.deliveryEndDate
-                  ? `${campaign.deliveryStartDate} → ${campaign.deliveryEndDate}`
-                  : "Not set"}
-              </p>
-            </div>
-
-            {campaign.campaignBrief && (
-              <div>
-                <h3 className="font-semibold">Brief</h3>
-                <p className="mt-1 text-gray-700">{campaign.campaignBrief}</p>
+              <div className="mt-6 rounded-xl bg-gray-50 p-4">
+                <p className="font-semibold">Next step</p>
+                <p className="mt-1 text-gray-700">{nextAction}</p>
               </div>
-            )}
 
-            {campaign.fundingStatus !== "funded" && (
-              <div className="rounded-xl border p-4 bg-gray-50">
-                <p className="font-medium">Waiting for brand funding</p>
-                <p className="mt-1 text-sm text-gray-600">
-                  You’ll be able to submit your content once the brand funds this
-                  campaign.
-                </p>
-              </div>
-            )}
+              <div className="mt-6 flex flex-wrap gap-3">
+                {campaign.status === "invited" && (
+                  <>
+                    <button
+                      onClick={() => handleStatus("accepted")}
+                      disabled={working}
+                      className="rounded-lg bg-black text-white px-4 py-2"
+                    >
+                      Accept Campaign
+                    </button>
+                    <button
+                      onClick={() => handleStatus("rejected")}
+                      disabled={working}
+                      className="rounded-lg border px-4 py-2"
+                    >
+                      Reject
+                    </button>
+                  </>
+                )}
 
-            {campaign.fundingStatus === "funded" &&
-              campaign.status !== "live" &&
-              campaign.completionStatus !== "submitted" && (
-                <div className="space-y-3">
-                  <label className="block font-semibold">
-                    Submit your TikTok / Instagram / content URL
-                  </label>
-
-                  <input
-                    className="w-full border rounded-lg px-3 py-2"
-                    placeholder="https://..."
-                    value={submissionUrl}
-                    onChange={(e) => setSubmissionUrl(e.target.value)}
-                  />
-
-                  <button
-                    onClick={handleSubmitContent}
-                    disabled={working || !submissionUrl.trim()}
-                    className="rounded-lg bg-black text-white px-4 py-2"
-                  >
-                    {working ? "Submitting..." : "Submit Content"}
-                  </button>
-                </div>
-              )}
-
-            {campaign.completionStatus === "submitted" &&
-              campaign.normalizedArContentUrl && (
-                <div className="rounded-xl border p-4">
-                  <h3 className="font-semibold">Submitted URL</h3>
-                  <a
-                    href={campaign.normalizedArContentUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-2 inline-block text-blue-600 underline break-all"
-                  >
-                    {campaign.normalizedArContentUrl}
-                  </a>
-                  <p className="mt-2 text-sm text-gray-600">
-                    Your submission is waiting for review.
-                  </p>
-                </div>
-              )}
-
-            {campaign.status === "live" && (
-              <div className="rounded-xl border p-4 bg-gray-50">
-                <p className="font-medium">Campaign is live</p>
-                <p className="mt-1 text-sm text-gray-600">
-                  Your campaign has been approved and is now live.
-                </p>
+                {campaign.status === "funded" && (
+                  <div className="w-full space-y-3">
+                    <label className="block font-semibold">Submit your post URL</label>
+                    <input
+                      className="w-full border rounded-lg px-3 py-2"
+                      placeholder="https://..."
+                      value={submissionUrl}
+                      onChange={(e) => setSubmissionUrl(e.target.value)}
+                    />
+                    <button
+                      onClick={handleSubmitContent}
+                      disabled={working || !submissionUrl.trim()}
+                      className="rounded-lg bg-black text-white px-4 py-2"
+                    >
+                      {working ? "Submitting..." : "Submit Content URL"}
+                    </button>
+                  </div>
+                )}
 
                 {campaign.normalizedArContentUrl && (
                   <a
                     href={campaign.normalizedArContentUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="mt-2 inline-block text-blue-600 underline break-all"
+                    className="rounded-lg border px-4 py-2"
                   >
-                    {campaign.normalizedArContentUrl}
+                    View Submitted URL
                   </a>
                 )}
               </div>
-            )}
+
+              <div className="mt-8 grid gap-3 text-sm text-gray-700">
+                <p>Brand: {campaign.brandName || "—"}</p>
+                <p>Agreed Price: ${campaign.agreedPrice ?? 0}</p>
+                <p>Goshsha Fee: ${campaign.platformFeeAmount ?? 5}</p>
+                <p>Your Payout: ${campaign.creatorPayoutAmount ?? 0}</p>
+              </div>
+            </section>
+
+            <section className="rounded-2xl border p-6">
+              <h3 className="text-xl font-semibold mb-6">Campaign Timeline</h3>
+
+              <Step title="Invited" description="You were invited to this campaign." state={getStepState(campaign, "invited")} />
+              <Step title="Accepted" description="You accept the campaign." state={getStepState(campaign, "accepted")} />
+              <Step title="Funded" description="Brand funds the campaign so you can begin." state={getStepState(campaign, "funded")} />
+              <Step title="Submitted" description="You submit your post URL." state={getStepState(campaign, "submitted")} />
+              <Step title="Brand Approved" description="Brand approves your work." state={getStepState(campaign, "approved")} />
+              <Step title="Payout Released" description="Admin releases payout and completes campaign." state={getStepState(campaign, "completed")} />
+            </section>
           </div>
         )}
       </main>
