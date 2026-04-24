@@ -1,14 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import ProtectedRoute from "../../../components/ProtectedRoute";
-import { Campaign, getSubmittedCampaigns } from "../../../lib/campaigns";
+import {
+  Campaign,
+  getApprovedCampaignsReadyForPayout,
+  getSubmittedCampaigns,
+} from "../../../lib/campaigns";
+
+function money(value?: number) {
+  return `$${Number(value || 0).toFixed(2)}`;
+}
 
 export default function AdminReviewPage() {
-  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [submittedCampaigns, setSubmittedCampaigns] = useState<Campaign[]>([]);
+  const [payoutReadyCampaigns, setPayoutReadyCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
-  const [workingId, setWorkingId] = useState<string>("");
+  const [workingCampaignId, setWorkingCampaignId] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
@@ -17,10 +25,15 @@ export default function AdminReviewPage() {
     setError("");
 
     try {
-      const data = await getSubmittedCampaigns();
-      setCampaigns(data);
+      const [submitted, payoutReady] = await Promise.all([
+        getSubmittedCampaigns(),
+        getApprovedCampaignsReadyForPayout(),
+      ]);
+
+      setSubmittedCampaigns(submitted);
+      setPayoutReadyCampaigns(payoutReady);
     } catch (err: any) {
-      setError(err.message || "Failed to load submitted campaigns.");
+      setError(err?.message || "Failed to load admin review campaigns.");
     } finally {
       setLoading(false);
     }
@@ -30,101 +43,173 @@ export default function AdminReviewPage() {
     loadCampaigns();
   }, []);
 
-  async function handleMarkLive(campaignId: string) {
-    setWorkingId(campaignId);
+  const hasNoWork = useMemo(() => {
+    return submittedCampaigns.length === 0 && payoutReadyCampaigns.length === 0;
+  }, [submittedCampaigns, payoutReadyCampaigns]);
+
+  async function handleReleasePayout(campaignId: string) {
+    const confirmed = window.confirm(
+      "Release payout for this campaign? This will mark the campaign as completed."
+    );
+
+    if (!confirmed) return;
+
+    setWorkingCampaignId(campaignId);
     setError("");
     setMessage("");
 
     try {
-      const res = await fetch("/api/mark-campaign-live", {
+      const res = await fetch("/api/release-campaign-payout", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ campaignId }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "Failed to mark campaign live.");
+        throw new Error(data.error || "Failed to release payout.");
       }
 
-      setMessage("Campaign marked live.");
+      setMessage("Payout released successfully.");
       await loadCampaigns();
     } catch (err: any) {
-      setError(err.message || "Failed to mark campaign live.");
+      setError(err?.message || "Failed to release payout.");
     } finally {
-      setWorkingId("");
+      setWorkingCampaignId("");
     }
   }
 
   return (
     <ProtectedRoute allowedRole="admin">
       <main className="min-h-screen p-6 max-w-5xl mx-auto">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold">Admin Review</h1>
-            <p className="mt-2 text-gray-600">
-              Review creator submissions and mark approved campaigns live.
+        <div>
+          <h1 className="text-3xl font-bold">Admin Review</h1>
+          <p className="mt-2 text-gray-600">
+            Review creator submissions and release payouts after brand approval.
+          </p>
+        </div>
+
+        {loading && <p className="mt-8">Loading admin queue...</p>}
+        {error && <p className="mt-6 text-red-600">{error}</p>}
+        {message && <p className="mt-6 text-green-600">{message}</p>}
+
+        {!loading && hasNoWork && (
+          <div className="mt-8 rounded-2xl border p-6">
+            <p className="font-semibold">No campaigns need admin action right now.</p>
+            <p className="mt-1 text-gray-600">
+              Submitted campaigns and payout-ready campaigns will appear here.
             </p>
           </div>
-
-          <Link href="/" className="rounded-lg border px-4 py-2">
-            Back Home
-          </Link>
-        </div>
-
-        {loading && <p className="mt-8">Loading submitted campaigns...</p>}
-        {error && <p className="mt-8 text-red-600">{error}</p>}
-        {message && <p className="mt-8 text-green-600">{message}</p>}
-
-        {!loading && campaigns.length === 0 && (
-          <p className="mt-8 text-gray-600">No submitted campaigns right now.</p>
         )}
 
-        <div className="mt-8 space-y-6">
-          {campaigns.map((campaign) => (
-            <div key={campaign.id} className="rounded-2xl border p-6 space-y-3">
-              <div>
-                <h2 className="text-2xl font-semibold">
-                  {campaign.campaignTitle || "Untitled Campaign"}
-                </h2>
-                <p className="text-gray-600 mt-1">
-                  Creator: {campaign.creatorHandle || "—"}
-                </p>
-              </div>
+        {!loading && submittedCampaigns.length > 0 && (
+          <section className="mt-10">
+            <h2 className="text-2xl font-semibold">Submitted — Waiting for Brand Approval</h2>
 
-              <div className="grid gap-3 md:grid-cols-2">
-                <p>Brand: {campaign.brandName || "—"}</p>
-                <p>Product: {campaign.productName || "—"}</p>
-                <p>Status: {campaign.status || "—"}</p>
-                <p>Brand Approval: {campaign.brandApprovalStatus || "pending"}</p>
-                <p>Payout Status: {campaign.payoutStatus || "locked"}</p>
-              </div>
+            <div className="mt-4 space-y-4">
+              {submittedCampaigns.map((campaign) => (
+                <div key={campaign.id} className="rounded-2xl border p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h3 className="text-xl font-semibold">
+                        {campaign.campaignTitle || "Untitled Campaign"}
+                      </h3>
+                      <p className="mt-1 text-gray-600">
+                        Brand: {campaign.brandName || "—"}
+                      </p>
+                      <p className="text-gray-600">
+                        Creator: {campaign.creatorHandle || campaign.creatorId}
+                      </p>
+                      <p className="text-gray-600">
+                        Product: {campaign.productName || "—"}
+                      </p>
+                    </div>
 
-              {campaign.normalizedArContentUrl && (
-                <p>
-                  Submission:{" "}
-                  <a
-                    href={campaign.normalizedArContentUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-blue-600 underline"
-                  >
-                    {campaign.normalizedArContentUrl}
-                  </a>
-                </p>
-              )}
+                    <span className="rounded-full border px-3 py-1 text-sm">
+                      Waiting for brand approval
+                    </span>
+                  </div>
 
-              <button
-                onClick={() => handleMarkLive(campaign.id)}
-                disabled={workingId === campaign.id}
-                className="rounded-lg bg-black text-white px-4 py-2"
-              >
-                {workingId === campaign.id ? "Marking live..." : "Approve & Mark Live"}
-              </button>
+                  {campaign.normalizedArContentUrl && (
+                    <a
+                      href={campaign.normalizedArContentUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-4 inline-block rounded-lg border px-4 py-2"
+                    >
+                      View Submitted URL
+                    </a>
+                  )}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </section>
+        )}
+
+        {!loading && payoutReadyCampaigns.length > 0 && (
+          <section className="mt-10">
+            <h2 className="text-2xl font-semibold">Ready for Payout Release</h2>
+
+            <div className="mt-4 space-y-4">
+              {payoutReadyCampaigns.map((campaign) => (
+                <div key={campaign.id} className="rounded-2xl border p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h3 className="text-xl font-semibold">
+                        {campaign.campaignTitle || "Untitled Campaign"}
+                      </h3>
+                      <p className="mt-1 text-gray-600">
+                        Brand: {campaign.brandName || "—"}
+                      </p>
+                      <p className="text-gray-600">
+                        Creator: {campaign.creatorHandle || campaign.creatorId}
+                      </p>
+                      <p className="text-gray-600">
+                        Product: {campaign.productName || "—"}
+                      </p>
+                    </div>
+
+                    <span className="rounded-full border px-3 py-1 text-sm">
+                      Brand approved
+                    </span>
+                  </div>
+
+                  <div className="mt-5 grid gap-2 text-sm text-gray-700 md:grid-cols-3">
+                    <p>Brand Paid: {money(campaign.agreedPrice)}</p>
+                    <p>Goshsha Fee: {money(campaign.platformFeeAmount || 5)}</p>
+                    <p>Creator Payout: {money(campaign.creatorPayoutAmount)}</p>
+                  </div>
+
+                  {campaign.normalizedArContentUrl && (
+                    <a
+                      href={campaign.normalizedArContentUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-4 inline-block rounded-lg border px-4 py-2"
+                    >
+                      View Submitted URL
+                    </a>
+                  )}
+
+                  <div className="mt-5">
+                    <button
+                      onClick={() => handleReleasePayout(campaign.id)}
+                      disabled={workingCampaignId === campaign.id}
+                      className="rounded-lg bg-black text-white px-4 py-2"
+                    >
+                      {workingCampaignId === campaign.id
+                        ? "Releasing..."
+                        : "Release Payout"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
       </main>
     </ProtectedRoute>
   );
