@@ -114,7 +114,14 @@ export default function CreatorDashboardPage() {
         throw new Error("You must be logged in.");
       }
 
-      await submitCampaignLink(campaignId, user.uid, url);
+      await fetch("/api/submit-campaign-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          campaignId,
+          submissionUrl: url,
+        }),
+      });
       await loadDashboardForUser(user.uid);
     } catch (err: any) {
       setError(err.message || "We couldn’t submit your campaign link.");
