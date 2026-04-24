@@ -97,7 +97,8 @@ export default function AdminReviewPage() {
                 <p>Brand: {campaign.brandName || "—"}</p>
                 <p>Product: {campaign.productName || "—"}</p>
                 <p>Status: {campaign.status || "—"}</p>
-                <p>Review: {campaign.goshshaReviewStatus || "—"}</p>
+                <p>Brand Approval: {campaign.brandApprovalStatus || "pending"}</p>
+                <p>Payout Status: {campaign.payoutStatus || "locked"}</p>
               </div>
 
               {campaign.normalizedArContentUrl && (
