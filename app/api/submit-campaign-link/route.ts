@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
-import { db } from "../../../lib/firebase";
-import { createNotification } from "../../../lib/notifications";
+import { FieldValue } from "firebase-admin/firestore";
+import { adminDb } from "../../../lib/firebase-admin";
 import { sendEmail } from "../../../lib/postmark";
 
 export async function POST(req: Request) {
@@ -15,10 +14,10 @@ export async function POST(req: Request) {
       );
     }
 
-    const campaignRef = doc(db, "campaigns", campaignId);
-    const campaignSnap = await getDoc(campaignRef);
+    const campaignRef = adminDb.collection("campaigns").doc(campaignId);
+    const campaignSnap = await campaignRef.get();
 
-    if (!campaignSnap.exists()) {
+    if (!campaignSnap.exists) {
       return NextResponse.json(
         { error: "Campaign not found" },
         { status: 404 }
@@ -27,46 +26,62 @@ export async function POST(req: Request) {
 
     const campaign = campaignSnap.data() as any;
 
-    await updateDoc(campaignRef, {
+    await campaignRef.update({
       creatorSubmittedArContentUrl: submissionUrl,
       normalizedArContentUrl: submissionUrl.trim(),
       status: "submitted",
       completionStatus: "submitted",
-      creatorSubmittedAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
+      brandApprovalStatus: "pending",
+      payoutStatus: "locked",
+      creatorSubmittedAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
     });
 
-    await createNotification({
+    await adminDb.collection("campaignSubmissions").add({
+      campaignId,
+      creatorId: campaign.creatorId,
+      brandId: campaign.brandId,
+      submissionUrl: submissionUrl.trim(),
+      createdAt: FieldValue.serverTimestamp(),
+    });
+
+    await adminDb.collection("notifications").add({
       userId: campaign.brandId,
       role: "brand",
       type: "campaign_submitted",
       title: "Campaign submitted",
       message: `${campaign.creatorHandle || "A creator"} submitted content for "${campaign.campaignTitle}".`,
       campaignId,
+      isRead: false,
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
     });
 
-    await createNotification({
+    await adminDb.collection("notifications").add({
       userId: "admin",
       role: "admin",
       type: "campaign_submitted_admin",
       title: "Campaign ready for review",
       message: `${campaign.creatorHandle || "A creator"} submitted "${campaign.campaignTitle}" for review.`,
       campaignId,
+      isRead: false,
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
     });
 
-    const brandRef = doc(db, "brands", campaign.brandId);
-    const brandSnap = await getDoc(brandRef);
-    const brand = brandSnap.exists() ? brandSnap.data() : null;
-    const brandEmail = brand?.contactEmail || brand?.email || campaign.contactEmail;
+    const brandSnap = await adminDb.collection("brands").doc(campaign.brandId).get();
+    const brand = brandSnap.exists ? brandSnap.data() : null;
+    const brandEmail = brand?.contactEmail || brand?.email || campaign.brandEmail;
 
     if (brandEmail) {
       await sendEmail({
         to: brandEmail,
-        subject: `📩 Creator submitted content`,
+        subject: "Creator submitted content",
         htmlBody: `
           <h2>Creator submitted content</h2>
           <p><strong>${campaign.creatorHandle || "Your creator"}</strong> submitted content.</p>
           <p><strong>Campaign:</strong> ${campaign.campaignTitle}</p>
+          <p><strong>Product:</strong> ${campaign.productName}</p>
           <p><strong>Submission URL:</strong> <a href="${submissionUrl}">${submissionUrl}</a></p>
           <p>Log in to review and approve the campaign.</p>
         `,
@@ -74,6 +89,7 @@ export async function POST(req: Request) {
 Creator submitted content.
 
 Campaign: ${campaign.campaignTitle}
+Product: ${campaign.productName}
 Submission URL: ${submissionUrl}
 
 Log in to review and approve the campaign.
