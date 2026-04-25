@@ -29,18 +29,19 @@ export async function POST(req: Request) {
     const campaign = campaignSnap.data() as any;
 
     await campaignRef.update({
-      status: "funded",
-      fundingStatus: "funded",
-      fundedAt: FieldValue.serverTimestamp(),
+      status: "approved",
+      brandApprovalStatus: "approved",
+      brandApprovedAt: FieldValue.serverTimestamp(),
+      payoutStatus: "ready_to_release",
       updatedAt: FieldValue.serverTimestamp(),
     });
 
     await adminDb.collection("notifications").add({
-      userId: campaign.creatorId,
-      role: "creator",
-      type: "campaign_funded",
-      title: "Campaign funded",
-      message: `${campaign.brandName} funded "${campaign.campaignTitle}". You can start working on the campaign.`,
+      userId: "admin",
+      role: "admin",
+      type: "campaign_approved_admin",
+      title: "Brand approved submission",
+      message: `"${campaign.campaignTitle}" was approved by the brand and is ready for payout release.`,
       campaignId,
       isRead: false,
       createdAt: FieldValue.serverTimestamp(),
@@ -48,11 +49,11 @@ export async function POST(req: Request) {
     });
 
     await adminDb.collection("notifications").add({
-      userId: "admin",
-      role: "admin",
-      type: "campaign_funded_admin",
-      title: "Campaign funded",
-      message: `"${campaign.campaignTitle}" has been funded and is now active.`,
+      userId: campaign.creatorId,
+      role: "creator",
+      type: "campaign_approved_creator",
+      title: "Submission approved",
+      message: `Your submission for "${campaign.campaignTitle}" was approved. Payout is pending release.`,
       campaignId,
       isRead: false,
       createdAt: FieldValue.serverTimestamp(),
@@ -70,28 +71,19 @@ export async function POST(req: Request) {
     if (creatorEmail) {
       await sendEmail({
         to: creatorEmail,
-        subject: `Your Goshsha campaign is funded`,
+        subject: `Your submission was approved`,
         htmlBody: `
-          <h2>Your campaign is funded</h2>
-          <p><strong>${campaign.brandName}</strong> has funded your campaign.</p>
-          <p><strong>Campaign:</strong> ${campaign.campaignTitle}</p>
-          <p><strong>Product:</strong> ${campaign.productName}</p>
-          <p>You can now start working on the campaign.</p>
-          <p>Once your post is live, log in to your creator dashboard and paste the post URL into the campaign page.</p>
-          <p>After the brand approves your submission, Goshsha admin will release your payout.</p>
+          <h2>Your submission was approved</h2>
+          <p>The brand approved your submission for:</p>
+          <p><strong>${campaign.campaignTitle}</strong></p>
+          <p>Your payout is now pending release by Goshsha admin.</p>
         `,
         textBody: `
-Your campaign is funded.
+Your submission was approved.
 
-Brand: ${campaign.brandName}
 Campaign: ${campaign.campaignTitle}
-Product: ${campaign.productName}
 
-You can now start working on the campaign.
-
-Once your post is live, log in to your creator dashboard and paste the post URL into the campaign page.
-
-After the brand approves your submission, Goshsha admin will release your payout.
+Your payout is now pending release by Goshsha admin.
         `.trim(),
       });
     }
@@ -99,37 +91,38 @@ After the brand approves your submission, Goshsha admin will release your payout
     if (ADMIN_EMAIL) {
       await sendEmail({
         to: ADMIN_EMAIL,
-        subject: `Campaign funded: ${campaign.campaignTitle}`,
+        subject: `Ready to release payout: ${campaign.campaignTitle}`,
         htmlBody: `
-          <h2>Campaign funded</h2>
-          <p>A campaign has been funded and is now active.</p>
+          <h2>Ready to release payout</h2>
+          <p>The brand approved the creator submission.</p>
           <p><strong>Brand:</strong> ${campaign.brandName}</p>
           <p><strong>Creator:</strong> ${campaign.creatorHandle || campaign.creatorId}</p>
           <p><strong>Campaign:</strong> ${campaign.campaignTitle}</p>
-          <p><strong>Product:</strong> ${campaign.productName}</p>
           <p><strong>Agreed Price:</strong> $${campaign.agreedPrice || 0}</p>
           <p><strong>Goshsha Fee:</strong> $${campaign.platformFeeAmount || 5}</p>
           <p><strong>Creator Payout:</strong> $${campaign.creatorPayoutAmount || Math.max((campaign.agreedPrice || 0) - 5, 0)}</p>
+          <p>Next step: release payout from the admin dashboard.</p>
         `,
         textBody: `
-Campaign funded.
+Ready to release payout.
 
 Brand: ${campaign.brandName}
 Creator: ${campaign.creatorHandle || campaign.creatorId}
 Campaign: ${campaign.campaignTitle}
-Product: ${campaign.productName}
 Agreed Price: $${campaign.agreedPrice || 0}
 Goshsha Fee: $${campaign.platformFeeAmount || 5}
 Creator Payout: $${campaign.creatorPayoutAmount || Math.max((campaign.agreedPrice || 0) - 5, 0)}
+
+Next step: release payout from the admin dashboard.
         `.trim(),
       });
     }
 
     return NextResponse.json({ ok: true });
   } catch (err: any) {
-    console.error("Fund campaign error:", err);
+    console.error("Approve campaign submission error:", err);
     return NextResponse.json(
-      { error: err?.message || "Failed to fund campaign" },
+      { error: err?.message || "Failed to approve campaign submission" },
       { status: 500 }
     );
   }
