@@ -11,11 +11,7 @@ import {
   getCreatorCampaigns,
   getUserNotifications,
   markNotificationRead,
-  submitCampaignLink,
-  updateCampaignStatus,
 } from "../../../lib/campaigns";
-
-import type { CampaignStatus } from "../../../lib/campaigns";
 
 type Campaign = {
   id: string;
@@ -81,10 +77,14 @@ export default function CreatorDashboardPage() {
   async function handleStatusChange(campaignId: string, status: string) {
     try {
       setBusyCampaignId(campaignId);
-      await updateCampaignStatus({
-        campaignId,
-        status: status as CampaignStatus,
+      const res = await fetch("/api/update-campaign-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignId, status }),
       });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update campaign.");
 
       const user = auth.currentUser;
       if (user) {
@@ -114,14 +114,20 @@ export default function CreatorDashboardPage() {
         throw new Error("You must be logged in.");
       }
 
-      await fetch("/api/submit-campaign-link", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          campaignId,
-          submissionUrl: url,
-        }),
-      });
+    const res = await fetch("/api/submit-campaign-link", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        campaignId,
+        submissionUrl: url,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.error || "We couldn’t submit your campaign link.");
+    }
       await loadDashboardForUser(user.uid);
     } catch (err: any) {
       setError(err.message || "We couldn’t submit your campaign link.");

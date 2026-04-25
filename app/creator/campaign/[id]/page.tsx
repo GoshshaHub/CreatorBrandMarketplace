@@ -8,7 +8,6 @@ import {
   Campaign,
   CampaignStatus,
   getCampaignById,
-  updateCampaignStatus,
 } from "../../../../lib/campaigns";
 
 function Step({
@@ -95,13 +94,21 @@ export default function CreatorCampaignDetailPage() {
     return "";
   }, [campaign]);
 
-  async function handleStatus(status: CampaignStatus) {
+  async function handleStatus(status: "accepted" | "rejected") {
     setWorking(true);
     setError("");
     setMessage("");
 
     try {
-      await updateCampaignStatus({ campaignId, status });
+      const res = await fetch("/api/update-campaign-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignId, status }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update campaign.");
+
       setMessage(status === "accepted" ? "Campaign accepted." : "Campaign rejected.");
       await loadCampaign();
     } catch (err: any) {
