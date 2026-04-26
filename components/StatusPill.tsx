@@ -4,32 +4,25 @@ type Props = {
   status?: string;
 };
 
-function getLabel(status?: string) {
-  switch (status) {
-    case "live":
-      return "Live";
-    case "submitted":
-      return "Submitted";
-    case "funded":
-      return "Funded";
-    case "accepted":
-      return "Accepted";
-    case "rejected":
-      return "Rejected";
-    default:
-      return "Invited";
-  }
+function normalize(status?: string) {
+  if (!status) return "Unknown";
+
+  return status
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 function getClassName(status?: string) {
   switch (status) {
     case "live":
+    case "completed":
       return "app-pill app-pill-live";
     case "submitted":
       return "app-pill app-pill-submitted";
     case "funded":
       return "app-pill app-pill-funded";
     case "accepted":
+    case "approved":
       return "app-pill app-pill-accepted";
     case "rejected":
       return "app-pill app-pill-rejected";
@@ -39,5 +32,5 @@ function getClassName(status?: string) {
 }
 
 export default function StatusPill({ status }: Props) {
-  return <span className={getClassName(status)}>{getLabel(status)}</span>;
+  return <span className={getClassName(status)}>{normalize(status)}</span>;
 }

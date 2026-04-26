@@ -35,6 +35,23 @@ type NotificationItem = {
   campaignId?: string;
 };
 
+function getCampaignDisplayStatus(campaign: any) {
+  if (campaign.status === "completed") return "completed";
+  if (campaign.payoutStatus === "released") return "completed";
+  if (campaign.brandApprovalStatus === "approved") return "approved";
+  if (campaign.status === "submitted") return "submitted";
+  if (campaign.fundingStatus === "funded") return "funded";
+  if (campaign.status === "accepted") return "accepted";
+  if (campaign.status === "rejected") return "rejected";
+  return "invited";
+}
+
+function getFundingDisplay(campaign: any) {
+  if (campaign.brandApprovalStatus === "approved") return "Awaiting Release";
+  if (campaign.fundingStatus === "funded") return "Funded";
+  return "Not funded";
+}
+
 export default function BrandDashboardPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -247,11 +264,11 @@ export default function BrandDashboardPage() {
                           </p>
                         </div>
 
-                        <div className="flex flex-wrap gap-2 justify-end">
-                          <StatusPill status={campaign.status || "—"} />
-                          <StatusPill status={campaign.fundingStatus || "not_funded"} />
-                          <StatusPill status={campaign.completionStatus || "not_submitted"} />
-                          <StatusPill status={campaign.payoutReleaseStatus} />
+                        <div className="flex flex-col items-end gap-2">
+                          <StatusPill status={getCampaignDisplayStatus(campaign)} />
+                          <span className="text-sm text-gray-500">
+                            Funding: {getFundingDisplay(campaign)}
+                          </span>
                         </div>
                       </div>
 

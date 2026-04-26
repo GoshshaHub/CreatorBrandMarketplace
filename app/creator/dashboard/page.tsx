@@ -36,6 +36,23 @@ type NotificationItem = {
   campaignId?: string;
 };
 
+function getCampaignDisplayStatus(campaign: any) {
+  if (campaign.status === "completed") return "completed";
+  if (campaign.payoutStatus === "released") return "completed";
+  if (campaign.brandApprovalStatus === "approved") return "approved";
+  if (campaign.status === "submitted") return "submitted";
+  if (campaign.fundingStatus === "funded") return "funded";
+  if (campaign.status === "accepted") return "accepted";
+  if (campaign.status === "rejected") return "rejected";
+  return "invited";
+}
+
+function getFundingDisplay(campaign: any) {
+  if (campaign.brandApprovalStatus === "approved") return "Awaiting Release";
+  if (campaign.fundingStatus === "funded") return "Funded";
+  return "Not funded";
+}
+
 export default function CreatorDashboardPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -311,9 +328,9 @@ export default function CreatorDashboardPage() {
                       </div>
 
                       <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                        <StatusPill status={campaign.status} />
+                        <StatusPill status={getCampaignDisplayStatus(campaign)} />
                         <span className="app-text-faint">
-                          Funding: {campaign.fundingStatus || "-"}
+                          Funding: {getFundingDisplay(campaign)}
                         </span>
                       </div>
                     </div>
