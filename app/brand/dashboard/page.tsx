@@ -36,8 +36,10 @@ type NotificationItem = {
 };
 
 function getCampaignDisplayStatus(campaign: any) {
-  if (campaign.status === "completed") return "completed";
-  if (campaign.payoutStatus === "released") return "completed";
+  if (campaign.payoutStatus === "released") return "live";
+  if (campaign.payoutReleaseStatus === "released") return "live";
+  if (campaign.status === "completed") return "live";
+  if (campaign.status === "live") return "live";
   if (campaign.brandApprovalStatus === "approved") return "approved";
   if (campaign.status === "submitted") return "submitted";
   if (campaign.fundingStatus === "funded") return "funded";
@@ -47,6 +49,15 @@ function getCampaignDisplayStatus(campaign: any) {
 }
 
 function getFundingDisplay(campaign: any) {
+  if (
+    campaign.payoutStatus === "released" ||
+    campaign.payoutReleaseStatus === "released" ||
+    campaign.status === "completed" ||
+    campaign.status === "live"
+  ) {
+    return "Payout Released";
+  }
+
   if (campaign.brandApprovalStatus === "approved") return "Awaiting Release";
   if (campaign.fundingStatus === "funded") return "Funded";
   return "Not funded";
