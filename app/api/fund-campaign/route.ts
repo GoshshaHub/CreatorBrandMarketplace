@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
-import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "../../../lib/firebase-admin";
-import { sendEmail } from "../../../lib/postmark";
-
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "athena@goshsha.com";
+import { stripe } from "../../../lib/stripe";
 
 export async function POST(req: Request) {
   try {
@@ -13,6 +10,15 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { error: "Missing campaignId" },
         { status: 400 }
+      );
+    }
+
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+
+    if (!appUrl) {
+      return NextResponse.json(
+        { error: "Missing NEXT_PUBLIC_APP_URL" },
+        { status: 500 }
       );
     }
 
@@ -28,108 +34,60 @@ export async function POST(req: Request) {
 
     const campaign = campaignSnap.data() as any;
 
+    const amount = Number(campaign.agreedPrice || 0);
+
+    if (!amount || amount <= 0) {
+      return NextResponse.json(
+        { error: "Campaign amount must be greater than $0." },
+        { status: 400 }
+      );
+    }
+
+    const amountInCents = Math.round(amount * 100);
+
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      payment_method_types: ["card"],
+      customer_email: campaign.brandEmail || campaign.contactEmail || undefined,
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency: "usd",
+            unit_amount: amountInCents,
+            product_data: {
+              name: campaign.campaignTitle || "Goshsha Creator Campaign",
+              description: campaign.productName
+                ? `Product: ${campaign.productName}`
+                : "Creator campaign funding",
+            },
+          },
+        },
+      ],
+      metadata: {
+        campaignId,
+        brandId: campaign.brandId || "",
+        creatorId: campaign.creatorId || "",
+      },
+      success_url: `${appUrl}/brand/campaign/${campaignId}?checkout=success`,
+      cancel_url: `${appUrl}/brand/campaign/${campaignId}?checkout=cancelled`,
+    });
+
     await campaignRef.update({
-      status: "funded",
-      fundingStatus: "funded",
-      fundedAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
+      stripeCheckoutSessionId: session.id,
+      checkoutStatus: "created",
+      updatedAt: new Date(),
     });
 
-    await adminDb.collection("notifications").add({
-      userId: campaign.creatorId,
-      role: "creator",
-      type: "campaign_funded",
-      title: "Campaign funded",
-      message: `${campaign.brandName} funded "${campaign.campaignTitle}". You can start working on the campaign.`,
-      campaignId,
-      isRead: false,
-      createdAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
+    return NextResponse.json({
+      ok: true,
+      checkoutUrl: session.url,
     });
-
-    await adminDb.collection("notifications").add({
-      userId: "admin",
-      role: "admin",
-      type: "campaign_funded_admin",
-      title: "Campaign funded",
-      message: `"${campaign.campaignTitle}" has been funded and is now active.`,
-      campaignId,
-      isRead: false,
-      createdAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
-    });
-
-    const creatorSnap = await adminDb
-      .collection("creators")
-      .doc(campaign.creatorId)
-      .get();
-
-    const creator = creatorSnap.exists ? creatorSnap.data() : null;
-    const creatorEmail = creator?.contactEmail || creator?.email;
-
-    if (creatorEmail) {
-      await sendEmail({
-        to: creatorEmail,
-        subject: `Your Goshsha campaign is funded`,
-        htmlBody: `
-          <h2>Your campaign is funded</h2>
-          <p><strong>${campaign.brandName}</strong> has funded your campaign.</p>
-          <p><strong>Campaign:</strong> ${campaign.campaignTitle}</p>
-          <p><strong>Product:</strong> ${campaign.productName}</p>
-          <p>You can now start working on the campaign.</p>
-          <p>Once your post is live, log in to your creator dashboard and paste the post URL into the campaign page.</p>
-          <p>After the brand approves your submission, Goshsha admin will release your payout.</p>
-        `,
-        textBody: `
-Your campaign is funded.
-
-Brand: ${campaign.brandName}
-Campaign: ${campaign.campaignTitle}
-Product: ${campaign.productName}
-
-You can now start working on the campaign.
-
-Once your post is live, log in to your creator dashboard and paste the post URL into the campaign page.
-
-After the brand approves your submission, Goshsha admin will release your payout.
-        `.trim(),
-      });
-    }
-
-    if (ADMIN_EMAIL) {
-      await sendEmail({
-        to: ADMIN_EMAIL,
-        subject: `Campaign funded: ${campaign.campaignTitle}`,
-        htmlBody: `
-          <h2>Campaign funded</h2>
-          <p>A campaign has been funded and is now active.</p>
-          <p><strong>Brand:</strong> ${campaign.brandName}</p>
-          <p><strong>Creator:</strong> ${campaign.creatorHandle || campaign.creatorId}</p>
-          <p><strong>Campaign:</strong> ${campaign.campaignTitle}</p>
-          <p><strong>Product:</strong> ${campaign.productName}</p>
-          <p><strong>Agreed Price:</strong> $${campaign.agreedPrice || 0}</p>
-          <p><strong>Goshsha Fee:</strong> $${campaign.platformFeeAmount || 5}</p>
-          <p><strong>Creator Payout:</strong> $${campaign.creatorPayoutAmount || Math.max((campaign.agreedPrice || 0) - 5, 0)}</p>
-        `,
-        textBody: `
-Campaign funded.
-
-Brand: ${campaign.brandName}
-Creator: ${campaign.creatorHandle || campaign.creatorId}
-Campaign: ${campaign.campaignTitle}
-Product: ${campaign.productName}
-Agreed Price: $${campaign.agreedPrice || 0}
-Goshsha Fee: $${campaign.platformFeeAmount || 5}
-Creator Payout: $${campaign.creatorPayoutAmount || Math.max((campaign.agreedPrice || 0) - 5, 0)}
-        `.trim(),
-      });
-    }
-
-    return NextResponse.json({ ok: true });
   } catch (err: any) {
-    console.error("Fund campaign error:", err);
+    console.error("Fund campaign checkout error:", err);
+
     return NextResponse.json(
-      { error: err?.message || "Failed to fund campaign" },
+      { error: err?.message || "Failed to create Stripe Checkout session." },
       { status: 500 }
     );
   }
