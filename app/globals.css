@@ -1,27 +1,41 @@
 @import "tailwindcss";
 
+/* =========================
+   THEME TOKENS
+========================= */
 :root {
   color-scheme: light;
+
   --bg: #f5f7fb;
   --surface: #ffffff;
   --surface-muted: #f8fafc;
+
   --border: #dbe2ea;
+  --border-strong: #0f172a;
+
   --text: #0f172a;
   --text-soft: #475569;
   --text-faint: #64748b;
+
   --primary: #111827;
   --primary-text: #ffffff;
+
   --secondary-bg: #ffffff;
   --secondary-text: #111827;
   --secondary-border: #cbd5e1;
+
   --input-bg: #ffffff;
   --input-text: #0f172a;
   --input-placeholder: #94a3b8;
-  --shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 10px 24px rgba(15, 23, 42, 0.04);
 
+  --shadow: 0 1px 2px rgba(15, 23, 42, 0.06),
+            0 10px 24px rgba(15, 23, 42, 0.04);
+
+  /* Notifications */
   --notif-unread-bg: #eff6ff;
   --notif-unread-border: #bfdbfe;
 
+  /* Status pills */
   --status-default-bg: #f8fafc;
   --status-default-text: #334155;
   --status-default-border: #cbd5e1;
@@ -47,25 +61,37 @@
   --status-rejected-border: #fca5a5;
 }
 
+/* =========================
+   DARK MODE
+========================= */
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;
+
     --bg: #020617;
     --surface: #0f172a;
     --surface-muted: #111827;
+
     --border: #1f2937;
+    --border-strong: #f8fafc;
+
     --text: #f8fafc;
     --text-soft: #cbd5e1;
     --text-faint: #94a3b8;
+
     --primary: #f8fafc;
     --primary-text: #020617;
+
     --secondary-bg: #111827;
     --secondary-text: #f8fafc;
     --secondary-border: #374151;
+
     --input-bg: #0b1220;
     --input-text: #f8fafc;
     --input-placeholder: #64748b;
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 12px 28px rgba(0, 0, 0, 0.35);
+
+    --shadow: 0 1px 2px rgba(0,0,0,0.25),
+              0 12px 28px rgba(0,0,0,0.35);
 
     --notif-unread-bg: #172554;
     --notif-unread-border: #1d4ed8;
@@ -96,8 +122,10 @@
   }
 }
 
-html,
-body {
+/* =========================
+   BASE
+========================= */
+html, body {
   min-height: 100%;
 }
 
@@ -117,22 +145,20 @@ a {
   text-decoration: none;
 }
 
-button,
-input,
-textarea,
-select {
+button, input, textarea, select {
   font: inherit;
 }
 
 ::placeholder {
   color: var(--input-placeholder);
-  opacity: 1;
 }
 
+/* =========================
+   LAYOUT
+========================= */
 .app-page {
   min-height: 100vh;
   background: var(--bg);
-  color: var(--text);
   padding: 24px;
 }
 
@@ -141,46 +167,30 @@ select {
   margin: 0 auto;
 }
 
-.app-header {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-@media (min-width: 768px) {
-  .app-header {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-  }
-}
-
+/* =========================
+   TYPOGRAPHY
+========================= */
 .app-title {
-  margin: 0;
   font-size: 2rem;
-  line-height: 1.1;
   font-weight: 700;
-  letter-spacing: -0.02em;
-  color: var(--text);
 }
 
 .app-subtitle {
   margin-top: 8px;
   color: var(--text-soft);
-  font-size: 1rem;
 }
 
-.app-section {
-  margin-top: 40px;
+.app-text-soft {
+  color: var(--text-soft);
 }
 
-.app-section-title {
-  margin: 0;
-  font-size: 1.75rem;
-  font-weight: 600;
-  color: var(--text);
+.app-text-faint {
+  color: var(--text-faint);
 }
 
+/* =========================
+   CARDS
+========================= */
 .app-card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -198,67 +208,29 @@ select {
   border-radius: 24px;
 }
 
-.app-stat-grid {
-  margin-top: 32px;
-  display: grid;
-  gap: 16px;
-}
-
-@media (min-width: 768px) {
-  .app-stat-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-
-.app-list {
-  margin-top: 24px;
-  display: grid;
-  gap: 16px;
-}
-
-.app-text {
-  color: var(--text);
-}
-
-.app-text-soft {
-  color: var(--text-soft);
-}
-
-.app-text-faint {
-  color: var(--text-faint);
-}
-
+/* =========================
+   BUTTONS
+========================= */
 .app-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   border-radius: 16px;
   padding: 10px 16px;
   background: var(--primary);
   color: var(--primary-text);
-  border: 1px solid transparent;
+  border: none;
   cursor: pointer;
-  font-weight: 500;
-}
-
-.app-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 
 .app-button-secondary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   border-radius: 16px;
   padding: 10px 16px;
   background: var(--secondary-bg);
   color: var(--secondary-text);
   border: 1px solid var(--secondary-border);
-  cursor: pointer;
-  font-weight: 500;
 }
 
+/* =========================
+   INPUTS
+========================= */
 .app-input,
 .app-textarea {
   width: 100%;
@@ -266,103 +238,75 @@ select {
   border: 1px solid var(--secondary-border);
   background: var(--input-bg);
   color: var(--input-text);
-  padding: 12px 14px;
+  padding: 12px;
 }
 
-.app-textarea {
-  min-height: 120px;
-  resize: vertical;
-}
-
+/* =========================
+   STATUS PILLS
+========================= */
 .app-pill {
-  display: inline-flex;
-  align-items: center;
   border-radius: 999px;
+  padding: 8px 18px;
+  font-weight: 600;
   border: 1px solid var(--status-default-border);
   background: var(--status-default-bg);
   color: var(--status-default-text);
-  padding: 8px 18px;
-  font-size: 0.95rem;
-  font-weight: 600;
 }
 
 .app-pill-live {
-  border-color: var(--status-live-border);
   background: var(--status-live-bg);
   color: var(--status-live-text);
+  border-color: var(--status-live-border);
 }
 
 .app-pill-submitted {
-  border-color: var(--status-submitted-border);
   background: var(--status-submitted-bg);
   color: var(--status-submitted-text);
+  border-color: var(--status-submitted-border);
 }
 
 .app-pill-funded {
-  border-color: var(--status-funded-border);
   background: var(--status-funded-bg);
   color: var(--status-funded-text);
+  border-color: var(--status-funded-border);
 }
 
 .app-pill-accepted {
-  border-color: var(--status-accepted-border);
   background: var(--status-accepted-bg);
   color: var(--status-accepted-text);
+  border-color: var(--status-accepted-border);
 }
 
 .app-pill-rejected {
-  border-color: var(--status-rejected-border);
   background: var(--status-rejected-bg);
   color: var(--status-rejected-text);
+  border-color: var(--status-rejected-border);
 }
 
-.app-notification-unread {
-  background: var(--notif-unread-bg);
-  border-color: var(--notif-unread-border);
-}
-
-.app-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+/* =========================
+   TIMELINE (FIXED)
+========================= */
+.app-timeline-dot {
+  width: 20px;
+  height: 20px;
   border-radius: 999px;
-  padding: 4px 10px;
-  font-size: 0.75rem;
-  background: var(--primary);
-  color: var(--primary-text);
+  border: 2px solid var(--border);
 }
 
-.app-campaign-grid {
-  margin-top: 24px;
-  display: grid;
-  gap: 16px;
+.app-timeline-dot.done {
+  background: var(--text);
+  border-color: var(--text);
 }
 
-.app-campaign-top {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+.app-timeline-dot.current {
+  border-color: var(--text);
 }
 
-@media (min-width: 768px) {
-  .app-campaign-top {
-    flex-direction: row;
-    align-items: flex-start;
-    justify-content: space-between;
-  }
+.app-timeline-dot.upcoming {
+  border-color: var(--text-faint);
 }
 
-.app-inline-actions {
-  margin-top: 16px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.app-form-block {
-  margin-top: 20px;
-  padding: 20px;
-  background: var(--surface-muted);
-  border: 1px solid var(--border);
-  border-radius: 24px;
+.app-timeline-line {
+  width: 1px;
+  background: var(--border);
 }
