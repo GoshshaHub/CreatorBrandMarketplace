@@ -105,13 +105,18 @@ export default function BrandCampaignDetailPage() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to fund campaign.");
 
-      setMessage("Campaign funded. Creator has been notified.");
-      await loadCampaign();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to start Stripe Checkout.");
+      }
+
+      if (!data.checkoutUrl) {
+        throw new Error("Stripe Checkout URL was not returned.");
+      }
+
+      window.location.href = data.checkoutUrl;
     } catch (err: any) {
-      setError(err?.message || "Failed to fund campaign.");
-    } finally {
+      setError(err?.message || "Failed to start Stripe Checkout.");
       setWorking(false);
     }
   }
