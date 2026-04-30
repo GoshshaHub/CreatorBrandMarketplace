@@ -1,73 +1,92 @@
 import { NextResponse } from "next/server";
-import postmark from "postmark";
-
-const token = process.env.POSTMARK_API_TOKEN;
+import { FieldValue } from "firebase-admin/firestore";
+import { adminDb } from "../../../lib/firebase-admin";
+import { sendEmail } from "../../../lib/postmark";
 
 export async function POST(req: Request) {
   try {
-    if (!token) {
-      console.error("POSTMARK_API_TOKEN is missing");
-      return NextResponse.json(
-        { error: "Missing POSTMARK_API_TOKEN" },
-        { status: 500 }
-      );
+    const { campaignId } = await req.json();
+
+    if (!campaignId || typeof campaignId !== "string") {
+      return NextResponse.json({ error: "Missing campaignId" }, { status: 400 });
     }
 
-    const body = await req.json();
-    const { to, brandName, campaignTitle, productName } = body;
+    const appUrl =
+      process.env.NEXT_PUBLIC_APP_URL ||
+      "https://creator-brand-marketplace-rho.vercel.app";
 
-    if (!to || !brandName || !campaignTitle || !productName) {
-      console.error("Missing required fields", body);
+    const creatorCampaignUrl = `${appUrl}/creator/campaign/${campaignId}`;
+    const loginUrl = `${appUrl}/login`;
+
+    const campaignRef = adminDb.collection("campaigns").doc(campaignId);
+    const campaignSnap = await campaignRef.get();
+
+    if (!campaignSnap.exists) {
+      return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
+    }
+
+    const campaign = campaignSnap.data() as any;
+
+    const creatorSnap = await adminDb
+      .collection("creators")
+      .doc(campaign.creatorId)
+      .get();
+
+    const creator = creatorSnap.exists ? creatorSnap.data() : null;
+    const creatorEmail =
+      creator?.contactEmail || creator?.email || campaign.creatorEmail;
+
+    if (!creatorEmail) {
       return NextResponse.json(
-        { error: "Missing required fields", body },
+        { error: "Creator email not found" },
         { status: 400 }
       );
     }
 
-    const client = new postmark.ServerClient(token);
+    await adminDb.collection("notifications").add({
+      userId: campaign.creatorId,
+      role: "creator",
+      type: "campaign_invite",
+      title: "New campaign invite",
+      message: `${campaign.brandName || "A brand"} invited you to "${campaign.campaignTitle}".`,
+      campaignId,
+      isRead: false,
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
 
-    const result = await client.sendEmail({
-      From: "Athena from Goshsha <athena@goshsha.com>",
-      To: to,
-      Subject: `New campaign invite from ${brandName}`,
-      HtmlBody: `
-        <h2>You’ve been invited to a campaign</h2>
-        <p><strong>${brandName}</strong> invited you to collaborate.</p>
-        <p><strong>Campaign:</strong> ${campaignTitle}</p>
-        <p><strong>Product:</strong> ${productName}</p>
-        <p>Please log in to your creator dashboard to review and respond.</p>
+    await sendEmail({
+      to: creatorEmail,
+      subject: "You have a new campaign invite",
+      htmlBody: `
+        <h2>You have a new campaign invite</h2>
+        <p><strong>${campaign.brandName || "A brand"}</strong> invited you to a campaign.</p>
+        <p><strong>Campaign:</strong> ${campaign.campaignTitle || ""}</p>
+        <p><strong>Product:</strong> ${campaign.productName || ""}</p>
+        <p>Please log in to review, accept, or decline the invite.</p>
+        <p><a href="${creatorCampaignUrl}">Open campaign invite</a></p>
+        <p><a href="${loginUrl}">Log in to Goshsha Marketplace</a></p>
       `,
-      TextBody: `
-You've been invited to a campaign.
+      textBody: `
+You have a new campaign invite.
 
-Brand: ${brandName}
-Campaign: ${campaignTitle}
-Product: ${productName}
+Brand: ${campaign.brandName || "A brand"}
+Campaign: ${campaign.campaignTitle || ""}
+Product: ${campaign.productName || ""}
 
-Log in to your creator dashboard to review and respond.
+Open campaign invite:
+${creatorCampaignUrl}
+
+Log in:
+${loginUrl}
       `.trim(),
-      MessageStream: "outbound",
     });
 
-    console.log("Postmark success:", result);
-
-    return NextResponse.json({ ok: true, result });
+    return NextResponse.json({ ok: true });
   } catch (err: any) {
-    console.error("Postmark invite email full error:", {
-      name: err?.name,
-      message: err?.message,
-      code: err?.code,
-      statusCode: err?.statusCode,
-      stack: err?.stack,
-      raw: err,
-    });
-
+    console.error("Send campaign invite error:", err);
     return NextResponse.json(
-      {
-        error: err?.message || "Failed to send email",
-        code: err?.code || null,
-        statusCode: err?.statusCode || null,
-      },
+      { error: err?.message || "Failed to send campaign invite" },
       { status: 500 }
     );
   }

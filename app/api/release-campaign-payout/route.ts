@@ -8,20 +8,21 @@ export async function POST(req: Request) {
     const { campaignId } = await req.json();
 
     if (!campaignId || typeof campaignId !== "string") {
-      return NextResponse.json(
-        { error: "Missing campaignId" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Missing campaignId" }, { status: 400 });
     }
+
+    const appUrl =
+      process.env.NEXT_PUBLIC_APP_URL ||
+      "https://creator-brand-marketplace-rho.vercel.app";
+
+    const creatorProfileUrl = `${appUrl}/creator/profile`;
+    const loginUrl = `${appUrl}/login`;
 
     const campaignRef = adminDb.collection("campaigns").doc(campaignId);
     const campaignSnap = await campaignRef.get();
 
     if (!campaignSnap.exists) {
-      return NextResponse.json(
-        { error: "Campaign not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
     }
 
     const campaign = campaignSnap.data() as any;
@@ -29,15 +30,15 @@ export async function POST(req: Request) {
     await campaignRef.update({
       status: "completed",
       payoutStatus: "released",
+      payoutReleaseStatus: "released",
       payoutReleasedAt: FieldValue.serverTimestamp(),
-      completedAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     });
 
     await adminDb.collection("notifications").add({
       userId: campaign.creatorId,
       role: "creator",
-      type: "campaign_paid_out",
+      type: "payout_released",
       title: "Payout released",
       message: `Your payout for "${campaign.campaignTitle}" has been released.`,
       campaignId,
@@ -51,7 +52,7 @@ export async function POST(req: Request) {
       role: "brand",
       type: "campaign_completed",
       title: "Campaign completed",
-      message: `"${campaign.campaignTitle}" has been completed and creator payout was released.`,
+      message: `"${campaign.campaignTitle}" is now completed.`,
       campaignId,
       isRead: false,
       createdAt: FieldValue.serverTimestamp(),
@@ -64,60 +65,33 @@ export async function POST(req: Request) {
       .get();
 
     const creator = creatorSnap.exists ? creatorSnap.data() : null;
-    const creatorEmail = creator?.contactEmail || creator?.email;
+    const creatorEmail =
+      creator?.contactEmail || creator?.email || campaign.creatorEmail;
 
     if (creatorEmail) {
       await sendEmail({
         to: creatorEmail,
-        subject: `Your Goshsha payout has been released`,
+        subject: "Payout released",
         htmlBody: `
-          <h2>Your payout has been released</h2>
-          <p>Your payout for <strong>${campaign.campaignTitle}</strong> has been released.</p>
-          <p><strong>Campaign:</strong> ${campaign.campaignTitle}</p>
-          <p><strong>Brand:</strong> ${campaign.brandName}</p>
-          <p><strong>Agreed Price:</strong> $${campaign.agreedPrice || 0}</p>
-          <p><strong>Goshsha Fee:</strong> $${campaign.platformFeeAmount || 5}</p>
-          <p><strong>Your Payout:</strong> $${campaign.creatorPayoutAmount || Math.max((campaign.agreedPrice || 0) - 5, 0)}</p>
+          <h2>Payout released</h2>
+          <p>Your payout for <strong>${campaign.campaignTitle || "your campaign"}</strong> has been released.</p>
+          <p><strong>Important:</strong> To receive payment, please make sure your Stripe Payment Account is set up in your Creator Profile.</p>
+          <p><a href="${creatorProfileUrl}">Set up Stripe Payment Account</a></p>
+          <p>You can also log in here:</p>
+          <p><a href="${loginUrl}">Log in to Goshsha Marketplace</a></p>
         `,
         textBody: `
-Your payout has been released.
+Payout released.
 
-Campaign: ${campaign.campaignTitle}
-Brand: ${campaign.brandName}
-Agreed Price: $${campaign.agreedPrice || 0}
-Goshsha Fee: $${campaign.platformFeeAmount || 5}
-Your Payout: $${campaign.creatorPayoutAmount || Math.max((campaign.agreedPrice || 0) - 5, 0)}
-        `.trim(),
-      });
-    }
+Your payout for ${campaign.campaignTitle || "your campaign"} has been released.
 
-    const brandSnap = await adminDb
-      .collection("brands")
-      .doc(campaign.brandId)
-      .get();
+Important: To receive payment, please make sure your Stripe Payment Account is set up in your Creator Profile.
 
-    const brand = brandSnap.exists ? brandSnap.data() : null;
-    const brandEmail = brand?.contactEmail || brand?.email || campaign.contactEmail;
+Set up Stripe Payment Account:
+${creatorProfileUrl}
 
-    if (brandEmail) {
-      await sendEmail({
-        to: brandEmail,
-        subject: `Campaign completed: ${campaign.campaignTitle}`,
-        htmlBody: `
-          <h2>Campaign completed</h2>
-          <p><strong>${campaign.campaignTitle}</strong> has been completed.</p>
-          <p>The creator payout has been released by Goshsha admin.</p>
-          <p><strong>Creator:</strong> ${campaign.creatorHandle || campaign.creatorId}</p>
-          <p><strong>Product:</strong> ${campaign.productName}</p>
-        `,
-        textBody: `
-Campaign completed.
-
-Campaign: ${campaign.campaignTitle}
-Creator: ${campaign.creatorHandle || campaign.creatorId}
-Product: ${campaign.productName}
-
-The creator payout has been released by Goshsha admin.
+Log in:
+${loginUrl}
         `.trim(),
       });
     }

@@ -32,7 +32,6 @@ export async function POST(req: Request) {
     );
   } catch (err: any) {
     console.error("Stripe webhook signature error:", err.message);
-
     return NextResponse.json(
       { error: `Webhook Error: ${err.message}` },
       { status: 400 }
@@ -47,6 +46,14 @@ export async function POST(req: Request) {
       if (!campaignId) {
         return NextResponse.json({ ok: true });
       }
+
+      const appUrl =
+        process.env.NEXT_PUBLIC_APP_URL ||
+        "https://creator-brand-marketplace-rho.vercel.app";
+
+      const creatorCampaignUrl = `${appUrl}/creator/campaign/${campaignId}`;
+      const adminReviewUrl = `${appUrl}/admin/review`;
+      const loginUrl = `${appUrl}/login`;
 
       const campaignRef = adminDb.collection("campaigns").doc(campaignId);
       const campaignSnap = await campaignRef.get();
@@ -98,7 +105,7 @@ export async function POST(req: Request) {
 
       const creator = creatorSnap.exists ? creatorSnap.data() : null;
       const creatorEmail =
-        creator?.contactEmail || creator?.email || campaign.contactEmail;
+        creator?.contactEmail || creator?.email || campaign.creatorEmail;
 
       if (creatorEmail) {
         await sendEmail({
@@ -107,27 +114,54 @@ export async function POST(req: Request) {
           htmlBody: `
             <h2>Your campaign is funded</h2>
             <p><strong>${campaign.brandName || "A brand"}</strong> funded your campaign.</p>
-            <p><strong>Campaign:</strong> ${campaign.campaignTitle}</p>
+            <p><strong>Campaign:</strong> ${campaign.campaignTitle || ""}</p>
             <p><strong>Product:</strong> ${campaign.productName || ""}</p>
-            <p>You can now create your post and submit the URL when ready.</p>
+            <p>You can now create your post. When it is completed, submit your post URL here:</p>
+            <p><a href="${creatorCampaignUrl}">Open campaign and submit URL</a></p>
+            <p><a href="${loginUrl}">Log in to Goshsha Marketplace</a></p>
           `,
           textBody: `
 Your campaign is funded.
 
 Brand: ${campaign.brandName || "A brand"}
-Campaign: ${campaign.campaignTitle}
+Campaign: ${campaign.campaignTitle || ""}
 Product: ${campaign.productName || ""}
 
-You can now create your post and submit the URL when ready.
+Create your post. When it is completed, submit your post URL here:
+${creatorCampaignUrl}
+
+Log in:
+${loginUrl}
           `.trim(),
         });
       }
+
+      await sendEmail({
+        to: process.env.ADMIN_EMAIL || "athena@goshsha.com",
+        subject: "Campaign funded",
+        htmlBody: `
+          <h2>Campaign funded</h2>
+          <p><strong>Campaign:</strong> ${campaign.campaignTitle || ""}</p>
+          <p><strong>Brand:</strong> ${campaign.brandName || ""}</p>
+          <p><strong>Creator:</strong> ${campaign.creatorHandle || ""}</p>
+          <p><a href="${adminReviewUrl}">Open admin review</a></p>
+        `,
+        textBody: `
+Campaign funded.
+
+Campaign: ${campaign.campaignTitle || ""}
+Brand: ${campaign.brandName || ""}
+Creator: ${campaign.creatorHandle || ""}
+
+Open admin review:
+${adminReviewUrl}
+        `.trim(),
+      });
     }
 
     return NextResponse.json({ received: true });
   } catch (err: any) {
     console.error("Stripe webhook handler error:", err);
-
     return NextResponse.json(
       { error: err?.message || "Webhook handler failed" },
       { status: 500 }

@@ -14,14 +14,18 @@ export async function POST(req: Request) {
       );
     }
 
+    const appUrl =
+      process.env.NEXT_PUBLIC_APP_URL ||
+      "https://creator-brand-marketplace-rho.vercel.app";
+
+    const brandCampaignUrl = `${appUrl}/brand/campaign/${campaignId}`;
+    const loginUrl = `${appUrl}/login`;
+
     const campaignRef = adminDb.collection("campaigns").doc(campaignId);
     const campaignSnap = await campaignRef.get();
 
     if (!campaignSnap.exists) {
-      return NextResponse.json(
-        { error: "Campaign not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
     }
 
     const campaign = campaignSnap.data() as any;
@@ -32,24 +36,15 @@ export async function POST(req: Request) {
       status: "submitted",
       completionStatus: "submitted",
       brandApprovalStatus: "pending",
-      payoutStatus: "locked",
       creatorSubmittedAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
-    });
-
-    await adminDb.collection("campaignSubmissions").add({
-      campaignId,
-      creatorId: campaign.creatorId,
-      brandId: campaign.brandId,
-      submissionUrl: submissionUrl.trim(),
-      createdAt: FieldValue.serverTimestamp(),
     });
 
     await adminDb.collection("notifications").add({
       userId: campaign.brandId,
       role: "brand",
       type: "campaign_submitted",
-      title: "Campaign submitted",
+      title: "Creator submitted content",
       message: `${campaign.creatorHandle || "A creator"} submitted content for "${campaign.campaignTitle}".`,
       campaignId,
       isRead: false,
@@ -69,9 +64,14 @@ export async function POST(req: Request) {
       updatedAt: FieldValue.serverTimestamp(),
     });
 
-    const brandSnap = await adminDb.collection("brands").doc(campaign.brandId).get();
+    const brandSnap = await adminDb
+      .collection("brands")
+      .doc(campaign.brandId)
+      .get();
+
     const brand = brandSnap.exists ? brandSnap.data() : null;
-    const brandEmail = brand?.contactEmail || brand?.email || campaign.brandEmail;
+    const brandEmail =
+      brand?.contactEmail || brand?.email || campaign.brandEmail || campaign.contactEmail;
 
     if (brandEmail) {
       await sendEmail({
@@ -80,19 +80,23 @@ export async function POST(req: Request) {
         htmlBody: `
           <h2>Creator submitted content</h2>
           <p><strong>${campaign.creatorHandle || "Your creator"}</strong> submitted content.</p>
-          <p><strong>Campaign:</strong> ${campaign.campaignTitle}</p>
-          <p><strong>Product:</strong> ${campaign.productName}</p>
+          <p><strong>Campaign:</strong> ${campaign.campaignTitle || ""}</p>
           <p><strong>Submission URL:</strong> <a href="${submissionUrl}">${submissionUrl}</a></p>
-          <p>Log in to review and approve the campaign.</p>
+          <p>Please review and approve the campaign here:</p>
+          <p><a href="${brandCampaignUrl}">Review campaign submission</a></p>
+          <p><a href="${loginUrl}">Log in to Goshsha Marketplace</a></p>
         `,
         textBody: `
 Creator submitted content.
 
-Campaign: ${campaign.campaignTitle}
-Product: ${campaign.productName}
+Campaign: ${campaign.campaignTitle || ""}
 Submission URL: ${submissionUrl}
 
-Log in to review and approve the campaign.
+Review and approve the campaign here:
+${brandCampaignUrl}
+
+Log in:
+${loginUrl}
         `.trim(),
       });
     }
