@@ -1,29 +1,40 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
-import ProtectedRoute from "../../../components/ProtectedRoute";
-import { getMarketplaceCreators } from "../../../lib/campaigns";
+import Link from "next/link";
+import { collection, getDocs, query, where } from "firebase/firestore";
+import { db } from "../../../lib/firebase";
 
-type Creator = {
+type CreatorProfile = {
   id: string;
   displayName?: string;
+  name?: string;
   handle?: string;
+  username?: string;
   bio?: string;
   categories?: string[];
   campaignsCompleted?: number;
-  totalCampaignViews?: number;
+  campaignViews?: number;
 };
 
 export default function BrandCreatorsPage() {
-  const [creators, setCreators] = useState<Creator[]>([]);
+  const [creators, setCreators] = useState<CreatorProfile[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadCreators() {
       try {
-        const data = await getMarketplaceCreators();
-        setCreators(data as Creator[]);
+        const q = query(collection(db, "users"), where("role", "==", "creator"));
+        const snapshot = await getDocs(q);
+
+        const creatorList: CreatorProfile[] = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as CreatorProfile[];
+
+        setCreators(creatorList);
+      } catch (error) {
+        console.error("Error loading creators:", error);
       } finally {
         setLoading(false);
       }
@@ -33,70 +44,102 @@ export default function BrandCreatorsPage() {
   }, []);
 
   return (
-    <ProtectedRoute allowedRole="brand">
-      <main className="min-h-screen p-6 max-w-6xl mx-auto">
-        <div className="flex items-center justify-between gap-4">
+    <main className="min-h-screen bg-white text-slate-900">
+      <div className="mx-auto max-w-6xl px-6 py-8">
+        <div className="mb-8 flex items-center justify-between">
           <div>
-            <h1 className="text-4xl font-bold">Creator Marketplace</h1>
-            <p className="mt-2 text-gray-600">
+            <h1 className="text-4xl font-bold text-slate-900">
+              Creator Marketplace
+            </h1>
+            <p className="mt-2 text-base text-slate-600">
               Discover creators and invite the right fit for your next campaign.
             </p>
           </div>
 
           <Link
             href="/brand/dashboard"
-            className="rounded-lg border px-4 py-2"
+            className="rounded-xl border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-100"
           >
             Back to Dashboard
           </Link>
         </div>
 
         {loading ? (
-          <p className="mt-8">Loading creators...</p>
+          <p className="text-slate-600">Loading creators...</p>
         ) : creators.length === 0 ? (
-          <p className="mt-8 text-gray-600">No creators available yet.</p>
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 text-slate-700">
+            No creators found yet.
+          </div>
         ) : (
-          <div className="mt-8 grid gap-6 md:grid-cols-2">
-            {creators.map((creator) => (
-              <div key={creator.id} className="rounded-2xl border p-6">
-                <h2 className="text-2xl font-semibold">
-                  {creator.displayName || creator.handle || "Unnamed Creator"}
-                </h2>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            {creators.map((creator) => {
+              const displayName =
+                creator.displayName || creator.name || "Unnamed Creator";
 
-                {creator.handle && (
-                  <p className="mt-1 text-sm text-gray-500">{creator.handle}</p>
-                )}
+              const handle =
+                creator.handle || creator.username || "No handle added yet";
 
-                <p className="mt-4 text-gray-700">
-                  {creator.bio?.trim()
-                    ? creator.bio
-                    : "This creator has not added a bio yet."}
-                </p>
+              const categories =
+                creator.categories && creator.categories.length > 0
+                  ? creator.categories.join(", ")
+                  : "No categories listed yet";
 
-                <p className="mt-4 text-gray-700">
-                  {creator.categories && creator.categories.length > 0
-                    ? creator.categories.join(", ")
-                    : "No categories listed yet"}
-                </p>
-
-                <div className="mt-4 space-y-2 text-gray-700">
-                  <p>
-                    Campaigns completed: {creator.campaignsCompleted ?? 0}
-                  </p>
-                  <p>Campaign views: {creator.totalCampaignViews ?? 0}</p>
-                </div>
-
-                <Link
-                  href={`/brand/new-campaign?creatorId=${creator.id}`}
-                  className="mt-6 inline-block rounded-lg bg-black px-4 py-2 text-white"
+              return (
+                <div
+                  key={creator.id}
+                  className="rounded-2xl border border-slate-300 bg-white p-6 shadow-sm"
                 >
-                  Invite Creator
-                </Link>
-              </div>
-            ))}
+                  <h2 className="text-2xl font-bold text-slate-900">
+                    {displayName}
+                  </h2>
+
+                  <p className="mt-1 text-sm text-slate-500">
+                    {handle.startsWith("@") ? handle : `@${handle}`}
+                  </p>
+
+                  <p className="mt-5 text-slate-700">
+                    {creator.bio || "This creator has not added a bio yet."}
+                  </p>
+
+                  <p className="mt-5 text-slate-700">{categories}</p>
+
+                  <div className="mt-5 space-y-2 text-slate-700">
+                    <p>
+                      Campaigns completed:{" "}
+                      <span className="font-semibold text-slate-900">
+                        {creator.campaignsCompleted || 0}
+                      </span>
+                    </p>
+
+                    <p>
+                      Campaign views:{" "}
+                      <span className="font-semibold text-slate-900">
+                        {creator.campaignViews || 0}
+                      </span>
+                    </p>
+                  </div>
+
+                  <div className="mt-6 flex flex-wrap gap-3">
+                    <Link
+                      href={`/brand/creators/${creator.id}`}
+                      className="rounded-xl border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-100"
+                    >
+                      View Profile
+                    </Link>
+
+                    <Link
+                      href={`/brand/new-campaign?creatorId=${creator.id}`}
+                      className="rounded-xl bg-slate-900 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-700"
+                    >
+                      Invite Creator
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
-      </main>
-    </ProtectedRoute>
+      </div>
+    </main>
   );
 }

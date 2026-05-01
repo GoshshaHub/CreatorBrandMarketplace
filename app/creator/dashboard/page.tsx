@@ -1,449 +1,254 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { onAuthStateChanged } from "firebase/auth";
-import ProtectedRoute from "../../../components/ProtectedRoute";
-import StatCard from "../../../components/StatCard";
-import StatusPill from "../../../components/StatusPill";
-import { auth } from "../../../lib/firebase";
-import {
-  getCreatorCampaigns,
-  getUserNotifications,
-  markNotificationRead,
-} from "../../../lib/campaigns";
+import { collection, getDocs, query, where } from "firebase/firestore";
+import { db } from "../../../lib/firebase";
+import { useAuth } from "../../../lib/auth";
 
 type Campaign = {
   id: string;
-  brandName?: string;
-  contactEmail?: string;
-  productName?: string;
   campaignTitle?: string;
+  title?: string;
+  brandName?: string;
+  productName?: string;
   campaignBrief?: string;
   deliveryStartDate?: string;
   deliveryEndDate?: string;
   agreedPrice?: number;
+  payoutAmount?: number;
   status?: string;
   fundingStatus?: string;
-  creatorSubmittedArContentUrl?: string;
+  submittedUrl?: string;
+  brandEmail?: string;
+  contactEmail?: string;
 };
-
-type NotificationItem = {
-  id: string;
-  title?: string;
-  message?: string;
-  isRead?: boolean;
-  campaignId?: string;
-};
-
-function getCampaignDisplayStatus(campaign: any) {
-  if (campaign.payoutStatus === "released") return "live";
-  if (campaign.payoutReleaseStatus === "released") return "live";
-  if (campaign.status === "completed") return "live";
-  if (campaign.status === "live") return "live";
-  if (campaign.brandApprovalStatus === "approved") return "approved";
-  if (campaign.status === "submitted") return "submitted";
-  if (campaign.fundingStatus === "funded") return "funded";
-  if (campaign.status === "accepted") return "accepted";
-  if (campaign.status === "rejected") return "rejected";
-  return "invited";
-}
-
-function getFundingDisplay(campaign: any) {
-  if (
-    campaign.payoutStatus === "released" ||
-    campaign.payoutReleaseStatus === "released" ||
-    campaign.status === "completed" ||
-    campaign.status === "live"
-  ) {
-    return "Payout Released";
-  }
-
-  if (campaign.brandApprovalStatus === "approved") return "Awaiting Release";
-  if (campaign.fundingStatus === "funded") return "Funded";
-  return "Not funded";
-}
 
 export default function CreatorDashboardPage() {
+  const { user } = useAuth();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [busyCampaignId, setBusyCampaignId] = useState("");
-  const [linkInputs, setLinkInputs] = useState<Record<string, string>>({});
-
-  async function loadDashboardForUser(uid: string) {
-    try {
-      setError("");
-
-      const campaignData = await getCreatorCampaigns(uid);
-      setCampaigns(campaignData as Campaign[]);
-
-      const notificationData = await getUserNotifications(uid);
-      setNotifications(notificationData as NotificationItem[]);
-    } catch (err: any) {
-      setError(err.message || "We couldn’t load your dashboard.");
-    } finally {
-      setLoading(false);
-    }
-  }
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (!user) {
+    async function loadCampaigns() {
+      if (!user?.uid) return;
+
+      try {
+        const q = query(
+          collection(db, "campaigns"),
+          where("creatorId", "==", user.uid)
+        );
+
+        const snapshot = await getDocs(q);
+
+        const list = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as Campaign[];
+
+        setCampaigns(list);
+      } catch (error) {
+        console.error("Error loading creator campaigns:", error);
+      } finally {
         setLoading(false);
-        setError("You must be logged in.");
-        return;
       }
-
-      await loadDashboardForUser(user.uid);
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  async function handleStatusChange(campaignId: string, status: string) {
-    try {
-      setBusyCampaignId(campaignId);
-      const res = await fetch("/api/update-campaign-status", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ campaignId, status }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to update campaign.");
-
-      const user = auth.currentUser;
-      if (user) {
-        await loadDashboardForUser(user.uid);
-      }
-    } catch (err: any) {
-      setError(err.message || "We couldn’t update this campaign.");
-    } finally {
-      setBusyCampaignId("");
-    }
-  }
-
-  async function handleSubmitLink(campaignId: string) {
-    const url = (linkInputs[campaignId] || "").trim();
-
-    if (!url) {
-      setError("Paste your content link before submitting.");
-      return;
     }
 
-    try {
-      setError("");
-      setBusyCampaignId(campaignId);
+    loadCampaigns();
+  }, [user?.uid]);
 
-      const user = auth.currentUser;
-      if (!user) {
-        throw new Error("You must be logged in.");
-      }
+  const newInvites = campaigns.filter(
+    (c) => c.status === "invited" || c.status === "new"
+  ).length;
 
-    const res = await fetch("/api/submit-campaign-link", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        campaignId,
-        submissionUrl: url,
-      }),
-    });
+  const awaitingFunding = campaigns.filter(
+    (c) => c.fundingStatus === "awaiting" || c.fundingStatus === "awaiting_funding"
+  ).length;
 
-    const data = await res.json();
+  const readyToCreate = campaigns.filter(
+    (c) => c.fundingStatus === "funded" && c.status !== "submitted"
+  ).length;
 
-    if (!res.ok) {
-      throw new Error(data.error || "We couldn’t submit your campaign link.");
-    }
-      await loadDashboardForUser(user.uid);
-    } catch (err: any) {
-      setError(err.message || "We couldn’t submit your campaign link.");
-    } finally {
-      setBusyCampaignId("");
-    }
-  }
-
-  async function handleMarkRead(notificationId: string) {
-    try {
-      await markNotificationRead(notificationId);
-
-      const user = auth.currentUser;
-      if (user) {
-        await loadDashboardForUser(user.uid);
-      }
-    } catch (err: any) {
-      setError(err.message || "We couldn’t update this notification.");
-    }
-  }
-
-  const stats = useMemo(() => {
-    const newInvites = campaigns.filter((c) => c.status === "invited").length;
-    const awaitingFunding = campaigns.filter((c) => c.status === "accepted").length;
-    const readyToStart = campaigns.filter((c) => c.status === "funded").length;
-    const live = campaigns.filter((c) => c.status === "live").length;
-
-    return { newInvites, awaitingFunding, readyToStart, live };
-  }, [campaigns]);
-
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
+  const liveCampaigns = campaigns.filter(
+    (c) => c.status === "live" || c.status === "completed"
+  ).length;
 
   return (
-    <ProtectedRoute allowedRole="creator">
-      <main className="app-page">
-        <div className="app-shell">
-          <div className="app-header">
-            <div>
-              <h1 className="app-title">Creator Dashboard</h1>
-              <p className="app-subtitle">
-                Stay on top of invites, funding, and campaign deadlines.
-              </p>
-            </div>
-
-            <Link href="/creator/profile" className="app-button-secondary">
-              Edit Profile
-            </Link>
-          </div>
-
-          {loading && (
-            <p className="app-subtitle" style={{ marginTop: "24px" }}>
-              Loading your dashboard...
+    <main className="min-h-screen bg-white text-slate-900">
+      <div className="mx-auto max-w-6xl px-6 py-8">
+        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="text-4xl font-bold text-slate-900">
+              Creator Dashboard
+            </h1>
+            <p className="mt-2 text-base text-slate-600">
+              Stay on top of invites, funding, and campaign deadlines.
             </p>
-          )}
-          {error && !loading && (
-            <p style={{ marginTop: "24px", color: "#dc2626" }}>{error}</p>
-          )}
-
-          <div className="app-stat-grid">
-            <StatCard label="New Invites" value={stats.newInvites} />
-            <StatCard label="Awaiting Funding" value={stats.awaitingFunding} />
-            <StatCard label="Ready to Create" value={stats.readyToStart} />
-            <StatCard label="Live Campaigns" value={stats.live} />
           </div>
 
-          <section className="app-section">
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              <h2 className="app-section-title">Updates</h2>
-              {unreadCount > 0 && (
-                <span className="app-badge">{unreadCount} unread</span>
-              )}
+          <Link
+            href="/creator/profile"
+            className="inline-flex w-fit rounded-xl border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-100"
+          >
+            Edit Profile
+          </Link>
+        </div>
+
+        <div className="mb-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <p className="text-sm text-slate-500">New Invites</p>
+            <p className="mt-4 text-5xl font-bold text-slate-900">
+              {newInvites}
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <p className="text-sm text-slate-500">Awaiting Funding</p>
+            <p className="mt-4 text-5xl font-bold text-slate-900">
+              {awaitingFunding}
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <p className="text-sm text-slate-500">Ready to Create</p>
+            <p className="mt-4 text-5xl font-bold text-slate-900">
+              {readyToCreate}
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <p className="text-sm text-slate-500">Live Campaigns</p>
+            <p className="mt-4 text-5xl font-bold text-slate-900">
+              {liveCampaigns}
+            </p>
+          </div>
+        </div>
+
+        <section>
+          <h2 className="mb-4 text-2xl font-bold text-slate-900">
+            Your Campaigns
+          </h2>
+
+          {loading ? (
+            <p className="text-slate-600">Loading campaigns...</p>
+          ) : campaigns.length === 0 ? (
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 text-slate-700">
+              No campaigns yet.
             </div>
+          ) : (
+            <div className="space-y-5">
+              {campaigns.map((campaign) => {
+                const title =
+                  campaign.campaignTitle ||
+                  campaign.title ||
+                  "Untitled Campaign";
 
-            {notifications.length === 0 ? (
-              <div className="app-card app-card-padding" style={{ marginTop: "16px" }}>
-                <p className="app-text" style={{ margin: 0, fontWeight: 600 }}>
-                  You’re all caught up
-                </p>
-                <p className="app-text-soft" style={{ marginTop: "8px", marginBottom: 0 }}>
-                  New invites, funding notices, and live campaign updates will appear here.
-                </p>
-              </div>
-            ) : (
-              <div className="app-list">
-                {notifications.map((notification) => (
+                const payout =
+                  campaign.agreedPrice ?? campaign.payoutAmount ?? 0;
+
+                const contactEmail =
+                  campaign.brandEmail || campaign.contactEmail || "";
+
+                return (
                   <div
-                    key={notification.id}
-                    className={`app-card app-card-padding ${
-                      notification.isRead ? "" : "app-notification-unread"
-                    }`}
+                    key={campaign.id}
+                    className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
                   >
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        gap: "16px",
-                        alignItems: "flex-start",
-                      }}
+                    <Link
+                      href={`/creator/campaign/${campaign.id}`}
+                      className="text-2xl font-bold text-slate-900 underline underline-offset-4 hover:text-slate-700"
                     >
-                      <div>
-                        {notification.campaignId ? (
-                          <Link href={`/creator/campaign/${notification.campaignId}`}>
-                            <p
-                              className="app-text"
-                              style={{ margin: 0, fontWeight: 600, textDecoration: "underline" }}
-                            >
-                              {notification.title || "Update"}
-                            </p>
-                          </Link>
-                        ) : (
-                          <p className="app-text" style={{ margin: 0, fontWeight: 600 }}>
-                            {notification.title || "Update"}
-                          </p>
-                        )}
+                      {title}
+                    </Link>
 
-                        <p
-                          className="app-text-soft"
-                          style={{ marginTop: "8px", marginBottom: 0 }}
-                        >
-                          {notification.message || ""}
-                        </p>
-                      </div>
+                    <div className="mt-5 space-y-2 text-slate-700">
+                      <p>
+                        <span className="font-semibold text-slate-900">
+                          Brand:
+                        </span>{" "}
+                        {campaign.brandName || "Not listed"}
+                      </p>
 
-                      {!notification.isRead && (
-                        <button
-                          onClick={() => handleMarkRead(notification.id)}
-                          className="app-button-secondary"
-                        >
-                          Mark as Read
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
+                      <p>
+                        <span className="font-semibold text-slate-900">
+                          Product:
+                        </span>{" "}
+                        {campaign.productName || "Not listed"}
+                      </p>
 
-          <section className="app-section">
-            <h2 className="app-section-title">Campaigns</h2>
+                      <p>
+                        <span className="font-semibold text-slate-900">
+                          Delivery Window:
+                        </span>{" "}
+                        {campaign.deliveryStartDate || "TBD"} →{" "}
+                        {campaign.deliveryEndDate || "TBD"}
+                      </p>
 
-            {campaigns.length === 0 ? (
-              <div className="app-card app-card-padding" style={{ marginTop: "16px" }}>
-                <p className="app-text" style={{ margin: 0, fontWeight: 600 }}>
-                  No campaigns yet
-                </p>
-                <p className="app-text-soft" style={{ marginTop: "8px", marginBottom: 0 }}>
-                  When a brand invites you to a campaign, it will show up here with your next step.
-                </p>
-              </div>
-            ) : (
-              <div className="app-campaign-grid">
-                {campaigns.map((campaign) => (
-                  <div key={campaign.id} className="app-card app-card-padding">
-                    <div className="app-campaign-top">
-                      <div>
-                        <Link href={`/creator/campaign/${campaign.id}`}>
-                          <h3
-                            className="app-text"
-                            style={{
-                              margin: 0,
-                              fontSize: "1.5rem",
-                              fontWeight: 700,
-                              textDecoration: "underline",
-                            }}
-                          >
-                            {campaign.campaignTitle || "Untitled Campaign"}
-                          </h3>
-                        </Link>
-                        <p className="app-text-soft" style={{ marginTop: "12px" }}>
-                          Brand: {campaign.brandName || "Unknown brand"}
-                        </p>
-                        <p className="app-text-soft">Product: {campaign.productName || "-"}</p>
-                        <p className="app-text-faint" style={{ marginTop: "8px" }}>
-                          Delivery Window: {campaign.deliveryStartDate || "-"} →{" "}
-                          {campaign.deliveryEndDate || "-"}
-                        </p>
-                        <p className="app-text-soft" style={{ marginTop: "8px" }}>
-                          Payout: ${campaign.agreedPrice ?? 0}
-                        </p>
-                      </div>
-
-                      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                        <StatusPill status={getCampaignDisplayStatus(campaign)} />
-                        <span className="app-text-faint">
-                          Funding: {getFundingDisplay(campaign)}
-                        </span>
-                      </div>
+                      <p>
+                        <span className="font-semibold text-slate-900">
+                          Payout:
+                        </span>{" "}
+                        ${payout}
+                      </p>
                     </div>
 
-                    <p className="app-text-soft" style={{ marginTop: "20px" }}>
-                      {campaign.campaignBrief || "No brief provided."}
+                    <div className="mt-5 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold text-green-800">
+                      {campaign.status || "Pending"}
+                    </div>
+
+                    <p className="mt-4 text-slate-700">
+                      <span className="font-semibold text-slate-900">
+                        Funding:
+                      </span>{" "}
+                      {campaign.fundingStatus || "Not funded yet"}
                     </p>
 
-                    <div className="app-inline-actions">
+                    {campaign.campaignBrief && (
+                      <p className="mt-5 leading-7 text-slate-700">
+                        {campaign.campaignBrief}
+                      </p>
+                    )}
+
+                    <div className="mt-6 flex flex-wrap gap-3">
                       <Link
                         href={`/creator/campaign/${campaign.id}`}
-                        className="app-button-secondary"
+                        className="rounded-xl border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-100"
                       >
                         View Campaign
                       </Link>
 
-                      {campaign.status === "invited" && (
-                        <>
-                          <button
-                            onClick={() => handleStatusChange(campaign.id, "accepted")}
-                            disabled={busyCampaignId === campaign.id}
-                            className="app-button"
-                          >
-                            {busyCampaignId === campaign.id ? "Saving..." : "Accept Invite"}
-                          </button>
-
-                          <button
-                            onClick={() => handleStatusChange(campaign.id, "rejected")}
-                            disabled={busyCampaignId === campaign.id}
-                            className="app-button-secondary"
-                          >
-                            Decline
-                          </button>
-                        </>
-                      )}
-
-                      {campaign.contactEmail && (
+                      {contactEmail && (
                         <a
-                          href={`mailto:${campaign.contactEmail}?subject=${encodeURIComponent(
-                            `Question about: ${campaign.campaignTitle || "Campaign"}`
-                          )}`}
-                          className="app-button-secondary"
+                          href={`mailto:${contactEmail}`}
+                          className="rounded-xl border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-100"
                         >
                           Contact Brand
                         </a>
                       )}
                     </div>
 
-                    {campaign.status === "funded" && (
-                      <div className="app-form-block">
-                        <h4
-                          className="app-text"
-                          style={{ marginTop: 0, marginBottom: "14px", fontWeight: 600 }}
-                        >
-                          Submit Your Campaign Link
-                        </h4>
-
-                        <input
-                          className="app-input"
-                          placeholder="Paste your TikTok, Instagram, or content link"
-                          value={linkInputs[campaign.id] ?? ""}
-                          onChange={(e) =>
-                            setLinkInputs((prev) => ({
-                              ...prev,
-                              [campaign.id]: e.target.value,
-                            }))
-                          }
-                        />
-
-                        <button
-                          onClick={() => handleSubmitLink(campaign.id)}
-                          disabled={busyCampaignId === campaign.id}
-                          className="app-button"
-                          style={{ marginTop: "14px" }}
-                        >
-                          {busyCampaignId === campaign.id
-                            ? "Submitting..."
-                            : "Submit Link"}
-                        </button>
-                      </div>
-                    )}
-
-                    {campaign.creatorSubmittedArContentUrl && (
-                      <div className="app-text-soft" style={{ marginTop: "16px" }}>
-                        <span style={{ fontWeight: 600 }}>Submitted Link:</span>{" "}
+                    {campaign.submittedUrl && (
+                      <p className="mt-5 break-words text-slate-700">
+                        <span className="font-semibold text-slate-900">
+                          Submitted Link:
+                        </span>{" "}
                         <a
-                          href={campaign.creatorSubmittedArContentUrl}
+                          href={campaign.submittedUrl}
                           target="_blank"
-                          rel="noreferrer"
-                          style={{ textDecoration: "underline" }}
+                          rel="noopener noreferrer"
+                          className="text-slate-900 underline underline-offset-4"
                         >
-                          {campaign.creatorSubmittedArContentUrl}
+                          {campaign.submittedUrl}
                         </a>
-                      </div>
+                      </p>
                     )}
                   </div>
-                ))}
-              </div>
-            )}
-          </section>
-        </div>
-      </main>
-    </ProtectedRoute>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      </div>
+    </main>
   );
 }

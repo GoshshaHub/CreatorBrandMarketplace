@@ -1,35 +1,21 @@
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  sendPasswordResetEmail,
-  updateProfile,
-  UserCredential,
-} from "firebase/auth";
+"use client";
+
+import { useEffect, useState } from "react";
+import { onAuthStateChanged, User } from "firebase/auth";
 import { auth } from "./firebase";
 
-export async function signupUser(
-  email: string,
-  password: string,
-  displayName: string
-): Promise<UserCredential> {
-  const credential = await createUserWithEmailAndPassword(auth, email, password);
+export function useAuth() {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  if (displayName.trim()) {
-    await updateProfile(credential.user, {
-      displayName: displayName.trim(),
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      setUser(firebaseUser);
+      setLoading(false);
     });
-  }
 
-  return credential;
-}
+    return () => unsubscribe();
+  }, []);
 
-export async function loginUser(
-  email: string,
-  password: string
-): Promise<UserCredential> {
-  return signInWithEmailAndPassword(auth, email, password);
-}
-
-export async function sendResetPasswordEmail(email: string) {
-  return sendPasswordResetEmail(auth, email);
+  return { user, loading };
 }
