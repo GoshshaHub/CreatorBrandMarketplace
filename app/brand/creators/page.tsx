@@ -25,8 +25,8 @@ export default function BrandCreatorsPage() {
     async function loadCreators() {
       try {
         const q = query(
-        collection(db, "users"),
-        where("roles", "array-contains", "creator")
+          collection(db, "users"),
+          where("roles", "array-contains", "creator")
         );
 
         const snapshot = await getDocs(q);
@@ -124,6 +124,7 @@ export default function BrandCreatorsPage() {
                   </div>
 
                   <div className="mt-6 flex flex-wrap gap-3">
+                    {/* View Profile */}
                     <Link
                       href={`/brand/creators/${creator.id}`}
                       className="rounded-xl border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-100"
@@ -131,9 +132,22 @@ export default function BrandCreatorsPage() {
                       View Profile
                     </Link>
 
+                    {/* Invite Creator (FIXED) */}
                     <Link
                       href={`/brand/new-campaign?creatorId=${creator.id}`}
-                      className="rounded-xl bg-slate-900 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-700"
+                      style={{
+                        backgroundColor: "#0f172a",
+                        color: "#ffffff",
+                        padding: "8px 20px",
+                        borderRadius: "12px",
+                        fontSize: "0.875rem",
+                        fontWeight: 600,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        minWidth: "140px",
+                        boxShadow: "0 1px 2px rgba(0,0,0,0.08)",
+                      }}
                     >
                       Invite Creator
                     </Link>
