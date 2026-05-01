@@ -48,11 +48,6 @@ export default function AdminReviewPage() {
   }, [submittedCampaigns, payoutReadyCampaigns]);
 
   async function handleReleasePayout(campaignId: string) {
-    const confirmed = window.confirm(
-      "Release payout for this campaign? This will mark the campaign as completed."
-    );
-
-    if (!confirmed) return;
 
     setWorkingCampaignId(campaignId);
     setError("");
