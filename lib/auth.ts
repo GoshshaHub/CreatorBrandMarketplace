@@ -1,35 +1,39 @@
 "use client";
 
-import {
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  sendPasswordResetEmail,
-  onAuthStateChanged,
-  User,
-} from "firebase/auth";
-
 import { useEffect, useState } from "react";
+import {
+  User,
+  createUserWithEmailAndPassword,
+  onAuthStateChanged,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
+  updateProfile,
+} from "firebase/auth";
 import { auth } from "./firebase";
-
-/* =========================
-   AUTH ACTIONS
-========================= */
 
 export async function loginUser(email: string, password: string) {
   return signInWithEmailAndPassword(auth, email, password);
 }
 
-export async function signupUser(email: string, password: string) {
-  return createUserWithEmailAndPassword(auth, email, password);
+export async function signupUser(
+  email: string,
+  password: string,
+  displayName?: string
+) {
+  const credential = await createUserWithEmailAndPassword(auth, email, password);
+
+  if (displayName && displayName.trim().length > 0) {
+    await updateProfile(credential.user, {
+      displayName: displayName.trim(),
+    });
+  }
+
+  return credential;
 }
 
 export async function sendResetPasswordEmail(email: string) {
   return sendPasswordResetEmail(auth, email);
 }
-
-/* =========================
-   AUTH HOOK
-========================= */
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
