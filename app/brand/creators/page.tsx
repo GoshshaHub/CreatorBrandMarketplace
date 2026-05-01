@@ -24,7 +24,11 @@ export default function BrandCreatorsPage() {
   useEffect(() => {
     async function loadCreators() {
       try {
-        const q = query(collection(db, "users"), where("role", "==", "creator"));
+        const q = query(
+        collection(db, "users"),
+        where("roles", "array-contains", "creator")
+        );
+
         const snapshot = await getDocs(q);
 
         const creatorList: CreatorProfile[] = snapshot.docs.map((doc) => ({
