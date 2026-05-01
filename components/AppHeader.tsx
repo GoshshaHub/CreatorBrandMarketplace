@@ -84,7 +84,14 @@ export default function AppHeader() {
   }
 
   function getNavItems() {
+    const isAuthPage =
+      pathname === "/" || pathname === "/login" || pathname === "/signup";
+
     if (!user) {
+      if (isAuthPage) {
+        return [{ href: "/", label: "Home" }];
+      }
+
       return [
         { href: "/", label: "Home" },
         { href: "/login", label: "Log In" },
