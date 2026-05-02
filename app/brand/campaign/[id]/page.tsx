@@ -127,14 +127,28 @@ export default function BrandCampaignDetailPage() {
     setMessage("");
 
     try {
+      const submissionUrl =
+        campaign?.normalizedArContentUrl ||
+        campaign?.creatorSubmittedArContentUrl;
+
+      if (!campaignId || !submissionUrl) {
+        throw new Error("Missing campaignId or submissionUrl");
+      }
+
       const res = await fetch("/api/approve-campaign-submission", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ campaignId }),
+        body: JSON.stringify({
+          campaignId,
+          submissionUrl,
+        }),
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to approve submission.");
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to approve submission.");
+      }
 
       setMessage("Submission approved. Admin has been notified to release payout.");
       await loadCampaign();
