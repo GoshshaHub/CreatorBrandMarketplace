@@ -19,31 +19,51 @@ function Step({
   description: string;
   state: "done" | "current" | "upcoming";
 }) {
+  const dotStyle =
+    state === "done"
+      ? {
+          backgroundColor: "#0f172a",
+          borderColor: "#0f172a",
+        }
+      : state === "current"
+      ? {
+          backgroundColor: "#ffffff",
+          borderColor: "#0f172a",
+        }
+      : {
+          backgroundColor: "transparent",
+          borderColor: "#cbd5e1",
+        };
+
   return (
     <div className="flex gap-4">
       <div className="flex flex-col items-center">
         <div
-          className={`h-5 w-5 rounded-full border ${
-            state === "done"
-              ? "bg-black border-black"
-              : state === "current"
-              ? "bg-white border-black"
-              : "bg-white border-gray-300"
-          }`}
+          style={dotStyle}
+          className="h-5 w-5 rounded-full border-2"
         />
-        <div className="h-full w-px bg-gray-200" />
+        <div className="h-full w-px bg-slate-300" />
       </div>
+
       <div className="pb-6">
-        <p className="font-semibold">{title}</p>
-        <p className="text-sm text-gray-600 mt-1">{description}</p>
+        <p className="font-semibold text-slate-900">{title}</p>
+        <p className="mt-1 text-sm text-slate-600">{description}</p>
       </div>
     </div>
   );
 }
 
 function getStepState(campaign: Campaign, step: string) {
-  const order = ["invited", "accepted", "funded", "submitted", "approved", "completed"];
-  const currentIndex = order.indexOf(campaign.status || "invited");
+  const status = campaign.status as string | undefined;
+  const payoutStatus = campaign.payoutStatus as string | undefined;
+
+  if (step === "completed") {
+    if (status === "completed" || payoutStatus === "released") return "done";
+    return "upcoming";
+  }
+
+  const order = ["invited", "accepted", "funded", "submitted", "approved"];
+  const currentIndex = order.indexOf(status || "invited");
   const stepIndex = order.indexOf(step);
 
   if (stepIndex < currentIndex) return "done";
