@@ -5,21 +5,18 @@ import { sendEmail } from "../../../lib/postmark";
 
 export async function POST(req: Request) {
   try {
-    const { campaignId, submissionUrl } = await req.json();
+    const { campaignId } = await req.json();
 
-    if (!campaignId || !submissionUrl) {
-      return NextResponse.json(
-        { error: "Missing campaignId or submissionUrl" },
-        { status: 400 }
-      );
+    if (!campaignId || typeof campaignId !== "string") {
+      return NextResponse.json({ error: "Missing campaignId" }, { status: 400 });
     }
 
     const appUrl =
       process.env.NEXT_PUBLIC_APP_URL ||
       "https://creator-brand-marketplace-rho.vercel.app";
 
-    const brandCampaignUrl = `${appUrl}/brand/campaign/${campaignId}`;
-    const loginUrl = `${appUrl}/login`;
+    const creatorCampaignUrl = `${appUrl}/creator/campaign/${campaignId}`;
+    const adminReviewUrl = `${appUrl}/admin/review`;
 
     const campaignRef = adminDb.collection("campaigns").doc(campaignId);
     const campaignSnap = await campaignRef.get();
@@ -31,23 +28,21 @@ export async function POST(req: Request) {
     const campaign = campaignSnap.data() as any;
 
     await campaignRef.update({
-      creatorSubmittedArContentUrl: submissionUrl,
-      normalizedArContentUrl: submissionUrl.trim(),
-      status: "submitted",
-      completionStatus: "submitted",
-      brandApprovalStatus: "pending",
-      creatorSubmittedAt: FieldValue.serverTimestamp(),
+      status: "approved",
+      brandApprovalStatus: "approved",
+      payoutStatus: "ready_to_release",
+      brandApprovedAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     });
 
     await adminDb.collection("notifications").add({
-      userId: campaign.brandId,
-      role: "brand",
-      type: "campaign_submitted",
-      title: "Creator submitted content",
-      message: `${campaign.creatorHandle || "A creator"} submitted content for "${campaign.campaignTitle}".`,
+      userId: campaign.creatorId,
+      role: "creator",
+      type: "campaign_approved_creator",
+      title: "Submission approved",
+      message: `Your submission for "${campaign.campaignTitle}" was approved. Payout is pending release.`,
       campaignId,
-      isRead: false,
+      read: false,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     });
@@ -55,57 +50,48 @@ export async function POST(req: Request) {
     await adminDb.collection("notifications").add({
       userId: "admin",
       role: "admin",
-      type: "campaign_submitted_admin",
-      title: "Campaign ready for review",
-      message: `${campaign.creatorHandle || "A creator"} submitted "${campaign.campaignTitle}" for review.`,
+      type: "campaign_approved_admin",
+      title: "Brand approved submission",
+      message: `"${campaign.campaignTitle}" was approved by the brand and is ready for payout release.`,
       campaignId,
-      isRead: false,
+      read: false,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     });
 
-    const brandSnap = await adminDb
-      .collection("brands")
-      .doc(campaign.brandId)
-      .get();
+    const creatorSnap = await adminDb.collection("users").doc(campaign.creatorId).get();
+    const creator = creatorSnap.exists ? creatorSnap.data() : null;
+    const creatorEmail =
+      creator?.contactEmail || creator?.email || campaign.creatorEmail;
 
-    const brand = brandSnap.exists ? brandSnap.data() : null;
-    const brandEmail =
-      brand?.contactEmail || brand?.email || campaign.brandEmail || campaign.contactEmail;
-
-    if (brandEmail) {
+    if (creatorEmail) {
       await sendEmail({
-        to: brandEmail,
-        subject: "Creator submitted content",
+        to: creatorEmail,
+        subject: `Submission approved: ${campaign.campaignTitle || "Campaign"}`,
         htmlBody: `
-          <h2>Creator submitted content</h2>
-          <p><strong>${campaign.creatorHandle || "Your creator"}</strong> submitted content.</p>
-          <p><strong>Campaign:</strong> ${campaign.campaignTitle || ""}</p>
-          <p><strong>Submission URL:</strong> <a href="${submissionUrl}">${submissionUrl}</a></p>
-          <p>Please review and approve the campaign here:</p>
-          <p><a href="${brandCampaignUrl}">Review campaign submission</a></p>
-          <p><a href="${loginUrl}">Log in to Goshsha Marketplace</a></p>
+          <h2>Submission approved</h2>
+          <p>Your submission for <strong>${campaign.campaignTitle || "your campaign"}</strong> was approved.</p>
+          <p>Payout is now pending admin release.</p>
+          <p><a href="${creatorCampaignUrl}">View campaign</a></p>
         `,
         textBody: `
-Creator submitted content.
+Submission approved.
 
 Campaign: ${campaign.campaignTitle || ""}
-Submission URL: ${submissionUrl}
 
-Review and approve the campaign here:
-${brandCampaignUrl}
+Payout is now pending admin release.
 
-Log in:
-${loginUrl}
+View campaign:
+${creatorCampaignUrl}
         `.trim(),
       });
     }
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, adminReviewUrl });
   } catch (err: any) {
-    console.error("Submit campaign link error:", err);
+    console.error("Approve campaign submission error:", err);
     return NextResponse.json(
-      { error: err?.message || "Failed to submit campaign link" },
+      { error: err?.message || "Failed to approve campaign submission" },
       { status: 500 }
     );
   }
