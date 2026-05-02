@@ -148,7 +148,7 @@ export async function createCampaign(params: {
     campaignId: docRef.id,
   });
 
-  return docRef;
+  return docRef.id;
 }
 
 export async function getMarketplaceCreators() {
