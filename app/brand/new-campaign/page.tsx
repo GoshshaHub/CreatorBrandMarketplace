@@ -102,7 +102,7 @@ function NewCampaignPageContent() {
         throw new Error("Creator not loaded.");
       }
 
-      await createCampaign({
+      const campaignId = await createCampaign({
         brandId: user.uid,
         creatorId: creator.id,
         brandName,
@@ -116,28 +116,32 @@ function NewCampaignPageContent() {
         agreedPrice: Number(agreedPrice),
       });
 
-      const creatorEmail = creator.contactEmail || creator.email;
-
-      if (creatorEmail) {
-        const emailRes = await fetch("/api/send-campaign-invite", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            to: creatorEmail,
-            brandName,
-            campaignTitle,
-            productName,
-          }),
-        });
-
-        if (!emailRes.ok) {
-          const emailData = await emailRes.json().catch(() => null);
-          console.error("Invite email failed:", emailData);
-        }
+      if (!campaignId || typeof campaignId !== "string") {
+        throw new Error(
+          "Campaign was created, but campaignId was not returned. Please update createCampaign() to return docRef.id."
+        );
       }
 
+      const emailRes = await fetch("/api/send-campaign-invite", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          campaignId,
+        }),
+      });
+
+      const emailData = await emailRes.json().catch(() => null);
+
+      if (!emailRes.ok) {
+        console.error("Invite email failed:", emailData);
+        throw new Error(
+          emailData?.error || "Campaign created, but invite email failed."
+        );
+      }
+
+      setMessage("Campaign invite sent successfully.");
       router.push("/brand/dashboard");
     } catch (err: any) {
       setError(err.message || "Failed to create campaign.");
@@ -157,10 +161,7 @@ function NewCampaignPageContent() {
             </p>
           </div>
 
-          <Link
-            href="/brand/creators"
-            className="rounded-lg border px-4 py-2"
-          >
+          <Link href="/brand/creators" className="rounded-lg border px-4 py-2">
             Back to Creators
           </Link>
         </div>
