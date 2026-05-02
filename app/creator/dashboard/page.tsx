@@ -2,7 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDocs,
+  query,
+  updateDoc,
+  where,
+} from "firebase/firestore";
 import { db } from "../../../lib/firebase";
 import { useAuth } from "../../../lib/auth";
 
@@ -24,45 +31,99 @@ type Campaign = {
   contactEmail?: string;
 };
 
+type Notification = {
+  id: string;
+  userId?: string;
+  role?: string;
+  type?: string;
+  title?: string;
+  message?: string;
+  campaignId?: string;
+  read?: boolean;
+  createdAt?: any;
+};
+
 export default function CreatorDashboardPage() {
   const { user } = useAuth();
+
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function loadCampaigns() {
+    async function loadDashboard() {
       if (!user?.uid) return;
 
       try {
-        const q = query(
+        const campaignQuery = query(
           collection(db, "campaigns"),
           where("creatorId", "==", user.uid)
         );
 
-        const snapshot = await getDocs(q);
+        const campaignSnapshot = await getDocs(campaignQuery);
 
-        const list = snapshot.docs.map((doc) => ({
+        const campaignList = campaignSnapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         })) as Campaign[];
 
-        setCampaigns(list);
+        setCampaigns(campaignList);
+
+        const notificationQuery = query(
+          collection(db, "notifications"),
+          where("userId", "==", user.uid)
+        );
+
+        const notificationSnapshot = await getDocs(notificationQuery);
+
+        const notificationList = notificationSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as Notification[];
+
+        notificationList.sort((a, b) => {
+          const aTime = a.createdAt?.toMillis?.() || 0;
+          const bTime = b.createdAt?.toMillis?.() || 0;
+          return bTime - aTime;
+        });
+
+        setNotifications(notificationList);
       } catch (error) {
-        console.error("Error loading creator campaigns:", error);
+        console.error("Error loading creator dashboard:", error);
       } finally {
         setLoading(false);
       }
     }
 
-    loadCampaigns();
+    loadDashboard();
   }, [user?.uid]);
 
+  async function markNotificationRead(notificationId: string) {
+    try {
+      await updateDoc(doc(db, "notifications", notificationId), {
+        read: true,
+      });
+
+      setNotifications((current) =>
+        current.map((notification) =>
+          notification.id === notificationId
+            ? { ...notification, read: true }
+            : notification
+        )
+      );
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+    }
+  }
+
   const newInvites = campaigns.filter(
-    (c) => c.status === "invited" || c.status === "new"
+    (c) => c.status === "invited" || c.status === "new" || c.status === "accepted"
   ).length;
 
   const awaitingFunding = campaigns.filter(
-    (c) => c.fundingStatus === "awaiting" || c.fundingStatus === "awaiting_funding"
+    (c) =>
+      c.fundingStatus === "awaiting" ||
+      c.fundingStatus === "awaiting_funding"
   ).length;
 
   const readyToCreate = campaigns.filter(
@@ -72,6 +133,8 @@ export default function CreatorDashboardPage() {
   const liveCampaigns = campaigns.filter(
     (c) => c.status === "live" || c.status === "completed"
   ).length;
+
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
     <main className="min-h-screen bg-white text-slate-900">
@@ -123,6 +186,63 @@ export default function CreatorDashboardPage() {
             </p>
           </div>
         </div>
+
+        <section className="mb-10">
+          <div className="mb-4 flex items-center gap-3">
+            <h2 className="text-2xl font-bold text-slate-900">Updates</h2>
+
+            {unreadCount > 0 && (
+              <span className="rounded-full bg-slate-900 px-3 py-1 text-sm font-semibold text-white">
+                {unreadCount} unread
+              </span>
+            )}
+          </div>
+
+          {notifications.length === 0 ? (
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 text-slate-700">
+              No updates yet.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {notifications.map((notification) => (
+                <div
+                  key={notification.id}
+                  className="rounded-2xl border border-slate-300 bg-white p-5 shadow-sm"
+                >
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <h3 className="font-bold text-slate-900">
+                        {notification.title || "Update"}
+                      </h3>
+
+                      <p className="mt-2 text-slate-700">
+                        {notification.message || "You have a new update."}
+                      </p>
+
+                      {notification.campaignId && (
+                        <Link
+                          href={`/creator/campaign/${notification.campaignId}`}
+                          className="mt-4 inline-flex rounded-xl border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-100"
+                        >
+                          View Campaign
+                        </Link>
+                      )}
+                    </div>
+
+                    {!notification.read && (
+                      <button
+                        onClick={() => markNotificationRead(notification.id)}
+                        className="rounded-xl border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-100"
+                      >
+                        Mark as Read
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
 
         <section>
           <h2 className="mb-4 text-2xl font-bold text-slate-900">
