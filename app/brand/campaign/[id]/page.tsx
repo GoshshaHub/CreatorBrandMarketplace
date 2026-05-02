@@ -21,17 +21,22 @@ function Step({
         <div
           className={`h-5 w-5 rounded-full border ${
             state === "done"
-              ? "bg-black border-black"
+              ? "bg-slate-900 border-slate-900 dark:bg-white dark:border-white"
               : state === "current"
-              ? "bg-white border-black"
-              : "bg-white border-gray-300"
+              ? "bg-white border-slate-900 dark:bg-slate-900 dark:border-white"
+              : "bg-white border-slate-300 dark:bg-slate-800 dark:border-slate-600"
           }`}
         />
-        <div className="h-full w-px bg-gray-200" />
+        <div className="h-full w-px bg-slate-200 dark:bg-slate-700" />
       </div>
+
       <div className="pb-6">
-        <p className="font-semibold">{title}</p>
-        <p className="text-sm text-gray-600 mt-1">{description}</p>
+        <p className="font-semibold text-slate-900 dark:text-white">
+          {title}
+        </p>
+        <p className="text-sm mt-1 text-slate-600 dark:text-slate-300">
+          {description}
+        </p>
       </div>
     </div>
   );
@@ -161,11 +166,11 @@ export default function BrandCampaignDetailPage() {
 
   return (
     <ProtectedRoute allowedRole="brand">
-      <main className="min-h-screen p-6 max-w-4xl mx-auto">
+      <main className="min-h-screen p-6 max-w-4xl mx-auto bg-white text-slate-900 dark:bg-slate-950 dark:text-white">
         <div className="flex items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold">Campaign Details</h1>
-            <p className="mt-2 text-gray-600">
+            <p className="mt-2 text-slate-600 dark:text-slate-400">
               Follow the campaign from invite to completion.
             </p>
           </div>
@@ -181,22 +186,22 @@ export default function BrandCampaignDetailPage() {
 
         {campaign && (
           <div className="mt-8 grid gap-6 md:grid-cols-[1.2fr_0.8fr]">
-            <section className="rounded-2xl border p-6">
+            <section className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-900">
               <h2 className="text-2xl font-semibold">
                 {campaign.campaignTitle || "Untitled Campaign"}
               </h2>
 
-              <p className="mt-1 text-gray-600">
+              <p className="mt-1 text-slate-600 dark:text-slate-400">
                 Product: {campaign.productName || "—"}
               </p>
 
-              <p className="mt-4 text-gray-700">
+              <p className="mt-4 text-slate-700 dark:text-slate-300">
                 {campaign.campaignBrief || "No brief added."}
               </p>
 
-              <div className="mt-6 rounded-xl bg-gray-50 p-4">
+              <div className="mt-6 rounded-xl bg-slate-100 p-4 dark:bg-slate-800">
                 <p className="font-semibold">Next step</p>
-                <p className="mt-1 text-gray-700">{nextAction}</p>
+                <p className="mt-1 text-slate-700 dark:text-slate-300">{nextAction}</p>
               </div>
 
               <div className="mt-6 flex flex-wrap gap-3">
@@ -205,7 +210,7 @@ export default function BrandCampaignDetailPage() {
                     <button
                       onClick={handleFundCampaign}
                       disabled={working}
-                      className="rounded-lg bg-black text-white px-4 py-2"
+                      className="rounded-lg bg-slate-900 text-white px-4 py-2 hover:bg-slate-700 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
                     >
                       {working ? "Funding..." : "Fund Campaign"}
                     </button>
@@ -234,7 +239,7 @@ export default function BrandCampaignDetailPage() {
                 )}
               </div>
 
-              <div className="mt-8 grid gap-3 text-sm text-gray-700">
+              <div className="mt-8 grid gap-3 text-sm text-slate-700 dark:text-slate-300">
                 <p>Creator: {campaign.creatorHandle || "—"}</p>
                 <p>Agreed Price: ${campaign.agreedPrice ?? 0}</p>
                 <p>Goshsha Fee: ${campaign.platformFeeAmount ?? 5}</p>
