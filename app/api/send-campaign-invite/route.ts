@@ -27,14 +27,34 @@ export async function POST(req: Request) {
 
     const campaign = campaignSnap.data() as any;
 
-    const creatorSnap = await adminDb
+    if (!campaign.creatorId) {
+      return NextResponse.json(
+        { error: "Campaign is missing creatorId" },
+        { status: 400 }
+      );
+    }
+
+    const userCreatorSnap = await adminDb
+      .collection("users")
+      .doc(campaign.creatorId)
+      .get();
+
+    const legacyCreatorSnap = await adminDb
       .collection("creators")
       .doc(campaign.creatorId)
       .get();
 
-    const creator = creatorSnap.exists ? creatorSnap.data() : null;
+    const userCreator = userCreatorSnap.exists ? userCreatorSnap.data() : null;
+    const legacyCreator = legacyCreatorSnap.exists
+      ? legacyCreatorSnap.data()
+      : null;
+
     const creatorEmail =
-      creator?.contactEmail || creator?.email || campaign.creatorEmail;
+      userCreator?.contactEmail ||
+      userCreator?.email ||
+      legacyCreator?.contactEmail ||
+      legacyCreator?.email ||
+      campaign.creatorEmail;
 
     if (!creatorEmail) {
       return NextResponse.json(
@@ -48,9 +68,11 @@ export async function POST(req: Request) {
       role: "creator",
       type: "campaign_invite",
       title: "New campaign invite",
-      message: `${campaign.brandName || "A brand"} invited you to "${campaign.campaignTitle}".`,
+      message: `${campaign.brandName || "A brand"} invited you to "${
+        campaign.campaignTitle || "a campaign"
+      }".`,
       campaignId,
-      isRead: false,
+      read: false,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     });
@@ -64,8 +86,12 @@ export async function POST(req: Request) {
         <p><strong>Campaign:</strong> ${campaign.campaignTitle || ""}</p>
         <p><strong>Product:</strong> ${campaign.productName || ""}</p>
         <p>Please log in to review, accept, or decline the invite.</p>
-        <p><a href="${creatorCampaignUrl}">Open campaign invite</a></p>
-        <p><a href="${loginUrl}">Log in to Goshsha Marketplace</a></p>
+        <p>
+          <a href="${creatorCampaignUrl}" style="background:#0f172a;color:#ffffff;padding:10px 16px;border-radius:8px;text-decoration:none;display:inline-block;">
+            Open campaign invite
+          </a>
+        </p>
+        <p>If the button does not work, log in here: <a href="${loginUrl}">${loginUrl}</a></p>
       `,
       textBody: `
 You have a new campaign invite.
@@ -82,7 +108,7 @@ ${loginUrl}
       `.trim(),
     });
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, sentTo: creatorEmail });
   } catch (err: any) {
     console.error("Send campaign invite error:", err);
     return NextResponse.json(
