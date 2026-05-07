@@ -154,17 +154,33 @@ export default function AppHeader() {
             flexWrap: "wrap",
           }}
         >
-          <Link
-            href={user ? "/account" : "/"}
+        <Link
+          href={user ? "/account" : "/"}  
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            fontSize: "1.05rem",
+            fontWeight: 700,
+            color: "var(--text)",
+            letterSpacing: "-0.02em",
+          }}
+        >
+          <img
+            src="/goshsha-logo.png"
+            alt="Goshsha"
             style={{
-              fontSize: "1.05rem",
-              fontWeight: 700,
-              color: "var(--text)",
-              letterSpacing: "-0.02em",
+              width: "32px",
+              height: "32px",
+              borderRadius: "8px",
+              objectFit: "cover",
+              background: "white",
+              padding: "3px",
+              border: "1px solid var(--border)",
             }}
-          >
-            Goshsha Marketplace
-          </Link>
+          />
+          <span>Goshsha Marketplace</span>
+        </Link>
 
           {!loading && (
             <nav style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
