@@ -199,7 +199,7 @@ export default function BrandDashboardPage() {
           </div>
 
           <Link href="/brand/creators" className="rounded-lg border px-4 py-2">
-            Creator Marketplace
+            IRL Campaign Network
           </Link>
         </div>
 

@@ -3,7 +3,7 @@ import "./globals.css";
 import AppHeader from "../components/AppHeader";
 
 export const metadata: Metadata = {
-  title: "Goshsha Marketplace",
+  title: "Goshsha IRL Campaign Network",
   description: "Creator and brand dashboard for IRL AR campaigns.",
 };
 

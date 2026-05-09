@@ -70,7 +70,7 @@ export default function BrandCreatorProfilePage() {
             href="/brand/creators"
             className="mt-6 inline-flex rounded-xl border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-100"
           >
-            Back to Creator Marketplace
+            Back to IRL Creator Marketplace
           </Link>
         </div>
       </main>
@@ -101,7 +101,7 @@ export default function BrandCreatorProfilePage() {
             href="/brand/creators"
             className="rounded-xl border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-100"
           >
-            Back to Marketplace
+            Back to Network
           </Link>
         </div>
 

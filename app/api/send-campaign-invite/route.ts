@@ -63,19 +63,19 @@ export async function POST(req: Request) {
       );
     }
 
-    await adminDb.collection("notifications").add({
-      userId: campaign.creatorId,
-      role: "creator",
-      type: "campaign_invite",
-      title: "New campaign invite",
-      message: `${campaign.brandName || "A brand"} invited you to "${
-        campaign.campaignTitle || "a campaign"
-      }".`,
-      campaignId,
-      read: false,
-      createdAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
-    });
+    // await adminDb.collection("notifications").add({
+    //   userId: campaign.creatorId,
+    //   role: "creator",
+    //   type: "campaign_invite",
+    //   title: "New campaign invite",
+    //   message: `${campaign.brandName || "A brand"} invited you to "${
+    //     campaign.campaignTitle || "a campaign"
+    //   }".`,
+    //   campaignId,
+    //   read: false,
+    //   createdAt: FieldValue.serverTimestamp(),
+    //   updatedAt: FieldValue.serverTimestamp(),
+    // });
 
     await sendEmail({
       to: creatorEmail,

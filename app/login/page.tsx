@@ -85,7 +85,7 @@ export default function LoginPage() {
         <div className="app-card app-card-padding" style={{ marginTop: "40px" }}>
           <h1 className="app-title">Log In</h1>
           <p className="app-subtitle">
-            Access your Goshsha Marketplace account.
+            Access your Goshsha IRL Campaign Network account.
           </p>
 
           <form onSubmit={handleLogin} style={{ marginTop: "24px" }}>

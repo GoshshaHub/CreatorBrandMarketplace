@@ -160,7 +160,7 @@ export async function POST(req: Request) {
           <p><a href="${creatorCampaignUrl}">View campaign</a></p>
           <p>If you need to manage your payout account, go here:</p>
           <p><a href="${creatorProfileUrl}">Creator Profile</a></p>
-          <p><a href="${loginUrl}">Log in to Goshsha Marketplace</a></p>
+          <p><a href="${loginUrl}">Log in to Goshsha IRL Campaign Network</a></p>
         `,
         textBody: `
 Payout released.

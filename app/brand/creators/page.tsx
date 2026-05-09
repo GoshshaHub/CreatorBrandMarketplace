@@ -53,7 +53,7 @@ export default function BrandCreatorsPage() {
         <div className="mb-8 flex items-center justify-between">
           <div>
             <h1 className="text-4xl font-bold text-slate-900">
-              Creator Marketplace
+              IRL Campaign Network
             </h1>
             <p className="mt-2 text-base text-slate-600">
               Discover creators and invite the right fit for your next campaign.

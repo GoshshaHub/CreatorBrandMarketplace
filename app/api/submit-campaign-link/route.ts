@@ -84,7 +84,7 @@ export async function POST(req: Request) {
           <p><strong>Submission URL:</strong> <a href="${submissionUrl}">${submissionUrl}</a></p>
           <p>Please review and approve the campaign here:</p>
           <p><a href="${brandCampaignUrl}">Review campaign submission</a></p>
-          <p><a href="${loginUrl}">Log in to Goshsha Marketplace</a></p>
+          <p><a href="${loginUrl}">Log in to Goshsha IRL Campaign Network</a></p>
         `,
         textBody: `
 Creator submitted content.

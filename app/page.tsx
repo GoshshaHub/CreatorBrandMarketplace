@@ -71,9 +71,9 @@ export default function HomePage() {
     <main className="app-page">
       <div className="app-shell" style={{ maxWidth: "720px" }}>
         <div className="app-card app-card-padding" style={{ marginTop: "40px" }}>
-          <h1 className="app-title">Goshsha Marketplace</h1>
+          <h1 className="app-title">Goshsha IRL Campaign Network</h1>
           <p className="app-subtitle">
-            Creator and brand collaboration platform for live campaigns.
+            We activate creator influence at the physical shelf.
           </p>
 
           <div style={{ marginTop: "24px", display: "flex", gap: "12px", flexWrap: "wrap" }}>

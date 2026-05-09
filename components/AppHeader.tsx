@@ -106,7 +106,7 @@ export default function AppHeader() {
     if (user.roles.includes("brand")) {
       return [
         { href: "/brand/dashboard", label: "Dashboard" },
-        { href: "/brand/creators", label: "Creator Marketplace" },
+        { href: "/brand/creators", label: "IRL Campaign Creators Network" },
       ];
     }
 
@@ -179,7 +179,7 @@ export default function AppHeader() {
               border: "1px solid var(--border)",
             }}
           />
-          <span>Goshsha Marketplace</span>
+          <span>Goshsha IRL Campaign Network</span>
         </Link>
 
           {!loading && (

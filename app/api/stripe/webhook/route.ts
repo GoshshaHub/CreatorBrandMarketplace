@@ -118,7 +118,7 @@ export async function POST(req: Request) {
             <p><strong>Product:</strong> ${campaign.productName || ""}</p>
             <p>You can now create your post. When it is completed, submit your post URL here:</p>
             <p><a href="${creatorCampaignUrl}">Open campaign and submit URL</a></p>
-            <p><a href="${loginUrl}">Log in to Goshsha Marketplace</a></p>
+            <p><a href="${loginUrl}">Log in to Goshsha IRL Campaign Network</a></p>
           `,
           textBody: `
 Your campaign is funded.
