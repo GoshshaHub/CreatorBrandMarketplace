@@ -33,11 +33,14 @@ export default function CreatorProfilePage() {
   const [error, setError] = useState("");
 
   const [stripeAccountId, setStripeAccountId] = useState("");
-  const [stripeOnboardingComplete, setStripeOnboardingComplete] = useState(false);
+  const [stripeOnboardingComplete, setStripeOnboardingComplete] =
+    useState(false);
+  const [stripePayoutsEnabled, setStripePayoutsEnabled] = useState(false);
 
   useEffect(() => {
     async function fetchProfile() {
       const user = auth.currentUser;
+
       if (!user) {
         setLoading(false);
         return;
@@ -45,47 +48,55 @@ export default function CreatorProfilePage() {
 
       try {
         const userRef = doc(db, "users", user.uid);
-        const userSnap = await getDoc(userRef);
-
-        if (userSnap.exists()) {
-          const userData = userSnap.data();
-          setDisplayName(userData.displayName || "");
-          setHandle(userData.handle || "");
-          setBio(userData.bio || "");
-          setCategories(
-            Array.isArray(userData.categories)
-              ? userData.categories.join(", ")
-              : userData.categories || ""
-          );
-          setEmail(userData.email || user.email || "");
-          setStripeAccountId(userData.stripeAccountId || "");
-          setStripeOnboardingComplete(userData.stripeOnboardingComplete === true);
-        } else {
-          setEmail(user.email || "");
-        }
-
         const creatorRef = doc(db, "creators", user.uid);
-        const creatorSnap = await getDoc(creatorRef);
 
-        if (creatorSnap.exists()) {
-          const creatorData = creatorSnap.data();
+        const [userSnap, creatorSnap] = await Promise.all([
+          getDoc(userRef),
+          getDoc(creatorRef),
+        ]);
 
-          if (!displayName) setDisplayName(creatorData.displayName || "");
-          if (!handle) setHandle(creatorData.handle || "");
-          if (!bio) setBio(creatorData.bio || "");
-          if (!categories) {
-            setCategories(
-              Array.isArray(creatorData.categories)
-                ? creatorData.categories.join(", ")
-                : creatorData.categories || ""
-            );
-          }
-          if (!email) setEmail(creatorData.contactEmail || user.email || "");
-          if (!stripeAccountId) setStripeAccountId(creatorData.stripeAccountId || "");
-          if (!stripeOnboardingComplete) {
-            setStripeOnboardingComplete(creatorData.stripeOnboardingComplete === true);
-          }
-        }
+        const userData = userSnap.exists() ? userSnap.data() : {};
+        const creatorData = creatorSnap.exists() ? creatorSnap.data() : {};
+
+        const mergedDisplayName =
+          userData.displayName || creatorData.displayName || "";
+        const mergedHandle = userData.handle || creatorData.handle || "";
+        const mergedBio = userData.bio || creatorData.bio || "";
+
+        const mergedCategories =
+          userData.categories || creatorData.categories || "";
+
+        const mergedEmail =
+            userData.email ||
+            creatorData.email ||
+            creatorData.contactEmail ||
+            user.email ||
+            "";
+
+        const mergedStripeAccountId =
+          userData.stripeAccountId || creatorData.stripeAccountId || "";
+
+        const mergedStripeOnboardingComplete =
+          userData.stripeOnboardingComplete === true ||
+          creatorData.stripeOnboardingComplete === true;
+
+        const mergedStripePayoutsEnabled =
+          userData.stripePayoutsEnabled === true ||
+          creatorData.stripePayoutsEnabled === true;
+
+        setDisplayName(mergedDisplayName);
+        setHandle(mergedHandle);
+        setBio(mergedBio);
+        setEmail(mergedEmail);
+        setStripeAccountId(mergedStripeAccountId);
+        setStripeOnboardingComplete(mergedStripeOnboardingComplete);
+        setStripePayoutsEnabled(mergedStripePayoutsEnabled);
+
+        setCategories(
+          Array.isArray(mergedCategories)
+            ? mergedCategories.join(", ")
+            : mergedCategories || ""
+        );
       } catch (err: any) {
         setError(err.message || "We couldn’t load your profile.");
       } finally {
@@ -103,6 +114,7 @@ export default function CreatorProfilePage() {
     setError("");
 
     const user = auth.currentUser;
+
     if (!user) {
       setError("You must be logged in.");
       setSaving(false);
@@ -132,6 +144,12 @@ export default function CreatorProfilePage() {
       .map((item) => item.trim())
       .filter(Boolean);
 
+    const stripeData = {
+      stripeAccountId: stripeAccountId || null,
+      stripeOnboardingComplete,
+      stripePayoutsEnabled,
+    };
+
     try {
       await setDoc(
         doc(db, "users", user.uid),
@@ -141,8 +159,8 @@ export default function CreatorProfilePage() {
           bio: bio.trim(),
           categories: categoryArray,
           email: email.trim(),
-          stripeAccountId: stripeAccountId || null,
-          stripeOnboardingComplete,
+          roles: ["creator"],
+          ...stripeData,
           updatedAt: serverTimestamp(),
         },
         { merge: true }
@@ -156,9 +174,10 @@ export default function CreatorProfilePage() {
           handle: handle.trim(),
           bio: bio.trim(),
           categories: categoryArray,
-          contactEmail: email.trim(),
-          stripeAccountId: stripeAccountId || null,
-          stripeOnboardingComplete,
+          email: email.trim(),
+          contactEmail: email.trim(), // temporary backward compatibility
+          isMarketplaceVisible: true,
+          ...stripeData,
           updatedAt: serverTimestamp(),
         },
         { merge: true }
@@ -173,6 +192,11 @@ export default function CreatorProfilePage() {
   }
 
   async function handleConnectStripe() {
+    if (stripeOnboardingComplete && stripePayoutsEnabled) {
+      setMessage("Stripe payout account is already connected.");
+      return;
+    }
+
     setConnectingStripe(true);
     setMessage("");
     setError("");
@@ -180,6 +204,12 @@ export default function CreatorProfilePage() {
     try {
       const response = await fetch("/api/stripe/create-account", {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          existingAccountId: stripeAccountId || null,
+        }),
       });
 
       const data = await response.json();
@@ -189,6 +219,7 @@ export default function CreatorProfilePage() {
       }
 
       const user = auth.currentUser;
+
       if (!user) {
         throw new Error("You must be logged in.");
       }
@@ -199,6 +230,7 @@ export default function CreatorProfilePage() {
           {
             stripeAccountId: data.accountId,
             stripeOnboardingComplete: false,
+            stripePayoutsEnabled: false,
             updatedAt: serverTimestamp(),
           },
           { merge: true }
@@ -209,6 +241,7 @@ export default function CreatorProfilePage() {
           {
             stripeAccountId: data.accountId,
             stripeOnboardingComplete: false,
+            stripePayoutsEnabled: false,
             updatedAt: serverTimestamp(),
           },
           { merge: true }
@@ -229,7 +262,28 @@ export default function CreatorProfilePage() {
     }
   }
 
-  const initials = useMemo(() => getInitials(displayName, email), [displayName, email]);
+  const initials = useMemo(
+    () => getInitials(displayName, email),
+    [displayName, email]
+  );
+
+  const payoutStatusLabel =
+    stripeOnboardingComplete && stripePayoutsEnabled
+      ? "Connected"
+      : stripeOnboardingComplete
+      ? "Connected, payouts pending"
+      : stripeAccountId
+      ? "Onboarding started"
+      : "Not connected";
+
+  const payoutButtonLabel =
+    connectingStripe
+      ? "Opening Stripe..."
+      : stripeOnboardingComplete && stripePayoutsEnabled
+      ? "Stripe Connected"
+      : stripeAccountId
+      ? "Continue Stripe Setup"
+      : "Connect Payout Account";
 
   return (
     <ProtectedRoute allowedRole="creator">
@@ -264,30 +318,19 @@ export default function CreatorProfilePage() {
               }}
             >
               <form onSubmit={handleSave} className="app-card app-card-padding">
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    gap: "16px",
-                    alignItems: "flex-start",
-                    flexWrap: "wrap",
-                  }}
+                <h2
+                  className="app-text"
+                  style={{ margin: 0, fontSize: "1.5rem", fontWeight: 700 }}
                 >
-                  <div>
-                    <h2
-                      className="app-text"
-                      style={{ margin: 0, fontSize: "1.5rem", fontWeight: 700 }}
-                    >
-                      Public Profile
-                    </h2>
-                    <p
-                      className="app-text-soft"
-                      style={{ marginTop: "8px", marginBottom: 0 }}
-                    >
-                      These details help brands decide whether to invite you.
-                    </p>
-                  </div>
-                </div>
+                  Public Profile
+                </h2>
+
+                <p
+                  className="app-text-soft"
+                  style={{ marginTop: "8px", marginBottom: 0 }}
+                >
+                  These details help brands decide whether to invite you.
+                </p>
 
                 <div style={{ marginTop: "28px" }}>
                   <h3
@@ -302,31 +345,22 @@ export default function CreatorProfilePage() {
                       marginTop: "16px",
                       display: "grid",
                       gap: "16px",
-                      gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                      gridTemplateColumns:
+                        "repeat(auto-fit, minmax(240px, 1fr))",
                     }}
                   >
                     <div>
-                      <label
-                        className="app-text-soft"
-                        style={{ display: "block", marginBottom: "8px", fontWeight: 600 }}
-                      >
-                        Display Name
-                      </label>
+                      <label className="app-text-soft">Display Name</label>
                       <input
                         className="app-input"
                         value={displayName}
                         onChange={(e) => setDisplayName(e.target.value)}
-                        placeholder="Athena Yap"
+                        placeholder="Vanessa"
                       />
                     </div>
 
                     <div>
-                      <label
-                        className="app-text-soft"
-                        style={{ display: "block", marginBottom: "8px", fontWeight: 600 }}
-                      >
-                        Creator Handle
-                      </label>
+                      <label className="app-text-soft">Creator Handle</label>
                       <input
                         className="app-input"
                         value={handle}
@@ -347,28 +381,18 @@ export default function CreatorProfilePage() {
 
                   <div style={{ marginTop: "16px", display: "grid", gap: "16px" }}>
                     <div>
-                      <label
-                        className="app-text-soft"
-                        style={{ display: "block", marginBottom: "8px", fontWeight: 600 }}
-                      >
-                        Bio
-                      </label>
+                      <label className="app-text-soft">Bio</label>
                       <textarea
                         className="app-textarea"
                         rows={5}
                         value={bio}
                         onChange={(e) => setBio(e.target.value)}
-                        placeholder="Briefly describe the type of content you create, your audience, and what brands should know about your style."
+                        placeholder="Briefly describe your content style."
                       />
                     </div>
 
                     <div>
-                      <label
-                        className="app-text-soft"
-                        style={{ display: "block", marginBottom: "8px", fontWeight: 600 }}
-                      >
-                        Categories
-                      </label>
+                      <label className="app-text-soft">Categories</label>
                       <input
                         className="app-input"
                         value={categories}
@@ -394,12 +418,7 @@ export default function CreatorProfilePage() {
                   </h3>
 
                   <div style={{ marginTop: "16px" }}>
-                    <label
-                      className="app-text-soft"
-                      style={{ display: "block", marginBottom: "8px", fontWeight: 600 }}
-                    >
-                      Contact Email
-                    </label>
+                    <label className="app-text-soft">Contact Email</label>
                     <input
                       className="app-input"
                       value={email}
@@ -428,47 +447,40 @@ export default function CreatorProfilePage() {
                     }}
                   >
                     <p className="app-text-soft" style={{ margin: 0 }}>
-                      Connect your Stripe payout account so you can receive campaign payouts.
+                      Connect your Stripe payout account so you can receive
+                      campaign payouts.
                     </p>
 
                     <p className="app-text-faint" style={{ margin: 0 }}>
-                      Status:{" "}
-                      {stripeOnboardingComplete
-                        ? "Connected"
-                        : stripeAccountId
-                        ? "Onboarding started"
-                        : "Not connected"}
+                      Status: {payoutStatusLabel}
                     </p>
 
-                    <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-                      <button
-                        type="button"
-                        className="app-button"
-                        onClick={handleConnectStripe}
-                        disabled={connectingStripe}
-                      >
-                        {connectingStripe
-                          ? "Opening Stripe..."
-                          : stripeAccountId
-                          ? "Continue Stripe Setup"
-                          : "Connect Payout Account"}
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      className="app-button"
+                      onClick={handleConnectStripe}
+                      disabled={
+                        connectingStripe ||
+                        (stripeOnboardingComplete && stripePayoutsEnabled)
+                      }
+                    >
+                      {payoutButtonLabel}
+                    </button>
                   </div>
                 </div>
 
                 {(message || error) && (
                   <div style={{ marginTop: "24px" }}>
-                    {message ? (
+                    {message && (
                       <p style={{ margin: 0, color: "#16a34a", fontWeight: 600 }}>
                         {message}
                       </p>
-                    ) : null}
-                    {error ? (
+                    )}
+                    {error && (
                       <p style={{ margin: 0, color: "#dc2626", fontWeight: 600 }}>
                         {error}
                       </p>
-                    ) : null}
+                    )}
                   </div>
                 )}
 
@@ -502,11 +514,13 @@ export default function CreatorProfilePage() {
                 >
                   Profile Preview
                 </h2>
+
                 <p
                   className="app-text-soft"
                   style={{ marginTop: "8px", marginBottom: "20px" }}
                 >
-                  This is the overall impression brands will get from your profile.
+                  This is the overall impression brands will get from your
+                  profile.
                 </p>
 
                 <div
@@ -551,78 +565,34 @@ export default function CreatorProfilePage() {
                     </p>
                   </div>
 
-                  <div>
-                    <p
-                      className="app-text-soft"
-                      style={{ margin: 0, lineHeight: 1.6 }}
-                    >
-                      {bio || "Your creator bio will appear here."}
-                    </p>
-                  </div>
+                  <p className="app-text-soft" style={{ margin: 0, lineHeight: 1.6 }}>
+                    {bio || "Your creator bio will appear here."}
+                  </p>
 
                   <div>
-                    <p
-                      className="app-text-faint"
-                      style={{ margin: 0, fontWeight: 600 }}
-                    >
+                    <p className="app-text-faint" style={{ margin: 0, fontWeight: 600 }}>
                       Categories
                     </p>
-                    <div
-                      style={{
-                        marginTop: "10px",
-                        display: "flex",
-                        flexWrap: "wrap",
-                        gap: "8px",
-                      }}
-                    >
-                      {(categories || "")
-                        .split(",")
-                        .map((item) => item.trim())
-                        .filter(Boolean)
-                        .slice(0, 6)
-                        .map((item) => (
-                          <span key={item} className="app-pill">
-                            {item}
-                          </span>
-                        ))}
-
-                      {!categories.trim() ? (
-                        <span className="app-text-faint">No categories added yet</span>
-                      ) : null}
-                    </div>
+                    <p className="app-text-soft" style={{ marginTop: "8px" }}>
+                      {categories || "No categories added yet"}
+                    </p>
                   </div>
 
                   <div>
-                    <p
-                      className="app-text-faint"
-                      style={{ margin: 0, fontWeight: 600 }}
-                    >
+                    <p className="app-text-faint" style={{ margin: 0, fontWeight: 600 }}>
                       Contact
                     </p>
-                    <p
-                      className="app-text-soft"
-                      style={{ marginTop: "8px", marginBottom: 0 }}
-                    >
+                    <p className="app-text-soft" style={{ marginTop: "8px" }}>
                       {email || "No contact email added"}
                     </p>
                   </div>
 
                   <div>
-                    <p
-                      className="app-text-faint"
-                      style={{ margin: 0, fontWeight: 600 }}
-                    >
+                    <p className="app-text-faint" style={{ margin: 0, fontWeight: 600 }}>
                       Payout Account
                     </p>
-                    <p
-                      className="app-text-soft"
-                      style={{ marginTop: "8px", marginBottom: 0 }}
-                    >
-                      {stripeOnboardingComplete
-                        ? "Stripe connected"
-                        : stripeAccountId
-                        ? "Setup in progress"
-                        : "Not connected"}
+                    <p className="app-text-soft" style={{ marginTop: "8px" }}>
+                      {payoutStatusLabel}
                     </p>
                   </div>
                 </div>
