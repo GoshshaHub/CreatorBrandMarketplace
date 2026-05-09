@@ -22,9 +22,13 @@ type Campaign = {
   status?: string;
   fundingStatus?: string;
   completionStatus?: string;
+  payoutStatus?: string;
   payoutReleaseStatus?: string;
+  brandApprovalStatus?: string;
   totalViews?: number;
   agreedPrice?: number;
+  createdAt?: any;
+  updatedAt?: any;
 };
 
 type NotificationItem = {
@@ -32,10 +36,22 @@ type NotificationItem = {
   title?: string;
   message?: string;
   isRead?: boolean;
+  read?: boolean;
   campaignId?: string;
+  createdAt?: any;
 };
 
-function getCampaignDisplayStatus(campaign: any) {
+function getTimestamp(item: any) {
+  return (
+    item?.updatedAt?.toMillis?.() ||
+    (item?.updatedAt?.seconds ? item.updatedAt.seconds * 1000 : 0) ||
+    item?.createdAt?.toMillis?.() ||
+    (item?.createdAt?.seconds ? item.createdAt.seconds * 1000 : 0) ||
+    0
+  );
+}
+
+function getCampaignDisplayStatus(campaign: Campaign) {
   if (campaign.payoutStatus === "released") return "live";
   if (campaign.payoutReleaseStatus === "released") return "live";
   if (campaign.status === "completed") return "live";
@@ -48,7 +64,7 @@ function getCampaignDisplayStatus(campaign: any) {
   return "invited";
 }
 
-function getFundingDisplay(campaign: any) {
+function getFundingDisplay(campaign: Campaign) {
   if (
     campaign.payoutStatus === "released" ||
     campaign.payoutReleaseStatus === "released" ||
@@ -100,6 +116,14 @@ export default function BrandDashboardPage() {
     loadDashboard();
   }, []);
 
+  const sortedCampaigns = useMemo(() => {
+    return [...campaigns].sort((a, b) => getTimestamp(b) - getTimestamp(a));
+  }, [campaigns]);
+
+  const sortedNotifications = useMemo(() => {
+    return [...notifications].sort((a, b) => getTimestamp(b) - getTimestamp(a));
+  }, [notifications]);
+
   const invitedCount = useMemo(
     () => campaigns.filter((c) => c.status === "invited").length,
     [campaigns]
@@ -118,19 +142,28 @@ export default function BrandDashboardPage() {
       campaigns.filter(
         (c) =>
           c.fundingStatus === "funded" &&
+          c.status !== "completed" &&
           c.status !== "live" &&
-          c.completionStatus !== "live"
+          c.payoutStatus !== "released" &&
+          c.payoutReleaseStatus !== "released"
       ).length,
     [campaigns]
   );
 
   const liveCount = useMemo(
-    () => campaigns.filter((c) => c.status === "live").length,
+    () =>
+      campaigns.filter(
+        (c) =>
+          c.status === "live" ||
+          c.status === "completed" ||
+          c.payoutStatus === "released" ||
+          c.payoutReleaseStatus === "released"
+      ).length,
     [campaigns]
   );
 
   const unreadNotifications = useMemo(
-    () => notifications.filter((n) => !n.isRead),
+    () => notifications.filter((n) => !n.isRead && !n.read),
     [notifications]
   );
 
@@ -141,7 +174,9 @@ export default function BrandDashboardPage() {
 
       setNotifications((prev) =>
         prev.map((item) =>
-          item.id === notificationId ? { ...item, isRead: true } : item
+          item.id === notificationId
+            ? { ...item, isRead: true, read: true }
+            : item
         )
       );
     } catch (err: any) {
@@ -163,14 +198,9 @@ export default function BrandDashboardPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <Link
-              href="/brand/creators"
-              className="rounded-lg border px-4 py-2"
-            >
-              Creator Marketplace
-            </Link>
-          </div>
+          <Link href="/brand/creators" className="rounded-lg border px-4 py-2">
+            Creator Marketplace
+          </Link>
         </div>
 
         {error && <p className="mt-6 text-red-600">{error}</p>}
@@ -181,7 +211,10 @@ export default function BrandDashboardPage() {
           <>
             <div className="mt-8 grid gap-4 md:grid-cols-4">
               <StatCard label="New Invites" value={invitedCount} />
-              <StatCard label="Awaiting Funding" value={acceptedAwaitingFundingCount} />
+              <StatCard
+                label="Awaiting Funding"
+                value={acceptedAwaitingFundingCount}
+              />
               <StatCard label="In Progress" value={fundedInProgressCount} />
               <StatCard label="Live Campaigns" value={liveCount} />
             </div>
@@ -189,6 +222,7 @@ export default function BrandDashboardPage() {
             <section className="mt-10">
               <div className="flex items-center gap-3">
                 <h2 className="text-2xl font-semibold">Updates</h2>
+
                 {unreadNotifications.length > 0 && (
                   <span className="rounded-full bg-black px-3 py-1 text-sm text-white">
                     {unreadNotifications.length} unread
@@ -196,11 +230,11 @@ export default function BrandDashboardPage() {
                 )}
               </div>
 
-              {notifications.length === 0 ? (
+              {sortedNotifications.length === 0 ? (
                 <p className="mt-4 text-gray-600">No updates yet.</p>
               ) : (
                 <div className="mt-4 space-y-4">
-                  {notifications.map((item) => (
+                  {sortedNotifications.map((item) => (
                     <div
                       key={item.id}
                       className="rounded-2xl border p-5 flex items-start justify-between gap-4"
@@ -209,6 +243,7 @@ export default function BrandDashboardPage() {
                         <h3 className="font-semibold">
                           {item.title || "Notification"}
                         </h3>
+
                         <p className="mt-1 text-gray-700">
                           {item.message || ""}
                         </p>
@@ -225,7 +260,7 @@ export default function BrandDashboardPage() {
                         )}
                       </div>
 
-                      {!item.isRead && (
+                      {!item.isRead && !item.read && (
                         <button
                           onClick={() => handleMarkAsRead(item.id)}
                           disabled={workingNotificationId === item.id}
@@ -245,19 +280,13 @@ export default function BrandDashboardPage() {
             <section className="mt-10">
               <div className="flex items-center justify-between gap-4">
                 <h2 className="text-2xl font-semibold">Campaigns</h2>
-                <Link
-                  href="/brand/creators"
-                  className="rounded-lg bg-black px-4 py-2 text-white"
-                >
-                  Invite Creator
-                </Link>
               </div>
 
-              {campaigns.length === 0 ? (
+              {sortedCampaigns.length === 0 ? (
                 <p className="mt-4 text-gray-600">No campaigns yet.</p>
               ) : (
                 <div className="mt-4 space-y-4">
-                  {campaigns.map((campaign) => (
+                  {sortedCampaigns.map((campaign) => (
                     <div
                       key={campaign.id}
                       className="rounded-2xl border p-6 space-y-4"
@@ -267,16 +296,21 @@ export default function BrandDashboardPage() {
                           <h3 className="text-xl font-semibold">
                             {campaign.campaignTitle || "Untitled Campaign"}
                           </h3>
+
                           <p className="mt-1 text-gray-600">
                             Creator: {campaign.creatorHandle || "—"}
                           </p>
+
                           <p className="text-gray-600">
                             Product: {campaign.productName || "—"}
                           </p>
                         </div>
 
                         <div className="flex flex-col items-end gap-2">
-                          <StatusPill status={getCampaignDisplayStatus(campaign)} />
+                          <StatusPill
+                            status={getCampaignDisplayStatus(campaign)}
+                          />
+
                           <span className="text-sm text-gray-500">
                             Funding: {getFundingDisplay(campaign)}
                           </span>
@@ -284,9 +318,7 @@ export default function BrandDashboardPage() {
                       </div>
 
                       <div className="grid gap-3 md:grid-cols-4 text-sm text-gray-700">
-                        <p>
-                          Start: {campaign.deliveryStartDate || "Not set"}
-                        </p>
+                        <p>Start: {campaign.deliveryStartDate || "Not set"}</p>
                         <p>End: {campaign.deliveryEndDate || "Not set"}</p>
                         <p>Views: {campaign.totalViews ?? 0}</p>
                         <p>Budget: ${campaign.agreedPrice ?? 0}</p>
