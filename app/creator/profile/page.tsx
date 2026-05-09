@@ -455,17 +455,33 @@ export default function CreatorProfilePage() {
                       Status: {payoutStatusLabel}
                     </p>
 
-                    <button
-                      type="button"
-                      className="app-button"
-                      onClick={handleConnectStripe}
-                      disabled={
-                        connectingStripe ||
-                        (stripeOnboardingComplete && stripePayoutsEnabled)
-                      }
+                    {stripeOnboardingComplete ? (
+                    <div
+                        style={{
+                        border: "1px solid #16a34a",
+                        background: "#f0fdf4",
+                        color: "#166534",
+                        borderRadius: "14px",
+                        padding: "14px 16px",
+                        fontWeight: 700,
+                        textAlign: "center",
+                        }}
                     >
-                      {payoutButtonLabel}
+                        ✓ Stripe Connected
+                        <div style={{ marginTop: "6px", fontSize: "0.9rem", fontWeight: 500 }}>
+                        You are ready to receive campaign payouts.
+                        </div>
+                    </div>
+                    ) : (
+                    <button
+                        type="button"
+                        className="app-button"
+                        onClick={handleConnectStripe}
+                        disabled={connectingStripe}
+                    >
+                        {payoutButtonLabel}
                     </button>
+                    )}
                   </div>
                 </div>
 
