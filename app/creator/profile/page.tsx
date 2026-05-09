@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { auth, db } from "../../../lib/firebase";
+import { db } from "../../../lib/firebase";
+import { useAuth } from "../../../lib/auth";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import ProtectedRoute from "../../../components/ProtectedRoute";
 
@@ -19,6 +20,8 @@ function getInitials(name: string, email: string) {
 }
 
 export default function CreatorProfilePage() {
+  const { user, loading: authLoading } = useAuth();
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [connectingStripe, setConnectingStripe] = useState(false);
@@ -38,9 +41,9 @@ export default function CreatorProfilePage() {
   const [stripePayoutsEnabled, setStripePayoutsEnabled] = useState(false);
 
   useEffect(() => {
-    async function fetchProfile() {
-      const user = auth.currentUser;
+    if (authLoading) return;
 
+    async function fetchProfile() {
       if (!user) {
         setLoading(false);
         return;
@@ -60,18 +63,18 @@ export default function CreatorProfilePage() {
 
         const mergedDisplayName =
           userData.displayName || creatorData.displayName || "";
+
         const mergedHandle = userData.handle || creatorData.handle || "";
         const mergedBio = userData.bio || creatorData.bio || "";
-
         const mergedCategories =
           userData.categories || creatorData.categories || "";
 
         const mergedEmail =
-            userData.email ||
-            creatorData.email ||
-            creatorData.contactEmail ||
-            user.email ||
-            "";
+          userData.email ||
+          creatorData.email ||
+          creatorData.contactEmail ||
+          user.email ||
+          "";
 
         const mergedStripeAccountId =
           userData.stripeAccountId || creatorData.stripeAccountId || "";
@@ -105,15 +108,13 @@ export default function CreatorProfilePage() {
     }
 
     fetchProfile();
-  }, []);
+  }, [user?.uid, authLoading]);
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
     setMessage("");
     setError("");
-
-    const user = auth.currentUser;
 
     if (!user) {
       setError("You must be logged in.");
@@ -175,7 +176,7 @@ export default function CreatorProfilePage() {
           bio: bio.trim(),
           categories: categoryArray,
           email: email.trim(),
-          contactEmail: email.trim(), // temporary backward compatibility
+          contactEmail: email.trim(),
           isMarketplaceVisible: true,
           ...stripeData,
           updatedAt: serverTimestamp(),
@@ -217,8 +218,6 @@ export default function CreatorProfilePage() {
       if (!response.ok) {
         throw new Error(data.error || "Unable to start Stripe onboarding.");
       }
-
-      const user = auth.currentUser;
 
       if (!user) {
         throw new Error("You must be logged in.");
@@ -279,8 +278,6 @@ export default function CreatorProfilePage() {
   const payoutButtonLabel =
     connectingStripe
       ? "Opening Stripe..."
-      : stripeOnboardingComplete && stripePayoutsEnabled
-      ? "Stripe Connected"
       : stripeAccountId
       ? "Continue Stripe Setup"
       : "Connect Payout Account";
@@ -303,7 +300,7 @@ export default function CreatorProfilePage() {
             </Link>
           </div>
 
-          {loading ? (
+          {loading || authLoading ? (
             <p className="app-subtitle" style={{ marginTop: "24px" }}>
               Loading your profile...
             </p>
@@ -456,31 +453,37 @@ export default function CreatorProfilePage() {
                     </p>
 
                     {stripeOnboardingComplete ? (
-                    <div
+                      <div
                         style={{
-                        border: "1px solid #16a34a",
-                        background: "#f0fdf4",
-                        color: "#166534",
-                        borderRadius: "14px",
-                        padding: "14px 16px",
-                        fontWeight: 700,
-                        textAlign: "center",
+                          border: "1px solid #16a34a",
+                          background: "#f0fdf4",
+                          color: "#166534",
+                          borderRadius: "14px",
+                          padding: "14px 16px",
+                          fontWeight: 700,
+                          textAlign: "center",
                         }}
-                    >
+                      >
                         ✓ Stripe Connected
-                        <div style={{ marginTop: "6px", fontSize: "0.9rem", fontWeight: 500 }}>
-                        You are ready to receive campaign payouts.
+                        <div
+                          style={{
+                            marginTop: "6px",
+                            fontSize: "0.9rem",
+                            fontWeight: 500,
+                          }}
+                        >
+                          You are ready to receive campaign payouts.
                         </div>
-                    </div>
+                      </div>
                     ) : (
-                    <button
+                      <button
                         type="button"
                         className="app-button"
                         onClick={handleConnectStripe}
                         disabled={connectingStripe}
-                    >
+                      >
                         {payoutButtonLabel}
-                    </button>
+                      </button>
                     )}
                   </div>
                 </div>
