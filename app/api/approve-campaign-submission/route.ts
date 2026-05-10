@@ -13,7 +13,7 @@ export async function POST(req: Request) {
 
     const appUrl =
       process.env.NEXT_PUBLIC_APP_URL ||
-      "https://creator-brand-marketplace-rho.vercel.app";
+      "https://irl.goshsha.com";
 
     const creatorCampaignUrl = `${appUrl}/creator/campaign/${campaignId}`;
     const adminReviewUrl = `${appUrl}/admin/review`;

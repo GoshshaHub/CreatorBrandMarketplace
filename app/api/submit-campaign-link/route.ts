@@ -16,7 +16,7 @@ export async function POST(req: Request) {
 
     const appUrl =
       process.env.NEXT_PUBLIC_APP_URL ||
-      "https://creator-brand-marketplace-rho.vercel.app";
+      "https://irl.goshsha.com";
 
     const brandCampaignUrl = `${appUrl}/brand/campaign/${campaignId}`;
     const loginUrl = `${appUrl}/login`;
