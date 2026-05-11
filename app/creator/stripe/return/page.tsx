@@ -26,10 +26,27 @@ function CreatorStripeReturnContent() {
         }
 
         const response = await fetch(
-          `/api/stripe/account-status?accountId=${accountId}`
+          `/api/stripe/account-status?accountId=${encodeURIComponent(accountId)}`
         );
 
-        const data = await response.json();
+        const responseText = await response.text();
+
+        let data: any = {};
+
+        if (responseText) {
+          try {
+            data = JSON.parse(responseText);
+          } catch (parseError) {
+            console.error("Invalid JSON from account-status:", responseText);
+            throw new Error("Stripe status check returned an invalid server response.");
+          }
+        }
+
+        if (!response.ok) {
+          throw new Error(
+            data?.error || "Unable to verify Stripe account."
+          );
+        }
 
         if (!response.ok) {
           throw new Error(
