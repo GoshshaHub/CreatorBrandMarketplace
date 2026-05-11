@@ -1,15 +1,7 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
-import {
-  collection,
-  getDocs,
-  query,
-  serverTimestamp,
-  setDoc,
-  where,
-  doc,
-} from "firebase/firestore";
-import { db } from "../../../../lib/firebase";
+import { FieldValue } from "firebase-admin/firestore";
+import { adminDb } from "../../../../lib/firebase-admin";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
 
@@ -31,12 +23,10 @@ async function updateStripeAccountStatus(accountId: string) {
   const chargesEnabled = Boolean(account.charges_enabled);
   const payoutsEnabled = Boolean(account.payouts_enabled);
 
-  const usersQ = query(
-    collection(db, "users"),
-    where("stripeAccountId", "==", accountId)
-  );
-
-  const usersSnap = await getDocs(usersQ);
+  const usersSnap = await adminDb
+    .collection("users")
+    .where("stripeAccountId", "==", accountId)
+    .get();
 
   for (const userDoc of usersSnap.docs) {
     const uid = userDoc.id;
@@ -47,11 +37,11 @@ async function updateStripeAccountStatus(accountId: string) {
       stripeChargesEnabled: chargesEnabled,
       stripePayoutsEnabled: payoutsEnabled,
       stripeDetailsSubmitted: Boolean(account.details_submitted),
-      updatedAt: serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
     };
 
-    await setDoc(doc(db, "users", uid), updateData, { merge: true });
-    await setDoc(doc(db, "creators", uid), updateData, { merge: true });
+    await adminDb.collection("users").doc(uid).set(updateData, { merge: true });
+    await adminDb.collection("creators").doc(uid).set(updateData, { merge: true });
   }
 
   return NextResponse.json({
