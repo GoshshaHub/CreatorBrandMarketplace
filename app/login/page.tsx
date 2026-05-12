@@ -142,15 +142,15 @@ export default function LoginPage() {
             <div className="flex items-center gap-3">
               {/* <div className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br from-pink-500 via-orange-400 to-cyan-400 text-lg shadow-lg shadow-pink-500/15">
                 🌈
-              </div>
+              </div> */}
               <p className="text-base font-black tracking-tight sm:text-xl">
-                Goshsha IRL Campaign Network
-              </p> */}
+                The Real IRL Infleuncing Platform, not just making videos on site
+              </p>
             </div>
 
             <Link
               href="/signup"
-              className="rounded-2xl bg-gradient-to-r from-pink-500 via-rose-500 to-orange-400 px-5 py-3 text-sm font-white text-white shadow-lg shadow-pink-500/25 transition hover:translate-y-[-1px] hover:shadow-xl"
+              className="rounded-2xl bg-gradient-to-r from-pink-500 via-rose-500 to-orange-400 px-5 py-3 text-sm font-black text-white shadow-lg shadow-pink-500/25 transition hover:translate-y-[-1px] hover:shadow-xl"
             >
               Join Network
             </Link>
@@ -179,7 +179,7 @@ export default function LoginPage() {
             <div className="mt-8 grid gap-4 sm:grid-cols-2">
               <Link
                 href="/signup?role=brand"
-                className="group rounded-2xl bg-gradient-to-r from-pink-500 via-rose-500 to-orange-400 px-7 py-5 text-center text-base font-white text-white shadow-xl shadow-pink-500/20 transition hover:translate-y-[-2px] hover:shadow-2xl"
+                className="group rounded-2xl bg-gradient-to-r from-pink-500 via-rose-500 to-orange-400 px-7 py-5 text-center text-base font-black text-white shadow-xl shadow-pink-500/20 transition hover:translate-y-[-2px] hover:shadow-2xl"
               >
                 <span className="flex items-center justify-center gap-3">
                   I&apos;m a Brand{" "}
@@ -236,7 +236,7 @@ export default function LoginPage() {
             <div className="mb-5 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.22em] text-fuchsia-500 dark:text-fuchsia-200/80">
-                  The dangerous difference
+                  The powerful difference
                 </p>
                 <h2 className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">
                   Other platforms manage influence. Goshsha deploys it.
@@ -435,7 +435,7 @@ export default function LoginPage() {
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link
               href="/signup?role=brand"
-              className="rounded-2xl bg-gradient-to-r from-pink-500 via-rose-500 to-orange-400 px-7 py-4 text-sm font-white text-white shadow-lg shadow-pink-500/25 transition hover:translate-y-[-1px]"
+              className="rounded-2xl bg-gradient-to-r from-pink-500 via-rose-500 to-orange-400 px-7 py-4 text-sm font-white text-black shadow-lg shadow-pink-500/25 transition hover:translate-y-[-1px]"
             >
               Start a Brand Campaign
             </Link>
