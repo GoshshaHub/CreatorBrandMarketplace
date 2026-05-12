@@ -143,8 +143,11 @@ export default function LoginPage() {
               {/* <div className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br from-pink-500 via-orange-400 to-cyan-400 text-lg shadow-lg shadow-pink-500/15">
                 🌈
               </div> */}
+              <p className="text-base font-black tracking-tight sm:text-3xl">
+                The Real IRL creator infleunce where social influence activates directly from products.
+              </p>
               <p className="text-base font-black tracking-tight sm:text-xl">
-                The Real IRL Infleuncing Platform with your social campaign popping up from product. (Not just making videos on site)
+                Not just content creation. Real-world shopper activation
               </p>
             </div>
 
