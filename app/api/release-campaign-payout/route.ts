@@ -182,6 +182,67 @@ ${loginUrl}
       });
     }
 
+    const brandSnap = await adminDb
+      .collection("brands")
+      .doc(campaign.brandId)
+      .get();
+
+    const brand = brandSnap.exists ? brandSnap.data() : null;
+
+    const brandEmail =
+      brand?.contactEmail ||
+      brand?.email ||
+      campaign.contactEmail ||
+      campaign.brandEmail;
+
+    const brandCampaignUrl = `${appUrl}/brand/campaign/${campaignId}`;
+
+    if (brandEmail) {
+      await sendEmail({
+        to: brandEmail,
+        subject: `Campaign completed: ${campaign.campaignTitle || "Campaign"}`,
+        htmlBody: `
+          <h2>Campaign completed</h2>
+
+          <p>Your campaign is now live and marked as completed.</p>
+
+          <p><strong>Campaign:</strong> ${
+            campaign.campaignTitle || "Campaign"
+          }</p>
+
+          <p><strong>Creator:</strong> ${
+            campaign.creatorHandle || "Creator"
+          }</p>
+
+          <p><strong>Payout released:</strong> $${creatorPayoutAmount.toFixed(
+            2
+          )}</p>
+
+          <p>The creator payout has been successfully released through Stripe.</p>
+
+          <p><a href="${brandCampaignUrl}">View campaign</a></p>
+
+          <p><a href="${loginUrl}">Log in to Goshsha IRL Campaign Network</a></p>
+        `,
+        textBody: `
+Campaign completed.
+
+Campaign: ${campaign.campaignTitle || "Campaign"}
+Creator: ${campaign.creatorHandle || "Creator"}
+
+Payout released: $${creatorPayoutAmount.toFixed(2)}
+
+The creator payout has been successfully released through Stripe.
+
+View campaign:
+${brandCampaignUrl}
+
+Log in:
+${loginUrl}
+        `.trim(),
+      });
+    }
+    
     return NextResponse.json({
       ok: true,
       transferId: transfer.id,

@@ -87,6 +87,37 @@ ${creatorCampaignUrl}
       });
     }
 
+const adminEmail =
+  process.env.ADMIN_EMAIL ||
+  process.env.NEXT_PUBLIC_ADMIN_EMAIL ||
+  "athenaycp@gmail.com";
+
+if (adminEmail) {
+  await sendEmail({
+    to: adminEmail,
+    subject: `Payout ready to release: ${campaign.campaignTitle || "Campaign"}`,
+    htmlBody: `
+      <h2>Payout ready to release</h2>
+      <p>The brand approved the creator submission.</p>
+      <p><strong>Campaign:</strong> ${campaign.campaignTitle || "Campaign"}</p>
+      <p><strong>Product:</strong> ${campaign.productName || "Not listed"}</p>
+      <p>Please review and release the creator payout.</p>
+      <p><a href="${adminReviewUrl}">Open Admin Review</a></p>
+    `,
+    textBody: `
+Payout ready to release.
+
+The brand approved the creator submission.
+
+Campaign: ${campaign.campaignTitle || "Campaign"}
+Product: ${campaign.productName || "Not listed"}
+
+Open Admin Review:
+${adminReviewUrl}
+    `.trim(),
+  });
+}
+    
     return NextResponse.json({ ok: true, adminReviewUrl });
   } catch (err: any) {
     console.error("Approve campaign submission error:", err);
