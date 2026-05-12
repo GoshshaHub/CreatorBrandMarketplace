@@ -139,17 +139,15 @@ export default function LoginPage() {
       <section className="relative mx-auto grid min-h-screen max-w-7xl gap-8 px-5 py-5 sm:px-8 lg:grid-cols-[1.12fr_0.88fr] lg:px-10 lg:py-6">
         <div className="flex flex-col justify-between gap-8">
           <header className="flex items-center justify-between gap-4 border-b border-slate-200/70 pb-5 dark:border-white/10">
-            <div className="flex items-center gap-3">
-              {/* <div className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br from-pink-500 via-orange-400 to-cyan-400 text-lg shadow-lg shadow-pink-500/15">
-                🌈
-              </div> */}
-              <p className="text-base font-black tracking-tight sm:text-3xl">
-                The Real IRL creator infleunce where social influence activates directly from products.
-              </p>
-              <p className="text-base font-black tracking-tight sm:text-xl">
-                Not just content creation. Real-world shopper activation
-              </p>
-            </div>
+        <div className="max-w-6xl">
+          <p className="text-3xl font-black leading-tight tracking-tight text-[#0B1142] sm:text-5xl">
+            The Real IRL creator influence platform where social influence activates directly from products.
+          </p>
+
+          <p className="mt-3 text-base font-semibold text-[#0B1142]/70 sm:text-xl">
+            Not just content creation. Real-world shopper activation.
+          </p>
+        </div>
 
             <Link
               href="/signup"
