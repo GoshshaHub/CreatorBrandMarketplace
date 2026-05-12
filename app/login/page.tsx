@@ -144,7 +144,7 @@ export default function LoginPage() {
                 🌈
               </div> */}
               <p className="text-base font-black tracking-tight sm:text-xl">
-                The Real IRL Infleuncing Platform, not just making videos on site
+                The Real IRL Infleuncing Platform with your social campaign popping up from product. (Not just making videos on site)
               </p>
             </div>
 
