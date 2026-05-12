@@ -34,6 +34,13 @@ const comparisonRows = [
   },
 ];
 
+const quickStats = [
+  { label: "Minutes", sublabel: "to Launch", icon: "⏱" },
+  { label: "IRL Influence", sublabel: "at the Shelf", icon: "⌘" },
+  { label: "Active Purchase", sublabel: "Intent", icon: "♡" },
+  { label: "Measurable", sublabel: "Impact", icon: "▣" },
+];
+
 const brandBenefits = [
   "Launch campaigns without waiting weeks for agencies or third-party coordination.",
   "Respond to viral trends while the buying moment is still alive.",
@@ -110,96 +117,125 @@ export default function LoginPage() {
 
   if (checkingSession) {
     return (
-      <main className="min-h-screen bg-[#060712] px-4 py-10 text-white">
-        <div className="mx-auto max-w-xl rounded-[2rem] border border-white/10 bg-white/[0.06] p-8 shadow-2xl backdrop-blur">
-          <p className="text-sm text-white/70">Checking session...</p>
+      <main className="min-h-screen bg-[#fbfcff] px-4 py-10 text-[#0c1433] dark:bg-[#070817] dark:text-white">
+        <div className="mx-auto max-w-xl rounded-[2rem] border border-slate-200 bg-white p-8 shadow-xl dark:border-white/10 dark:bg-white/[0.06]">
+          <p className="text-sm text-slate-600 dark:text-white/70">
+            Checking session...
+          </p>
         </div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen overflow-hidden bg-[#060712] text-white">
-      <div className="pointer-events-none fixed inset-0 opacity-80">
-        <div className="absolute left-[-12rem] top-[-12rem] h-[32rem] w-[32rem] rounded-full bg-fuchsia-600/25 blur-3xl" />
-        <div className="absolute right-[-10rem] top-[8rem] h-[34rem] w-[34rem] rounded-full bg-cyan-500/20 blur-3xl" />
-        <div className="absolute bottom-[-16rem] left-[30%] h-[36rem] w-[36rem] rounded-full bg-amber-400/10 blur-3xl" />
+    <main className="min-h-screen overflow-hidden bg-[#fbfcff] text-[#0b1234] dark:bg-[#070817] dark:text-white">
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute left-[-14rem] top-[-18rem] h-[34rem] w-[34rem] rounded-full bg-fuchsia-300/35 blur-3xl dark:bg-fuchsia-600/20" />
+        <div className="absolute right-[-16rem] top-[6rem] h-[36rem] w-[36rem] rounded-full bg-orange-200/35 blur-3xl dark:bg-cyan-500/16" />
+        <div className="absolute bottom-[-18rem] left-[22%] h-[34rem] w-[34rem] rounded-full bg-cyan-100/70 blur-3xl dark:bg-amber-400/8" />
+        <div className="absolute inset-y-0 right-0 hidden w-[28rem] bg-[radial-gradient(circle,_rgba(236,72,153,0.20)_1px,_transparent_1px)] [background-size:18px_18px] opacity-40 sm:block dark:opacity-20" />
       </div>
 
-      <section className="relative mx-auto grid min-h-screen max-w-7xl gap-10 px-5 py-8 sm:px-8 lg:grid-cols-[1.12fr_0.88fr] lg:px-10 lg:py-10">
-        <div className="flex flex-col justify-between gap-10">
-          <header className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-lg font-black tracking-tight sm:text-2xl">Goshsha</p>
-              <p className="mt-1 text-xs font-semibold uppercase tracking-[0.26em] text-cyan-200/80">
-                IRL Campaign Network
+      <section className="relative mx-auto grid min-h-screen max-w-7xl gap-8 px-5 py-5 sm:px-8 lg:grid-cols-[1.12fr_0.88fr] lg:px-10 lg:py-6">
+        <div className="flex flex-col justify-between gap-8">
+          <header className="flex items-center justify-between gap-4 border-b border-slate-200/70 pb-5 dark:border-white/10">
+            <div className="flex items-center gap-3">
+              <div className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br from-pink-500 via-orange-400 to-cyan-400 text-lg shadow-lg shadow-pink-500/15">
+                🌈
+              </div>
+              <p className="text-base font-black tracking-tight sm:text-xl">
+                Goshsha IRL Campaign Network
               </p>
             </div>
 
             <Link
               href="/signup"
-              className="rounded-full border border-white/15 bg-white/10 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-black/20 transition hover:bg-white/15"
+              className="rounded-2xl bg-gradient-to-r from-pink-500 via-rose-500 to-orange-400 px-5 py-3 text-sm font-black text-white shadow-lg shadow-pink-500/25 transition hover:translate-y-[-1px] hover:shadow-xl"
             >
               Join Network
             </Link>
           </header>
 
-          <div className="max-w-4xl">
-            <div className="mb-6 inline-flex rounded-full border border-cyan-300/20 bg-cyan-300/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-cyan-100">
-              Built for brands operating at the speed of culture
+          <div className="max-w-4xl pt-4 lg:pt-6">
+            <div className="mb-6 inline-flex rounded-full border border-orange-200 bg-white/70 px-4 py-2 text-xs font-black uppercase tracking-[0.22em] text-orange-600 shadow-sm dark:border-orange-300/20 dark:bg-white/8 dark:text-orange-200">
+              Real influence. Real results. Real fast.
             </div>
 
-            <h1 className="text-5xl font-black tracking-[-0.06em] text-white sm:text-6xl lg:text-7xl xl:text-8xl">
-              Launch IRL creator campaigns in minutes — not months.
+            <h1 className="max-w-4xl text-5xl font-black leading-[0.96] tracking-[-0.06em] text-[#0b1234] sm:text-6xl lg:text-7xl">
+              Launch IRL creator campaigns in{" "}
+              <span className="bg-gradient-to-r from-pink-500 via-rose-500 to-orange-400 bg-clip-text text-transparent">
+                minutes
+              </span>{" "}
+              — not months.
             </h1>
 
-            <p className="mt-7 max-w-3xl text-lg leading-8 text-white/72 sm:text-xl">
+            <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-700 sm:text-xl dark:text-white/72">
               In today&apos;s social-media-driven world, fast execution can mean
-              millions. Goshsha helps brands activate creator influence instantly
-              at the aisle, where shoppers are already deciding what to buy.
+              millions. Goshsha helps brands activate creator influence
+              instantly at the aisle, where shoppers are already deciding what
+              to buy.
             </p>
 
-            <div className="mt-8 flex flex-wrap gap-3">
+            <div className="mt-8 grid gap-4 sm:grid-cols-2">
               <Link
                 href="/signup?role=brand"
-                className="rounded-full bg-white px-6 py-3 text-sm font-black text-[#070817] shadow-2xl shadow-cyan-500/20 transition hover:scale-[1.02]"
+                className="group rounded-2xl bg-gradient-to-r from-pink-500 via-rose-500 to-orange-400 px-7 py-5 text-center text-base font-black text-white shadow-xl shadow-pink-500/20 transition hover:translate-y-[-2px] hover:shadow-2xl"
               >
-                Launch as a Brand
+                <span className="flex items-center justify-center gap-3">
+                  I&apos;m a Brand{" "}
+                  <span className="text-2xl leading-none transition group-hover:translate-x-1">
+                    →
+                  </span>
+                </span>
+                <span className="mt-1 block text-xs font-semibold text-white/90">
+                  Launch Campaigns
+                </span>
               </Link>
+
               <Link
                 href="/signup?role=creator"
-                className="rounded-full border border-white/15 bg-white/10 px-6 py-3 text-sm font-black text-white transition hover:bg-white/15"
+                className="group rounded-2xl bg-gradient-to-r from-violet-100 via-fuchsia-100 to-orange-100 px-7 py-5 text-center text-base font-black text-violet-700 shadow-lg shadow-violet-500/10 ring-1 ring-violet-200/70 transition hover:translate-y-[-2px] hover:shadow-xl dark:from-white/12 dark:via-fuchsia-500/15 dark:to-orange-500/15 dark:text-white dark:ring-white/10"
               >
-                Join as a Creator
+                <span className="flex items-center justify-center gap-3">
+                  I&apos;m a Creator{" "}
+                  <span className="text-2xl leading-none transition group-hover:translate-x-1">
+                    →
+                  </span>
+                </span>
+                <span className="mt-1 block text-xs font-semibold text-violet-500 dark:text-white/80">
+                  Join the Network
+                </span>
               </Link>
             </div>
 
-            <div className="mt-10 grid gap-4 sm:grid-cols-3">
-              <div className="rounded-3xl border border-white/10 bg-white/[0.06] p-5 backdrop-blur">
-                <p className="text-3xl font-black">IRL</p>
-                <p className="mt-2 text-sm leading-6 text-white/65">
-                  Influence activated at the real-world buying moment.
-                </p>
-              </div>
-              <div className="rounded-3xl border border-white/10 bg-white/[0.06] p-5 backdrop-blur">
-                <p className="text-3xl font-black">Fast</p>
-                <p className="mt-2 text-sm leading-6 text-white/65">
-                  Campaigns that move with trends, not agency timelines.
-                </p>
-              </div>
-              <div className="rounded-3xl border border-white/10 bg-white/[0.06] p-5 backdrop-blur">
-                <p className="text-3xl font-black">Measurable</p>
-                <p className="mt-2 text-sm leading-6 text-white/65">
-                  Turn shelf attention into shopper engagement data.
-                </p>
-              </div>
+            <div className="mt-8 grid overflow-hidden rounded-2xl border border-slate-200 bg-white/90 shadow-sm backdrop-blur sm:grid-cols-4 dark:border-white/10 dark:bg-white/[0.06]">
+              {quickStats.map((stat, index) => (
+                <div
+                  key={stat.label}
+                  className={`flex items-center gap-3 p-4 ${
+                    index > 0
+                      ? "border-t border-slate-200 sm:border-l sm:border-t-0 dark:border-white/10"
+                      : ""
+                  }`}
+                >
+                  <span className="text-2xl text-pink-500">{stat.icon}</span>
+                  <div>
+                    <p className="text-xs font-black text-[#0b1234] dark:text-white">
+                      {stat.label}
+                    </p>
+                    <p className="text-xs text-slate-600 dark:text-white/60">
+                      {stat.sublabel}
+                    </p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
-          <section className="rounded-[2rem] border border-white/10 bg-white/[0.06] p-5 shadow-2xl shadow-black/20 backdrop-blur sm:p-6">
+          <section className="rounded-[2rem] border border-slate-200 bg-white/92 p-5 shadow-xl shadow-slate-200/60 backdrop-blur sm:p-6 dark:border-white/10 dark:bg-white/[0.06] dark:shadow-black/20">
             <div className="mb-5 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.22em] text-fuchsia-200/80">
+                <p className="text-xs font-bold uppercase tracking-[0.22em] text-fuchsia-500 dark:text-fuchsia-200/80">
                   The dangerous difference
                 </p>
                 <h2 className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">
@@ -208,21 +244,23 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div className="overflow-hidden rounded-3xl border border-white/10">
-              <div className="grid grid-cols-2 bg-white/10 text-xs font-black uppercase tracking-[0.18em] text-white/70">
-                <div className="border-r border-white/10 p-4">Agency / Feed Model</div>
+            <div className="overflow-hidden rounded-3xl border border-slate-200 dark:border-white/10">
+              <div className="grid grid-cols-2 bg-slate-50 text-xs font-black uppercase tracking-[0.18em] text-slate-500 dark:bg-white/10 dark:text-white/70">
+                <div className="border-r border-slate-200 p-4 dark:border-white/10">
+                  Agency / Feed Model
+                </div>
                 <div className="p-4">Goshsha IRL Campaign Network</div>
               </div>
 
               {comparisonRows.map((row) => (
                 <div
                   key={row.old}
-                  className="grid grid-cols-2 border-t border-white/10 text-sm leading-6"
+                  className="grid grid-cols-2 border-t border-slate-200 text-sm leading-6 dark:border-white/10"
                 >
-                  <div className="border-r border-white/10 bg-black/10 p-4 text-white/58">
+                  <div className="border-r border-slate-200 bg-white p-4 text-slate-500 dark:border-white/10 dark:bg-black/10 dark:text-white/58">
                     {row.old}
                   </div>
-                  <div className="bg-cyan-300/[0.06] p-4 font-semibold text-white">
+                  <div className="bg-gradient-to-r from-emerald-50 to-orange-50 p-4 font-semibold text-[#0b1234] dark:from-cyan-300/[0.06] dark:to-emerald-300/[0.06] dark:text-white">
                     {row.goshsha}
                   </div>
                 </div>
@@ -231,27 +269,29 @@ export default function LoginPage() {
           </section>
         </div>
 
-        <aside className="lg:sticky lg:top-8 lg:self-start">
-          <div className="rounded-[2rem] border border-white/12 bg-white/[0.08] p-5 shadow-2xl shadow-black/40 backdrop-blur-xl sm:p-7">
+        <aside className="lg:sticky lg:top-6 lg:self-start">
+          <div className="rounded-[2rem] border border-slate-200 bg-white/92 p-5 shadow-xl shadow-slate-200/70 backdrop-blur-xl sm:p-7 dark:border-white/12 dark:bg-white/[0.08] dark:shadow-black/40">
             <div className="mb-7">
-              <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-100/75">
+              <p className="text-xs font-black uppercase tracking-[0.22em] text-pink-500 dark:text-cyan-100/75">
                 Account Access
               </p>
-              <h2 className="mt-3 text-3xl font-black tracking-tight">Log in</h2>
-              <p className="mt-3 text-sm leading-6 text-white/65">
-                Access your Goshsha IRL Campaign Network dashboard.
+              <h2 className="mt-3 text-3xl font-black tracking-tight">
+                Welcome back
+              </h2>
+              <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-white/65">
+                Log in to your Goshsha IRL Campaign Network dashboard.
               </p>
             </div>
 
             <form onSubmit={handleLogin}>
               <div className="grid gap-4">
                 <div>
-                  <label className="mb-2 block text-sm font-bold text-white/75">
+                  <label className="mb-2 block text-sm font-bold text-[#0b1234] dark:text-white/75">
                     Email
                   </label>
                   <input
                     type="email"
-                    className="w-full rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-white outline-none transition placeholder:text-white/28 focus:border-cyan-300/60 focus:ring-4 focus:ring-cyan-300/10"
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-[#0b1234] outline-none transition placeholder:text-slate-400 focus:border-pink-400 focus:ring-4 focus:ring-pink-400/10 dark:border-white/10 dark:bg-black/25 dark:text-white dark:placeholder:text-white/28 dark:focus:border-cyan-300/60 dark:focus:ring-cyan-300/10"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@example.com"
@@ -259,12 +299,12 @@ export default function LoginPage() {
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-bold text-white/75">
+                  <label className="mb-2 block text-sm font-bold text-[#0b1234] dark:text-white/75">
                     Password
                   </label>
                   <input
                     type="password"
-                    className="w-full rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-white outline-none transition placeholder:text-white/28 focus:border-cyan-300/60 focus:ring-4 focus:ring-cyan-300/10"
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-[#0b1234] outline-none transition placeholder:text-slate-400 focus:border-pink-400 focus:ring-4 focus:ring-pink-400/10 dark:border-white/10 dark:bg-black/25 dark:text-white dark:placeholder:text-white/28 dark:focus:border-cyan-300/60 dark:focus:ring-cyan-300/10"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your password"
@@ -272,55 +312,56 @@ export default function LoginPage() {
                 </div>
               </div>
 
+              <button
+                type="button"
+                onClick={handleResetPassword}
+                className="mt-4 text-sm font-semibold text-violet-600 underline-offset-4 hover:underline dark:text-cyan-100"
+              >
+                Forgot password?
+              </button>
+
               {error && (
-                <p className="mt-4 rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+                <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-100">
                   {error}
                 </p>
               )}
 
               {message && (
-                <p className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+                <p className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-500/10 dark:text-emerald-100">
                   {message}
                 </p>
               )}
 
-              <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="rounded-2xl bg-white px-5 py-3 text-sm font-black text-[#070817] transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {loading ? "Logging In..." : "Log In"}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleResetPassword}
-                  className="rounded-2xl border border-white/12 bg-white/10 px-5 py-3 text-sm font-black text-white transition hover:bg-white/15"
-                >
-                  Reset Password
-                </button>
-              </div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="mt-6 w-full rounded-2xl bg-gradient-to-r from-pink-500 via-rose-500 to-orange-400 px-5 py-4 text-sm font-black text-white shadow-lg shadow-pink-500/20 transition hover:translate-y-[-1px] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {loading ? "Logging In..." : "Log In"}
+              </button>
             </form>
 
-            <div className="mt-6 rounded-3xl border border-white/10 bg-black/18 p-5">
-              <p className="text-sm text-white/70">
-                Need an account?{" "}
-                <Link href="/signup" className="font-black text-cyan-100 underline decoration-cyan-100/40 underline-offset-4">
-                  Sign up for access
+            <div className="mt-6 rounded-3xl border border-slate-200 bg-slate-50 p-5 text-center dark:border-white/10 dark:bg-black/18">
+              <p className="text-sm text-slate-600 dark:text-white/70">
+                Don&apos;t have an account?{" "}
+                <Link
+                  href="/signup"
+                  className="font-black text-pink-600 underline decoration-pink-300 underline-offset-4 dark:text-cyan-100 dark:decoration-cyan-100/40"
+                >
+                  Sign up
                 </Link>
               </p>
             </div>
           </div>
 
-          <div className="mt-5 rounded-[2rem] border border-white/10 bg-gradient-to-br from-fuchsia-500/15 to-cyan-500/10 p-6 shadow-2xl shadow-black/20 backdrop-blur">
-            <p className="text-xs font-black uppercase tracking-[0.22em] text-white/60">
+          <div className="mt-5 rounded-[2rem] border border-pink-100 bg-gradient-to-br from-pink-50 via-white to-orange-50 p-6 shadow-lg shadow-pink-100/50 backdrop-blur dark:border-white/10 dark:from-fuchsia-500/15 dark:to-cyan-500/10 dark:shadow-black/20">
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-orange-500 dark:text-white/60">
               Why now
             </p>
             <h3 className="mt-3 text-2xl font-black tracking-tight">
               Viral moments don&apos;t wait for agency timelines.
             </h3>
-            <p className="mt-3 text-sm leading-6 text-white/68">
+            <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-white/68">
               Culture moves in hours. Traditional influencer operations often
               move in weeks. Goshsha compresses the path from campaign idea to
               creator activation to real-world shelf influence.
@@ -331,40 +372,46 @@ export default function LoginPage() {
 
       <section className="relative mx-auto max-w-7xl px-5 pb-16 sm:px-8 lg:px-10">
         <div className="grid gap-5 lg:grid-cols-2">
-          <div className="rounded-[2rem] border border-white/10 bg-white/[0.06] p-7 shadow-2xl shadow-black/20 backdrop-blur">
-            <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-100/70">
+          <div className="rounded-[2rem] border border-slate-200 bg-white/92 p-7 shadow-xl shadow-slate-200/60 backdrop-blur dark:border-white/10 dark:bg-white/[0.06] dark:shadow-black/20">
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-pink-500 dark:text-cyan-100/70">
               For Brands
             </p>
             <h2 className="mt-3 text-3xl font-black tracking-tight">
               Turn retail shelves into agile creator-powered media.
             </h2>
-            <p className="mt-4 leading-7 text-white/66">
+            <p className="mt-4 leading-7 text-slate-600 dark:text-white/66">
               Launch faster, learn faster, and influence shoppers while they are
               standing in front of the product.
             </p>
             <div className="mt-6 grid gap-3">
               {brandBenefits.map((benefit) => (
-                <div key={benefit} className="rounded-2xl border border-white/10 bg-black/15 p-4 text-sm font-semibold leading-6 text-white/82">
+                <div
+                  key={benefit}
+                  className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm font-semibold leading-6 text-slate-700 dark:border-white/10 dark:bg-black/15 dark:text-white/82"
+                >
                   {benefit}
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="rounded-[2rem] border border-white/10 bg-white/[0.06] p-7 shadow-2xl shadow-black/20 backdrop-blur">
-            <p className="text-xs font-black uppercase tracking-[0.22em] text-fuchsia-100/70">
+          <div className="rounded-[2rem] border border-slate-200 bg-white/92 p-7 shadow-xl shadow-slate-200/60 backdrop-blur dark:border-white/10 dark:bg-white/[0.06] dark:shadow-black/20">
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-violet-500 dark:text-fuchsia-100/70">
               For Creators
             </p>
             <h2 className="mt-3 text-3xl font-black tracking-tight">
               Your influence should not disappear in the feed.
             </h2>
-            <p className="mt-4 leading-7 text-white/66">
+            <p className="mt-4 leading-7 text-slate-600 dark:text-white/66">
               Goshsha lets your content keep working inside real shopping
               moments, where your recommendations can shape what people buy.
             </p>
             <div className="mt-6 grid gap-3">
               {creatorBenefits.map((benefit) => (
-                <div key={benefit} className="rounded-2xl border border-white/10 bg-black/15 p-4 text-sm font-semibold leading-6 text-white/82">
+                <div
+                  key={benefit}
+                  className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm font-semibold leading-6 text-slate-700 dark:border-white/10 dark:bg-black/15 dark:text-white/82"
+                >
                   {benefit}
                 </div>
               ))}
@@ -372,28 +419,29 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <div className="mt-5 rounded-[2rem] border border-white/10 bg-white/[0.06] p-7 text-center shadow-2xl shadow-black/20 backdrop-blur sm:p-10">
-          <p className="text-xs font-black uppercase tracking-[0.22em] text-amber-100/70">
+        <div className="mt-5 rounded-[2rem] border border-slate-200 bg-white/92 p-7 text-center shadow-xl shadow-slate-200/60 backdrop-blur sm:p-10 dark:border-white/10 dark:bg-white/[0.06] dark:shadow-black/20">
+          <p className="text-xs font-black uppercase tracking-[0.22em] text-orange-500 dark:text-amber-100/70">
             The new retail equation
           </p>
           <h2 className="mx-auto mt-4 max-w-4xl text-3xl font-black tracking-tight sm:text-5xl">
-            Real-world shelf influence + instant campaign execution = a faster path to revenue.
+            Real-world shelf influence + instant campaign execution = a faster
+            path to revenue.
           </h2>
-          <p className="mx-auto mt-5 max-w-3xl text-base leading-8 text-white/66 sm:text-lg">
-            Goshsha is not another influencer marketplace. It is an on-demand IRL
-            retail activation engine for brands and creators who know that speed,
-            timing, and purchase intent can change everything.
+          <p className="mx-auto mt-5 max-w-3xl text-base leading-8 text-slate-600 sm:text-lg dark:text-white/66">
+            Goshsha is not another influencer marketplace. It is an on-demand
+            IRL retail activation engine for brands and creators who know that
+            speed, timing, and purchase intent can change everything.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link
               href="/signup?role=brand"
-              className="rounded-full bg-white px-6 py-3 text-sm font-black text-[#070817] transition hover:scale-[1.02]"
+              className="rounded-2xl bg-gradient-to-r from-pink-500 via-rose-500 to-orange-400 px-7 py-4 text-sm font-black text-white shadow-lg shadow-pink-500/25 transition hover:translate-y-[-1px]"
             >
               Start a Brand Campaign
             </Link>
             <Link
               href="/signup?role=creator"
-              className="rounded-full border border-white/15 bg-white/10 px-6 py-3 text-sm font-black text-white transition hover:bg-white/15"
+              className="rounded-2xl border border-violet-200 bg-violet-50 px-7 py-4 text-sm font-black text-violet-700 transition hover:bg-violet-100 dark:border-white/15 dark:bg-white/10 dark:text-white dark:hover:bg-white/15"
             >
               Become an IRL Creator
             </Link>
@@ -403,3 +451,4 @@ export default function LoginPage() {
     </main>
   );
 }
+
