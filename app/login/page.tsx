@@ -38,7 +38,7 @@ const quickStats = [
   { label: "Minutes", sublabel: "to Launch", icon: "⏱" },
   { label: "IRL Influence", sublabel: "at the Shelf", icon: "⌘" },
   { label: "Active Purchase", sublabel: "Intent", icon: "♡" },
-  { label: "Measurable", sublabel: "Impact", icon: "▣" },
+  { label: "Measurable In-Store Data", sublabel: "Impact", icon: "▣" },
 ];
 
 const brandBenefits = [
