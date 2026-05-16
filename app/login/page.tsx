@@ -128,7 +128,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen overflow-hidden bg-[#fbfcff] text-[#0b1234] dark:bg-[#070817] dark:text-white">
+    <main className="min-h-screen overflow-hidden bg-[#fbfcff] text-[#0b1234]">
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="absolute left-[-14rem] top-[-18rem] h-[34rem] w-[34rem] rounded-full bg-fuchsia-300/35 blur-3xl dark:bg-fuchsia-600/20" />
         <div className="absolute right-[-16rem] top-[6rem] h-[36rem] w-[36rem] rounded-full bg-orange-200/35 blur-3xl dark:bg-cyan-500/16" />
