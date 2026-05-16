@@ -141,7 +141,7 @@ export default function LoginPage() {
           <header className="flex items-center justify-between gap-4 border-b border-slate-200/70 pb-5 dark:border-white/10">
         <div className="max-w-6xl">
           <p className="text-3xl font-black leading-tight tracking-tight text-[#0B1142] sm:text-4xl">
-            The Real IRL influence that activates directly from products, where it matters
+            The Real IRL influence that activates where your shopper is with your products, where it matters
           </p>
 
           <p className="mt-3 text-base font-semibold text-[#0B1142]/70 sm:text-xl">
