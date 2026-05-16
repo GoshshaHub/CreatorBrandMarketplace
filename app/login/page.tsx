@@ -171,7 +171,7 @@ export default function LoginPage() {
             </h1>
 
             <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-700 sm:text-xl dark:text-white/72">
-              In today&apos;s social-media-driven world, fast execution can mean
+              In today&apos;s social-media-driven world, strategic fast execution can mean
               millions. Goshsha helps brands activate creator influence
               instantly at the aisle, where shoppers are already deciding what
               to buy.
