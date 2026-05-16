@@ -163,11 +163,11 @@ export default function LoginPage() {
             </div>
 
             <h1 className="max-w-4xl text-5xl font-black leading-[0.96] tracking-[-0.06em] text-[#0b1234] sm:text-6xl lg:text-7xl">
-              Launch IRL creator campaigns in{" "}
+              Launch IRL creator campaigns that{" "}
               <span className="bg-gradient-to-r from-pink-500 via-rose-500 to-orange-400 bg-clip-text text-transparent">
-                minutes
+                influence at the shelf
               </span>{" "}
-              — not months.
+              — not lost in feed.
             </h1>
 
             <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-700 sm:text-xl dark:text-white/72">
