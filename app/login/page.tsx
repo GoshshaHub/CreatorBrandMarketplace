@@ -356,15 +356,18 @@ export default function LoginPage() {
           </div>
 
 
-          <div className="mb-5 overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-xl shadow-slate-200/60">
+          <div className="mt-5 overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-xl shadow-slate-200/60">
             <video
               src="/elfTT.mov"
               autoPlay
               muted
               loop
               playsInline
-              className="w-full h-full object-cover"
-            />
+              controls
+              className="h-[320px] w-full object-cover"
+            >
+              Your browser does not support the video tag.
+            </video>
           </div>
 
 
