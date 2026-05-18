@@ -355,6 +355,19 @@ export default function LoginPage() {
             </div>
           </div>
 
+
+          <div className="mb-5 overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-xl shadow-slate-200/60">
+            <video
+              src="/elfTT.mov"
+              autoPlay
+              muted
+              loop
+              playsInline
+              className="w-full h-full object-cover"
+            />
+          </div>
+
+
           <div className="mt-5 rounded-[2rem] border border-pink-100 bg-gradient-to-br from-pink-50 via-white to-orange-50 p-6 shadow-lg shadow-pink-100/50 backdrop-blur dark:border-white/10 dark:from-fuchsia-500/15 dark:to-cyan-500/10 dark:shadow-black/20">
             <p className="text-xs font-black uppercase tracking-[0.22em] text-orange-500 dark:text-white/60">
               Why now
