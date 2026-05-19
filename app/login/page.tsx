@@ -117,9 +117,9 @@ export default function LoginPage() {
 
   if (checkingSession) {
     return (
-      <main className="min-h-screen bg-[#fbfcff] px-4 py-10 text-[#0c1433] dark:bg-[#070817] dark:text-white">
+      <main className="min-h-screen bg-[#fbfcff] px-4 py-10 text-[#0c1433] dark:bg-[#070817]">
         <div className="mx-auto max-w-xl rounded-[2rem] border border-slate-200 bg-white p-8 shadow-xl dark:border-white/10 dark:bg-white/[0.06]">
-          <p className="text-sm text-slate-600 dark:text-white/70">
+          <p className="text-sm text-slate-600">
             Checking session...
           </p>
         </div>
@@ -273,7 +273,7 @@ export default function LoginPage() {
         <aside className="lg:sticky lg:top-6 lg:self-start">
           <div className="rounded-[2rem] border border-slate-200 bg-white/92 p-5 shadow-xl shadow-slate-200/70 backdrop-blur-xl sm:p-7 dark:border-white/12 dark:bg-white/[0.08] dark:shadow-black/40">
             <div className="mb-7">
-              <p className="text-xs font-black uppercase tracking-[0.22em] text-pink-500 dark:text-cyan-100/75">
+              <p className="text-xs font-black uppercase tracking-[0.22em] text-pink-500">
                 Account Access
               </p>
               <h2 className="mt-3 text-3xl font-black tracking-tight">
@@ -287,7 +287,7 @@ export default function LoginPage() {
             <form onSubmit={handleLogin}>
               <div className="grid gap-4">
                 <div>
-                  <label className="mb-2 block text-sm font-bold text-[#0b1234] dark:text-white/75">
+                  <label className="mb-2 block text-sm font-bold text-[#0b1234]">
                     Email
                   </label>
                   <input
@@ -300,7 +300,7 @@ export default function LoginPage() {
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-bold text-[#0b1234] dark:text-white/75">
+                  <label className="mb-2 block text-sm font-bold text-[#0b1234]">
                     Password
                   </label>
                   <input
@@ -316,7 +316,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={handleResetPassword}
-                className="mt-4 text-sm font-semibold text-violet-600 underline-offset-4 hover:underline dark:text-cyan-100"
+                className="mt-4 text-sm font-semibold text-violet-600 underline-offset-4 hover:underline"
               >
                 Forgot password?
               </button>
@@ -343,7 +343,7 @@ export default function LoginPage() {
             </form>
 
             <div className="mt-6 rounded-3xl border border-slate-200 bg-slate-50 p-5 text-center dark:border-white/10 dark:bg-black/18">
-              <p className="text-sm text-slate-600 dark:text-white/70">
+              <p className="text-sm text-slate-600">
                 Don&apos;t have an account?{" "}
                 <Link
                   href="/signup"
@@ -370,18 +370,17 @@ export default function LoginPage() {
             </p>
           </div>
 
-          <div className="mt-5 overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-xl shadow-slate-200/60">
-            <div className="w-full h-[520px] flex items-center justify-center">
-              <video
-                src="/elfTT.mp4"
-                autoPlay
-                muted
-                loop
-                playsInline
-                preload="auto"
-                className="h-full object-contain"
-              />
-            </div>
+          <div className="relative mt-5 overflow-hidden rounded-[2rem] border border-slate-200 shadow-xl shadow-slate-200/60">
+            <video
+              src="/elfTT.mp4"
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="auto"
+              className="w-full h-[520px] object-cover"
+            />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/10 to-transparent" />
           </div>
 
 
