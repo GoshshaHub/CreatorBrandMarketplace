@@ -370,7 +370,7 @@ export default function LoginPage() {
             </p>
           </div>
 
-          <div className="relative mt-5 overflow-hidden rounded-[2rem] border border-slate-200 shadow-xl shadow-slate-200/60">
+          <div className="mt-5 overflow-hidden rounded-[2rem] border border-slate-200 shadow-xl shadow-slate-200/60">
             <video
               src="/elfTT.mp4"
               autoPlay
@@ -378,9 +378,8 @@ export default function LoginPage() {
               loop
               playsInline
               preload="auto"
-              className="w-full h-[700px] object-cover"
+              className="w-full h-[700px] object-cover object-center"
             />
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/10 to-transparent" />
           </div>
 
 
