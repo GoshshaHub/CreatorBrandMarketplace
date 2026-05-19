@@ -1,10 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
-import { db } from "../../../lib/firebase";
+import { db, storage } from "../../../lib/firebase";
 import { useAuth } from "../../../lib/auth";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import {
+  ref,
+  uploadBytes,
+  getDownloadURL,
+} from "firebase/storage";
 import ProtectedRoute from "../../../components/ProtectedRoute";
 
 function getInitials(name: string, email: string) {
@@ -19,6 +25,17 @@ function getInitials(name: string, email: string) {
   return source.slice(0, 2).toUpperCase();
 }
 
+function normalizeProfileUrl(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    return trimmed;
+  }
+
+  return `https://${trimmed}`;
+}
+
 export default function CreatorProfilePage() {
   const { user, loading: authLoading } = useAuth();
 
@@ -28,9 +45,14 @@ export default function CreatorProfilePage() {
 
   const [displayName, setDisplayName] = useState("");
   const [handle, setHandle] = useState("");
+  const [profileUrl, setProfileUrl] = useState("");
   const [bio, setBio] = useState("");
   const [categories, setCategories] = useState("");
   const [email, setEmail] = useState("");
+
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState("");
+  const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
+  const [profilePhotoPreview, setProfilePhotoPreview] = useState("");
 
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -65,6 +87,9 @@ export default function CreatorProfilePage() {
           userData.displayName || creatorData.displayName || "";
 
         const mergedHandle = userData.handle || creatorData.handle || "";
+        const mergedProfileUrl =
+          userData.profileUrl || creatorData.profileUrl || "";
+
         const mergedBio = userData.bio || creatorData.bio || "";
         const mergedCategories =
           userData.categories || creatorData.categories || "";
@@ -75,6 +100,9 @@ export default function CreatorProfilePage() {
           creatorData.contactEmail ||
           user.email ||
           "";
+
+        const mergedProfilePhotoUrl =
+          userData.profilePhotoUrl || creatorData.profilePhotoUrl || "";
 
         const mergedStripeAccountId =
           userData.stripeAccountId || creatorData.stripeAccountId || "";
@@ -89,8 +117,10 @@ export default function CreatorProfilePage() {
 
         setDisplayName(mergedDisplayName);
         setHandle(mergedHandle);
+        setProfileUrl(mergedProfileUrl);
         setBio(mergedBio);
         setEmail(mergedEmail);
+        setProfilePhotoUrl(mergedProfilePhotoUrl);
         setStripeAccountId(mergedStripeAccountId);
         setStripeOnboardingComplete(mergedStripeOnboardingComplete);
         setStripePayoutsEnabled(mergedStripePayoutsEnabled);
@@ -109,6 +139,34 @@ export default function CreatorProfilePage() {
 
     fetchProfile();
   }, [user?.uid, authLoading]);
+
+  function handleProfilePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setError("Please upload an image file.");
+      return;
+    }
+
+    setProfilePhotoFile(file);
+    setProfilePhotoPreview(URL.createObjectURL(file));
+    setError("");
+  }
+
+  async function uploadProfilePhoto() {
+    if (!user || !profilePhotoFile) return profilePhotoUrl;
+
+    const extension = profilePhotoFile.name.split(".").pop() || "jpg";
+    const photoRef = ref(
+      storage,
+      `creator-profile-photos/${user.uid}/profile.${extension}`
+    );
+
+    await uploadBytes(photoRef, profilePhotoFile);
+    return await getDownloadURL(photoRef);
+  }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -145,6 +203,8 @@ export default function CreatorProfilePage() {
       .map((item) => item.trim())
       .filter(Boolean);
 
+    const normalizedProfileUrl = normalizeProfileUrl(profileUrl);
+
     const stripeData = {
       stripeAccountId: stripeAccountId || null,
       stripeOnboardingComplete,
@@ -152,17 +212,25 @@ export default function CreatorProfilePage() {
     };
 
     try {
+      const uploadedPhotoUrl = await uploadProfilePhoto();
+
+      const sharedProfileData = {
+        displayName: displayName.trim(),
+        handle: handle.trim(),
+        profileUrl: normalizedProfileUrl,
+        bio: bio.trim(),
+        categories: categoryArray,
+        email: email.trim(),
+        profilePhotoUrl: uploadedPhotoUrl || "",
+        ...stripeData,
+        updatedAt: serverTimestamp(),
+      };
+
       await setDoc(
         doc(db, "users", user.uid),
         {
-          displayName: displayName.trim(),
-          handle: handle.trim(),
-          bio: bio.trim(),
-          categories: categoryArray,
-          email: email.trim(),
+          ...sharedProfileData,
           roles: ["creator"],
-          ...stripeData,
-          updatedAt: serverTimestamp(),
         },
         { merge: true }
       );
@@ -171,19 +239,16 @@ export default function CreatorProfilePage() {
         doc(db, "creators", user.uid),
         {
           userId: user.uid,
-          displayName: displayName.trim(),
-          handle: handle.trim(),
-          bio: bio.trim(),
-          categories: categoryArray,
-          email: email.trim(),
+          ...sharedProfileData,
           contactEmail: email.trim(),
           isMarketplaceVisible: true,
-          ...stripeData,
-          updatedAt: serverTimestamp(),
         },
         { merge: true }
       );
 
+      setProfilePhotoUrl(uploadedPhotoUrl || "");
+      setProfilePhotoPreview("");
+      setProfilePhotoFile(null);
       setMessage("Profile updated successfully.");
     } catch (err: any) {
       setError(err.message || "We couldn’t save your profile.");
@@ -266,6 +331,9 @@ export default function CreatorProfilePage() {
     [displayName, email]
   );
 
+  const visiblePhotoUrl = profilePhotoPreview || profilePhotoUrl;
+  const clickableProfileUrl = normalizeProfileUrl(profileUrl);
+
   const payoutStatusLabel =
     stripeOnboardingComplete && stripePayoutsEnabled
       ? "Connected"
@@ -315,25 +383,69 @@ export default function CreatorProfilePage() {
               }}
             >
               <form onSubmit={handleSave} className="app-card app-card-padding">
-                <h2
-                  className="app-text"
-                  style={{ margin: 0, fontSize: "1.5rem", fontWeight: 700 }}
-                >
+                <h2 className="app-text" style={{ margin: 0, fontSize: "1.5rem", fontWeight: 700 }}>
                   Public Profile
                 </h2>
 
-                <p
-                  className="app-text-soft"
-                  style={{ marginTop: "8px", marginBottom: 0 }}
-                >
+                <p className="app-text-soft" style={{ marginTop: "8px", marginBottom: 0 }}>
                   These details help brands decide whether to invite you.
                 </p>
 
                 <div style={{ marginTop: "28px" }}>
-                  <h3
-                    className="app-text"
-                    style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700 }}
-                  >
+                  <h3 className="app-text" style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700 }}>
+                    Profile Photo
+                  </h3>
+
+                  <div style={{ marginTop: "16px", display: "flex", gap: "16px", alignItems: "center", flexWrap: "wrap" }}>
+                    <div
+                      style={{
+                        width: "84px",
+                        height: "84px",
+                        borderRadius: "999px",
+                        overflow: "hidden",
+                        border: "1px solid var(--border)",
+                        background: "var(--surface)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontWeight: 700,
+                      }}
+                    >
+                      {visiblePhotoUrl ? (
+                        <img
+                          src={visiblePhotoUrl}
+                          alt="Creator profile"
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                          }}
+                        />
+                      ) : (
+                        initials
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="app-button-secondary" style={{ cursor: "pointer", display: "inline-flex" }}>
+                        Upload Profile Picture
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleProfilePhotoChange}
+                          style={{ display: "none" }}
+                        />
+                      </label>
+
+                      <p className="app-text-faint" style={{ marginTop: "8px", marginBottom: 0 }}>
+                        Recommended: square image, clear face or creator logo.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ marginTop: "28px" }}>
+                  <h3 className="app-text" style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700 }}>
                     Basic Information
                   </h3>
 
@@ -342,8 +454,7 @@ export default function CreatorProfilePage() {
                       marginTop: "16px",
                       display: "grid",
                       gap: "16px",
-                      gridTemplateColumns:
-                        "repeat(auto-fit, minmax(240px, 1fr))",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
                     }}
                   >
                     <div>
@@ -366,13 +477,23 @@ export default function CreatorProfilePage() {
                       />
                     </div>
                   </div>
+
+                  <div style={{ marginTop: "16px" }}>
+                    <label className="app-text-soft">Social Profile Link</label>
+                    <input
+                      className="app-input"
+                      value={profileUrl}
+                      onChange={(e) => setProfileUrl(e.target.value)}
+                      placeholder="https://www.tiktok.com/@yourhandle"
+                    />
+                    <p className="app-text-faint" style={{ marginTop: "8px", marginBottom: 0 }}>
+                      Add your TikTok, Instagram, YouTube, or creator portfolio link.
+                    </p>
+                  </div>
                 </div>
 
                 <div style={{ marginTop: "28px" }}>
-                  <h3
-                    className="app-text"
-                    style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700 }}
-                  >
+                  <h3 className="app-text" style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700 }}>
                     About Your Content
                   </h3>
 
@@ -396,10 +517,7 @@ export default function CreatorProfilePage() {
                         onChange={(e) => setCategories(e.target.value)}
                         placeholder="beauty, skincare, fragrance, lifestyle"
                       />
-                      <p
-                        className="app-text-faint"
-                        style={{ marginTop: "8px", marginBottom: 0 }}
-                      >
+                      <p className="app-text-faint" style={{ marginTop: "8px", marginBottom: 0 }}>
                         Separate categories with commas.
                       </p>
                     </div>
@@ -407,10 +525,7 @@ export default function CreatorProfilePage() {
                 </div>
 
                 <div style={{ marginTop: "28px" }}>
-                  <h3
-                    className="app-text"
-                    style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700 }}
-                  >
+                  <h3 className="app-text" style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700 }}>
                     Contact
                   </h3>
 
@@ -426,26 +541,13 @@ export default function CreatorProfilePage() {
                 </div>
 
                 <div style={{ marginTop: "28px" }}>
-                  <h3
-                    className="app-text"
-                    style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700 }}
-                  >
+                  <h3 className="app-text" style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700 }}>
                     Payout Setup
                   </h3>
 
-                  <div
-                    className="app-muted-card"
-                    style={{
-                      marginTop: "16px",
-                      padding: "18px",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "12px",
-                    }}
-                  >
+                  <div className="app-muted-card" style={{ marginTop: "16px", padding: "18px", display: "flex", flexDirection: "column", gap: "12px" }}>
                     <p className="app-text-soft" style={{ margin: 0 }}>
-                      Connect your Stripe payout account so you can receive
-                      campaign payouts.
+                      Connect your Stripe payout account so you can receive campaign payouts.
                     </p>
 
                     <p className="app-text-faint" style={{ margin: 0 }}>
@@ -465,23 +567,12 @@ export default function CreatorProfilePage() {
                         }}
                       >
                         ✓ Stripe Connected
-                        <div
-                          style={{
-                            marginTop: "6px",
-                            fontSize: "0.9rem",
-                            fontWeight: 500,
-                          }}
-                        >
+                        <div style={{ marginTop: "6px", fontSize: "0.9rem", fontWeight: 500 }}>
                           You are ready to receive campaign payouts.
                         </div>
                       </div>
                     ) : (
-                      <button
-                        type="button"
-                        className="app-button"
-                        onClick={handleConnectStripe}
-                        disabled={connectingStripe}
-                      >
+                      <button type="button" className="app-button" onClick={handleConnectStripe} disabled={connectingStripe}>
                         {payoutButtonLabel}
                       </button>
                     )}
@@ -490,16 +581,8 @@ export default function CreatorProfilePage() {
 
                 {(message || error) && (
                   <div style={{ marginTop: "24px" }}>
-                    {message && (
-                      <p style={{ margin: 0, color: "#16a34a", fontWeight: 600 }}>
-                        {message}
-                      </p>
-                    )}
-                    {error && (
-                      <p style={{ margin: 0, color: "#dc2626", fontWeight: 600 }}>
-                        {error}
-                      </p>
-                    )}
+                    {message && <p style={{ margin: 0, color: "#16a34a", fontWeight: 600 }}>{message}</p>}
+                    {error && <p style={{ margin: 0, color: "#dc2626", fontWeight: 600 }}>{error}</p>}
                   </div>
                 )}
 
@@ -523,39 +606,22 @@ export default function CreatorProfilePage() {
                 </div>
               </form>
 
-              <aside
-                className="app-card app-card-padding"
-                style={{ position: "sticky", top: "96px" }}
-              >
-                <h2
-                  className="app-text"
-                  style={{ margin: 0, fontSize: "1.25rem", fontWeight: 700 }}
-                >
+              <aside className="app-card app-card-padding" style={{ position: "sticky", top: "96px" }}>
+                <h2 className="app-text" style={{ margin: 0, fontSize: "1.25rem", fontWeight: 700 }}>
                   Profile Preview
                 </h2>
 
-                <p
-                  className="app-text-soft"
-                  style={{ marginTop: "8px", marginBottom: "20px" }}
-                >
-                  This is the overall impression brands will get from your
-                  profile.
+                <p className="app-text-soft" style={{ marginTop: "8px", marginBottom: "20px" }}>
+                  This is the overall impression brands will get from your profile.
                 </p>
 
-                <div
-                  className="app-muted-card"
-                  style={{
-                    padding: "20px",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "16px",
-                  }}
-                >
+                <div className="app-muted-card" style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
                   <div
                     style={{
-                      width: "64px",
-                      height: "64px",
+                      width: "76px",
+                      height: "76px",
                       borderRadius: "999px",
+                      overflow: "hidden",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -566,22 +632,45 @@ export default function CreatorProfilePage() {
                       color: "var(--text)",
                     }}
                   >
-                    {initials}
+                    {visiblePhotoUrl ? (
+                      <img
+                        src={visiblePhotoUrl}
+                        alt="Creator profile preview"
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                        }}
+                      />
+                    ) : (
+                      initials
+                    )}
                   </div>
 
                   <div>
-                    <p
-                      className="app-text"
-                      style={{ margin: 0, fontWeight: 700, fontSize: "1.1rem" }}
-                    >
+                    <p className="app-text" style={{ margin: 0, fontWeight: 700, fontSize: "1.1rem" }}>
                       {displayName || "Your Name"}
                     </p>
-                    <p
-                      className="app-text-soft"
-                      style={{ marginTop: "6px", marginBottom: 0 }}
-                    >
-                      {handle || "@yourhandle"}
-                    </p>
+
+                    {clickableProfileUrl ? (
+                      <a
+                        href={clickableProfileUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="app-text-soft"
+                        style={{
+                          display: "inline-block",
+                          marginTop: "6px",
+                          textDecoration: "underline",
+                        }}
+                      >
+                        {handle || "@yourhandle"}
+                      </a>
+                    ) : (
+                      <p className="app-text-soft" style={{ marginTop: "6px", marginBottom: 0 }}>
+                        {handle || "@yourhandle"}
+                      </p>
+                    )}
                   </div>
 
                   <p className="app-text-soft" style={{ margin: 0, lineHeight: 1.6 }}>
