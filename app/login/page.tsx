@@ -158,7 +158,7 @@ export default function LoginPage() {
           </header>
 
           <div className="max-w-4xl pt-4 lg:pt-6">
-            <div className="mb-6 inline-flex rounded-full border border-orange-200 bg-white/70 px-4 py-2 text-xs font-black uppercase tracking-[0.22em] text-orange-600 shadow-sm dark:border-orange-300/20 dark:bg-white/8 dark:text-orange-200">
+            <div className="mb-6 inline-flex rounded-full border border-orange-200 bg-white/70 px-4 py-2 text-xs font-black uppercase tracking-[0.22em] text-orange-600 shadow-sm dark:border-orange-300/20 dark:bg-white/8">
               Real influence. Real results. Real fast.
             </div>
 
@@ -195,7 +195,7 @@ export default function LoginPage() {
 
               <Link
                 href="/signup?role=creator"
-                className="group rounded-2xl bg-gradient-to-r from-violet-100 via-fuchsia-100 to-orange-100 px-7 py-5 text-center text-base font-black text-violet-700 shadow-lg shadow-violet-500/10 ring-1 ring-violet-200/70 transition hover:translate-y-[-2px] hover:shadow-xl dark:from-white/12 dark:via-fuchsia-500/15 dark:to-orange-500/15 dark:text-white dark:ring-white/10"
+                className="group rounded-2xl bg-gradient-to-r from-violet-100 via-fuchsia-100 to-orange-100 px-7 py-5 text-center text-base font-black text-violet-700 shadow-lg shadow-violet-500/10 ring-1 ring-violet-200/70 transition hover:translate-y-[-2px] hover:shadow-xl dark:from-white/12 dark:via-fuchsia-500/15 dark:to-orange-500/15 dark:ring-white/10"
               >
                 <span className="flex items-center justify-center gap-3">
                   I&apos;m a Creator{" "}
@@ -203,7 +203,7 @@ export default function LoginPage() {
                     →
                   </span>
                 </span>
-                <span className="mt-1 block text-xs font-semibold text-violet-500 dark:text-white/80">
+                <span className="mt-1 block text-xs font-semibold text-violet-500">
                   Join the Network
                 </span>
               </Link>
@@ -221,10 +221,10 @@ export default function LoginPage() {
                 >
                   <span className="text-2xl text-pink-500">{stat.icon}</span>
                   <div>
-                    <p className="text-xs font-black text-[#0b1234] dark:text-white">
+                    <p className="text-xs font-black text-[#0b1234]">
                       {stat.label}
                     </p>
-                    <p className="text-xs text-slate-600 dark:text-white/60">
+                    <p className="text-xs text-slate-600">
                       {stat.sublabel}
                     </p>
                   </div>
@@ -236,7 +236,7 @@ export default function LoginPage() {
           <section className="rounded-[2rem] border border-slate-200 bg-white/92 p-5 shadow-xl shadow-slate-200/60 backdrop-blur sm:p-6 dark:border-white/10 dark:bg-white/[0.06] dark:shadow-black/20">
             <div className="mb-5 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.22em] text-fuchsia-500 dark:text-fuchsia-200/80">
+                <p className="text-xs font-bold uppercase tracking-[0.22em] text-fuchsia-500">
                   The powerful difference
                 </p>
                 <h2 className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">
@@ -246,7 +246,7 @@ export default function LoginPage() {
             </div>
 
             <div className="overflow-hidden rounded-3xl border border-slate-200 dark:border-white/10">
-              <div className="grid grid-cols-2 bg-slate-50 text-xs font-black uppercase tracking-[0.18em] text-slate-500 dark:bg-white/10 dark:text-white/70">
+              <div className="grid grid-cols-2 bg-slate-50 text-xs font-black uppercase tracking-[0.18em] text-slate-500 dark:bg-white/10">
                 <div className="border-r border-slate-200 p-4 dark:border-white/10">
                   Agency / Feed Model
                 </div>
@@ -258,10 +258,10 @@ export default function LoginPage() {
                   key={row.old}
                   className="grid grid-cols-2 border-t border-slate-200 text-sm leading-6 dark:border-white/10"
                 >
-                  <div className="border-r border-slate-200 bg-white p-4 text-slate-500 dark:border-white/10 dark:bg-black/10 dark:text-white/58">
+                  <div className="border-r border-slate-200 bg-white p-4 text-slate-500 dark:border-white/10 dark:bg-black/10">
                     {row.old}
                   </div>
-                  <div className="bg-gradient-to-r from-emerald-50 to-orange-50 p-4 font-semibold text-[#0b1234] dark:from-cyan-300/[0.06] dark:to-emerald-300/[0.06] dark:text-white">
+                  <div className="bg-gradient-to-r from-emerald-50 to-orange-50 p-4 font-semibold text-[#0b1234] dark:from-cyan-300/[0.06] dark:to-emerald-300/[0.06]">
                     {row.goshsha}
                   </div>
                 </div>
@@ -279,7 +279,7 @@ export default function LoginPage() {
               <h2 className="mt-3 text-3xl font-black tracking-tight">
                 Welcome back
               </h2>
-              <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-white/65">
+              <p className="mt-3 text-sm leading-6 text-slate-600">
                 Log in to your Goshsha IRL Campaign Network dashboard.
               </p>
             </div>
@@ -292,7 +292,7 @@ export default function LoginPage() {
                   </label>
                   <input
                     type="email"
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-[#0b1234] outline-none transition placeholder:text-slate-400 focus:border-pink-400 focus:ring-4 focus:ring-pink-400/10 dark:border-white/10 dark:bg-black/25 dark:text-white dark:placeholder:text-white/28 dark:focus:border-cyan-300/60 dark:focus:ring-cyan-300/10"
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-[#0b1234] outline-none transition placeholder:text-slate-400 focus:border-pink-400 focus:ring-4 focus:ring-pink-400/10 dark:border-white/10 dark:bg-black/25 dark:placeholder:text-white/28 dark:focus:border-cyan-300/60 dark:focus:ring-cyan-300/10"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@example.com"
@@ -305,7 +305,7 @@ export default function LoginPage() {
                   </label>
                   <input
                     type="password"
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-[#0b1234] outline-none transition placeholder:text-slate-400 focus:border-pink-400 focus:ring-4 focus:ring-pink-400/10 dark:border-white/10 dark:bg-black/25 dark:text-white dark:placeholder:text-white/28 dark:focus:border-cyan-300/60 dark:focus:ring-cyan-300/10"
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-[#0b1234] outline-none transition placeholder:text-slate-400 focus:border-pink-400 focus:ring-4 focus:ring-pink-400/10 dark:border-white/10 dark:bg-black/25 dark:placeholder:text-white/28 dark:focus:border-cyan-300/60 dark:focus:ring-cyan-300/10"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your password"
@@ -322,13 +322,13 @@ export default function LoginPage() {
               </button>
 
               {error && (
-                <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-100">
+                <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-400/20 dark:bg-red-500/10">
                   {error}
                 </p>
               )}
 
               {message && (
-                <p className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-500/10 dark:text-emerald-100">
+                <p className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-500/10">
                   {message}
                 </p>
               )}
@@ -347,7 +347,7 @@ export default function LoginPage() {
                 Don&apos;t have an account?{" "}
                 <Link
                   href="/signup"
-                  className="font-black text-pink-600 underline decoration-pink-300 underline-offset-4 dark:text-cyan-100 dark:decoration-cyan-100/40"
+                  className="font-black text-pink-600 underline decoration-pink-300 underline-offset-4 dark:decoration-cyan-100/40"
                 >
                   Sign up
                 </Link>
@@ -403,7 +403,7 @@ export default function LoginPage() {
               {brandBenefits.map((benefit) => (
                 <div
                   key={benefit}
-                  className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm font-semibold leading-6 text-slate-700 dark:border-white/10 dark:bg-black/15 dark:text-white/82"
+                  className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm font-semibold leading-6 text-slate-700 dark:border-white/10 dark:bg-black/15"
                 >
                   {benefit}
                 </div>
@@ -426,7 +426,7 @@ export default function LoginPage() {
               {creatorBenefits.map((benefit) => (
                 <div
                   key={benefit}
-                  className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm font-semibold leading-6 text-slate-700 dark:border-white/10 dark:bg-black/15 dark:text-white/82"
+                  className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm font-semibold leading-6 text-slate-700 dark:border-white/10 dark:bg-black/15"
                 >
                   {benefit}
                 </div>
@@ -457,7 +457,7 @@ export default function LoginPage() {
             </Link>
             <Link
               href="/signup?role=creator"
-              className="rounded-2xl border border-violet-200 bg-violet-50 px-7 py-4 text-sm font-black text-violet-700 transition hover:bg-violet-100 dark:border-white/15 dark:bg-white/10 dark:text-white dark:hover:bg-white/15"
+              className="rounded-2xl border border-violet-200 bg-violet-50 px-7 py-4 text-sm font-black text-violet-700 transition hover:bg-violet-100 dark:border-white/15 dark:bg-white/10 dark:hover:bg-white/15"
             >
               Become an IRL Creator
             </Link>
