@@ -378,7 +378,7 @@ export default function LoginPage() {
               loop
               playsInline
               preload="auto"
-              className="w-full h-[520px] object-cover"
+              className="w-full h-[700px] object-cover"
             />
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/10 to-transparent" />
           </div>
