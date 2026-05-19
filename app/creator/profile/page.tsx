@@ -1,16 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { db, storage } from "../../../lib/firebase";
 import { useAuth } from "../../../lib/auth";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
-import {
-  ref,
-  uploadBytes,
-  getDownloadURL,
-} from "firebase/storage";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import ProtectedRoute from "../../../components/ProtectedRoute";
 
 function getInitials(name: string, email: string) {
@@ -38,6 +33,8 @@ function normalizeProfileUrl(value: string) {
 
 export default function CreatorProfilePage() {
   const { user, loading: authLoading } = useAuth();
+
+  const profilePhotoInputRef = useRef<HTMLInputElement | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -87,10 +84,12 @@ export default function CreatorProfilePage() {
           userData.displayName || creatorData.displayName || "";
 
         const mergedHandle = userData.handle || creatorData.handle || "";
+
         const mergedProfileUrl =
           userData.profileUrl || creatorData.profileUrl || "";
 
         const mergedBio = userData.bio || creatorData.bio || "";
+
         const mergedCategories =
           userData.categories || creatorData.categories || "";
 
@@ -153,12 +152,14 @@ export default function CreatorProfilePage() {
     setProfilePhotoFile(file);
     setProfilePhotoPreview(URL.createObjectURL(file));
     setError("");
+    setMessage("Profile picture selected. Click Save Profile to publish it.");
   }
 
   async function uploadProfilePhoto() {
     if (!user || !profilePhotoFile) return profilePhotoUrl;
 
     const extension = profilePhotoFile.name.split(".").pop() || "jpg";
+
     const photoRef = ref(
       storage,
       `creator-profile-photos/${user.uid}/profile.${extension}`
@@ -246,6 +247,7 @@ export default function CreatorProfilePage() {
         { merge: true }
       );
 
+      setProfileUrl(normalizedProfileUrl);
       setProfilePhotoUrl(uploadedPhotoUrl || "");
       setProfilePhotoPreview("");
       setProfilePhotoFile(null);
@@ -326,6 +328,18 @@ export default function CreatorProfilePage() {
     }
   }
 
+  function handleProfileUrlPrompt() {
+    const nextUrl = window.prompt(
+      "Add or update this creator's TikTok, Instagram, YouTube, or portfolio link:",
+      profileUrl
+    );
+
+    if (nextUrl !== null) {
+      setProfileUrl(nextUrl);
+      setMessage("Social link updated. Click Save Profile to publish it.");
+    }
+  }
+
   const initials = useMemo(
     () => getInitials(displayName, email),
     [displayName, email]
@@ -383,69 +397,25 @@ export default function CreatorProfilePage() {
               }}
             >
               <form onSubmit={handleSave} className="app-card app-card-padding">
-                <h2 className="app-text" style={{ margin: 0, fontSize: "1.5rem", fontWeight: 700 }}>
+                <h2
+                  className="app-text"
+                  style={{ margin: 0, fontSize: "1.5rem", fontWeight: 700 }}
+                >
                   Public Profile
                 </h2>
 
-                <p className="app-text-soft" style={{ marginTop: "8px", marginBottom: 0 }}>
+                <p
+                  className="app-text-soft"
+                  style={{ marginTop: "8px", marginBottom: 0 }}
+                >
                   These details help brands decide whether to invite you.
                 </p>
 
                 <div style={{ marginTop: "28px" }}>
-                  <h3 className="app-text" style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700 }}>
-                    Profile Photo
-                  </h3>
-
-                  <div style={{ marginTop: "16px", display: "flex", gap: "16px", alignItems: "center", flexWrap: "wrap" }}>
-                    <div
-                      style={{
-                        width: "84px",
-                        height: "84px",
-                        borderRadius: "999px",
-                        overflow: "hidden",
-                        border: "1px solid var(--border)",
-                        background: "var(--surface)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontWeight: 700,
-                      }}
-                    >
-                      {visiblePhotoUrl ? (
-                        <img
-                          src={visiblePhotoUrl}
-                          alt="Creator profile"
-                          style={{
-                            width: "100%",
-                            height: "100%",
-                            objectFit: "cover",
-                          }}
-                        />
-                      ) : (
-                        initials
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="app-button-secondary" style={{ cursor: "pointer", display: "inline-flex" }}>
-                        Upload Profile Picture
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleProfilePhotoChange}
-                          style={{ display: "none" }}
-                        />
-                      </label>
-
-                      <p className="app-text-faint" style={{ marginTop: "8px", marginBottom: 0 }}>
-                        Recommended: square image, clear face or creator logo.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div style={{ marginTop: "28px" }}>
-                  <h3 className="app-text" style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700 }}>
+                  <h3
+                    className="app-text"
+                    style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700 }}
+                  >
                     Basic Information
                   </h3>
 
@@ -454,7 +424,8 @@ export default function CreatorProfilePage() {
                       marginTop: "16px",
                       display: "grid",
                       gap: "16px",
-                      gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                      gridTemplateColumns:
+                        "repeat(auto-fit, minmax(240px, 1fr))",
                     }}
                   >
                     <div>
@@ -486,14 +457,20 @@ export default function CreatorProfilePage() {
                       onChange={(e) => setProfileUrl(e.target.value)}
                       placeholder="https://www.tiktok.com/@yourhandle"
                     />
-                    <p className="app-text-faint" style={{ marginTop: "8px", marginBottom: 0 }}>
-                      Add your TikTok, Instagram, YouTube, or creator portfolio link.
+                    <p
+                      className="app-text-faint"
+                      style={{ marginTop: "8px", marginBottom: 0 }}
+                    >
+                      Add TikTok, Instagram, YouTube, or creator portfolio link.
                     </p>
                   </div>
                 </div>
 
                 <div style={{ marginTop: "28px" }}>
-                  <h3 className="app-text" style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700 }}>
+                  <h3
+                    className="app-text"
+                    style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700 }}
+                  >
                     About Your Content
                   </h3>
 
@@ -517,7 +494,10 @@ export default function CreatorProfilePage() {
                         onChange={(e) => setCategories(e.target.value)}
                         placeholder="beauty, skincare, fragrance, lifestyle"
                       />
-                      <p className="app-text-faint" style={{ marginTop: "8px", marginBottom: 0 }}>
+                      <p
+                        className="app-text-faint"
+                        style={{ marginTop: "8px", marginBottom: 0 }}
+                      >
                         Separate categories with commas.
                       </p>
                     </div>
@@ -525,7 +505,10 @@ export default function CreatorProfilePage() {
                 </div>
 
                 <div style={{ marginTop: "28px" }}>
-                  <h3 className="app-text" style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700 }}>
+                  <h3
+                    className="app-text"
+                    style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700 }}
+                  >
                     Contact
                   </h3>
 
@@ -541,13 +524,26 @@ export default function CreatorProfilePage() {
                 </div>
 
                 <div style={{ marginTop: "28px" }}>
-                  <h3 className="app-text" style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700 }}>
+                  <h3
+                    className="app-text"
+                    style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700 }}
+                  >
                     Payout Setup
                   </h3>
 
-                  <div className="app-muted-card" style={{ marginTop: "16px", padding: "18px", display: "flex", flexDirection: "column", gap: "12px" }}>
+                  <div
+                    className="app-muted-card"
+                    style={{
+                      marginTop: "16px",
+                      padding: "18px",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "12px",
+                    }}
+                  >
                     <p className="app-text-soft" style={{ margin: 0 }}>
-                      Connect your Stripe payout account so you can receive campaign payouts.
+                      Connect your Stripe payout account so you can receive
+                      campaign payouts.
                     </p>
 
                     <p className="app-text-faint" style={{ margin: 0 }}>
@@ -567,12 +563,23 @@ export default function CreatorProfilePage() {
                         }}
                       >
                         ✓ Stripe Connected
-                        <div style={{ marginTop: "6px", fontSize: "0.9rem", fontWeight: 500 }}>
+                        <div
+                          style={{
+                            marginTop: "6px",
+                            fontSize: "0.9rem",
+                            fontWeight: 500,
+                          }}
+                        >
                           You are ready to receive campaign payouts.
                         </div>
                       </div>
                     ) : (
-                      <button type="button" className="app-button" onClick={handleConnectStripe} disabled={connectingStripe}>
+                      <button
+                        type="button"
+                        className="app-button"
+                        onClick={handleConnectStripe}
+                        disabled={connectingStripe}
+                      >
                         {payoutButtonLabel}
                       </button>
                     )}
@@ -581,8 +588,16 @@ export default function CreatorProfilePage() {
 
                 {(message || error) && (
                   <div style={{ marginTop: "24px" }}>
-                    {message && <p style={{ margin: 0, color: "#16a34a", fontWeight: 600 }}>{message}</p>}
-                    {error && <p style={{ margin: 0, color: "#dc2626", fontWeight: 600 }}>{error}</p>}
+                    {message && (
+                      <p style={{ margin: 0, color: "#16a34a", fontWeight: 600 }}>
+                        {message}
+                      </p>
+                    )}
+                    {error && (
+                      <p style={{ margin: 0, color: "#dc2626", fontWeight: 600 }}>
+                        {error}
+                      </p>
+                    )}
                   </div>
                 )}
 
@@ -606,70 +621,147 @@ export default function CreatorProfilePage() {
                 </div>
               </form>
 
-              <aside className="app-card app-card-padding" style={{ position: "sticky", top: "96px" }}>
-                <h2 className="app-text" style={{ margin: 0, fontSize: "1.25rem", fontWeight: 700 }}>
+              <aside
+                className="app-card app-card-padding"
+                style={{ position: "sticky", top: "96px" }}
+              >
+                <h2
+                  className="app-text"
+                  style={{ margin: 0, fontSize: "1.25rem", fontWeight: 700 }}
+                >
                   Profile Preview
                 </h2>
 
-                <p className="app-text-soft" style={{ marginTop: "8px", marginBottom: "20px" }}>
-                  This is the overall impression brands will get from your profile.
+                <p
+                  className="app-text-soft"
+                  style={{ marginTop: "8px", marginBottom: "20px" }}
+                >
+                  This is the overall impression brands will get from your
+                  profile.
                 </p>
 
-                <div className="app-muted-card" style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
-                  <div
-                    style={{
-                      width: "76px",
-                      height: "76px",
-                      borderRadius: "999px",
-                      overflow: "hidden",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      background: "var(--surface)",
-                      border: "1px solid var(--border)",
-                      fontWeight: 700,
-                      fontSize: "1.1rem",
-                      color: "var(--text)",
-                    }}
-                  >
-                    {visiblePhotoUrl ? (
-                      <img
-                        src={visiblePhotoUrl}
-                        alt="Creator profile preview"
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                        }}
-                      />
-                    ) : (
-                      initials
-                    )}
+                <div
+                  className="app-muted-card"
+                  style={{
+                    padding: "20px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "16px",
+                  }}
+                >
+                  <div style={{ position: "relative", width: "76px", height: "76px" }}>
+                    <button
+                      type="button"
+                      onClick={() => profilePhotoInputRef.current?.click()}
+                      title="Upload or change profile picture"
+                      style={{
+                        width: "76px",
+                        height: "76px",
+                        borderRadius: "999px",
+                        overflow: "hidden",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        background: "var(--surface)",
+                        border: "1px solid var(--border)",
+                        fontWeight: 700,
+                        fontSize: "1.1rem",
+                        color: "var(--text)",
+                        cursor: "pointer",
+                        position: "relative",
+                      }}
+                    >
+                      {visiblePhotoUrl ? (
+                        <img
+                          src={visiblePhotoUrl}
+                          alt="Creator profile preview"
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                          }}
+                        />
+                      ) : (
+                        initials
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => profilePhotoInputRef.current?.click()}
+                      title="Upload profile picture"
+                      style={{
+                        position: "absolute",
+                        right: "-2px",
+                        bottom: "-2px",
+                        width: "28px",
+                        height: "28px",
+                        borderRadius: "999px",
+                        border: "1px solid var(--border)",
+                        background: "#111827",
+                        color: "white",
+                        fontSize: "20px",
+                        lineHeight: "24px",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        boxShadow: "0 6px 14px rgba(15, 23, 42, 0.25)",
+                      }}
+                    >
+                      +
+                    </button>
+
+                    <input
+                      ref={profilePhotoInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleProfilePhotoChange}
+                      style={{ display: "none" }}
+                    />
                   </div>
 
                   <div>
-                    <p className="app-text" style={{ margin: 0, fontWeight: 700, fontSize: "1.1rem" }}>
+                    <p
+                      className="app-text"
+                      style={{ margin: 0, fontWeight: 700, fontSize: "1.1rem" }}
+                    >
                       {displayName || "Your Name"}
                     </p>
 
-                    {clickableProfileUrl ? (
-                      <a
-                        href={clickableProfileUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="app-text-soft"
-                        style={{
-                          display: "inline-block",
-                          marginTop: "6px",
-                          textDecoration: "underline",
-                        }}
-                      >
-                        {handle || "@yourhandle"}
-                      </a>
-                    ) : (
-                      <p className="app-text-soft" style={{ marginTop: "6px", marginBottom: 0 }}>
-                        {handle || "@yourhandle"}
-                      </p>
+                    <button
+                      type="button"
+                      onClick={handleProfileUrlPrompt}
+                      className="app-text-soft"
+                      style={{
+                        marginTop: "6px",
+                        padding: 0,
+                        border: "none",
+                        background: "transparent",
+                        cursor: "pointer",
+                        textDecoration: clickableProfileUrl ? "underline" : "none",
+                        display: "inline-block",
+                        font: "inherit",
+                        textAlign: "left",
+                      }}
+                      title="Click to add or change social profile link"
+                    >
+                      {handle || "@yourhandle"}
+                    </button>
+
+                    {clickableProfileUrl && (
+                      <div style={{ marginTop: "8px" }}>
+                        <a
+                          href={clickableProfileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="app-text-faint"
+                          style={{ textDecoration: "underline" }}
+                        >
+                          Open social profile
+                        </a>
+                      </div>
                     )}
                   </div>
 
@@ -678,7 +770,10 @@ export default function CreatorProfilePage() {
                   </p>
 
                   <div>
-                    <p className="app-text-faint" style={{ margin: 0, fontWeight: 600 }}>
+                    <p
+                      className="app-text-faint"
+                      style={{ margin: 0, fontWeight: 600 }}
+                    >
                       Categories
                     </p>
                     <p className="app-text-soft" style={{ marginTop: "8px" }}>
@@ -687,7 +782,10 @@ export default function CreatorProfilePage() {
                   </div>
 
                   <div>
-                    <p className="app-text-faint" style={{ margin: 0, fontWeight: 600 }}>
+                    <p
+                      className="app-text-faint"
+                      style={{ margin: 0, fontWeight: 600 }}
+                    >
                       Contact
                     </p>
                     <p className="app-text-soft" style={{ marginTop: "8px" }}>
@@ -696,7 +794,10 @@ export default function CreatorProfilePage() {
                   </div>
 
                   <div>
-                    <p className="app-text-faint" style={{ margin: 0, fontWeight: 600 }}>
+                    <p
+                      className="app-text-faint"
+                      style={{ margin: 0, fontWeight: 600 }}
+                    >
                       Payout Account
                     </p>
                     <p className="app-text-soft" style={{ marginTop: "8px" }}>
