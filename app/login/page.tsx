@@ -357,22 +357,21 @@ export default function LoginPage() {
 
 
           <div className="mt-5 rounded-[2rem] border border-pink-100 bg-gradient-to-br from-pink-50 via-white to-orange-50 p-6 shadow-lg shadow-pink-100/50 backdrop-blur dark:border-white/10 dark:from-fuchsia-500/15 dark:to-cyan-500/10 dark:shadow-black/20">
-            <p className="text-xs font-black uppercase tracking-[0.22em] text-orange-500 dark:text-white/60">
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-orange-500">
               Why now
             </p>
             <h3 className="mt-3 text-2xl font-black tracking-tight">
               Viral moments don&apos;t wait for agency timelines.
             </h3>
-            <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-white/68">
+            <p className="mt-3 text-sm leading-6 text-slate-600">
               Culture moves in hours. Traditional influencer operations often
               move in weeks. Goshsha compresses the path from campaign idea to
               creator activation to real-world shelf influence.
             </p>
           </div>
 
-
-          <div className="mt-5 overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-xl shadow-slate-200/60 flex justify-center">
-            <div className="w-full max-w-[260px] aspect-[9/16] overflow-hidden rounded-[1.5rem]">
+          <div className="mt-5 overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-xl shadow-slate-200/60">
+            <div className="w-full h-[520px] flex items-center justify-center">
               <video
                 src="/elfTT.mp4"
                 autoPlay
@@ -380,7 +379,7 @@ export default function LoginPage() {
                 loop
                 playsInline
                 preload="auto"
-                className="h-full w-full object-cover"
+                className="h-full object-contain"
               />
             </div>
           </div>
@@ -392,13 +391,13 @@ export default function LoginPage() {
       <section className="relative mx-auto max-w-7xl px-5 pb-16 sm:px-8 lg:px-10">
         <div className="grid gap-5 lg:grid-cols-2">
           <div className="rounded-[2rem] border border-slate-200 bg-white/92 p-7 shadow-xl shadow-slate-200/60 backdrop-blur dark:border-white/10 dark:bg-white/[0.06] dark:shadow-black/20">
-            <p className="text-xs font-black uppercase tracking-[0.22em] text-pink-500 dark:text-cyan-100/70">
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-pink-500">
               For Brands
             </p>
             <h2 className="mt-3 text-3xl font-black tracking-tight">
               Turn retail shelves into agile creator-powered media.
             </h2>
-            <p className="mt-4 leading-7 text-slate-600 dark:text-white/66">
+            <p className="mt-4 leading-7 text-slate-600">
               Launch faster, learn faster, and influence shoppers while they are
               standing in front of the product.
             </p>
@@ -415,13 +414,13 @@ export default function LoginPage() {
           </div>
 
           <div className="rounded-[2rem] border border-slate-200 bg-white/92 p-7 shadow-xl shadow-slate-200/60 backdrop-blur dark:border-white/10 dark:bg-white/[0.06] dark:shadow-black/20">
-            <p className="text-xs font-black uppercase tracking-[0.22em] text-violet-500 dark:text-fuchsia-100/70">
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-violet-500">
               For Creators
             </p>
             <h2 className="mt-3 text-3xl font-black tracking-tight">
               Your influence should not disappear in the feed.
             </h2>
-            <p className="mt-4 leading-7 text-slate-600 dark:text-white/66">
+            <p className="mt-4 leading-7 text-slate-600">
               Goshsha lets your content keep working inside real shopping
               moments, where your recommendations can shape what people buy.
             </p>
@@ -439,14 +438,14 @@ export default function LoginPage() {
         </div>
 
         <div className="mt-5 rounded-[2rem] border border-slate-200 bg-white/92 p-7 text-center shadow-xl shadow-slate-200/60 backdrop-blur sm:p-10 dark:border-white/10 dark:bg-white/[0.06] dark:shadow-black/20">
-          <p className="text-xs font-black uppercase tracking-[0.22em] text-orange-500 dark:text-amber-100/70">
+          <p className="text-xs font-black uppercase tracking-[0.22em] text-orange-500">
             The new retail equation
           </p>
           <h2 className="mx-auto mt-4 max-w-4xl text-3xl font-black tracking-tight sm:text-5xl">
             Real-world shelf influence + instant campaign execution = a faster
             path to revenue.
           </h2>
-          <p className="mx-auto mt-5 max-w-3xl text-base leading-8 text-slate-600 sm:text-lg dark:text-white/66">
+          <p className="mx-auto mt-5 max-w-3xl text-base leading-8 text-slate-600 sm:text-lg">
             Goshsha is not another influencer marketplace. It is an on-demand
             IRL retail activation engine for brands and creators who know that
             speed, timing, and purchase intent can change everything.
