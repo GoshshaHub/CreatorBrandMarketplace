@@ -170,7 +170,7 @@ export default function LoginPage() {
               — not lost in feed.
             </h1>
 
-            <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-700 sm:text-xl dark:text-white/72">
+            <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-700 sm:text-xl">
               In today&apos;s social-driven world, strategic fast execution can mean
               millions. Goshsha helps brands activate creator influence
               instantly at the aisle, where shoppers are already deciding what
@@ -356,21 +356,6 @@ export default function LoginPage() {
           </div>
 
 
-          <div className="mt-5 overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-xl shadow-slate-200/60">
-            <video
-              src="/elfTT.mp4"
-              autoPlay
-              muted
-              loop
-              playsInline
-              preload="auto"
-              className="h-[320px] w-full object-cover"
-            >
-              Your browser does not support the video tag.
-            </video>
-          </div>
-
-
           <div className="mt-5 rounded-[2rem] border border-pink-100 bg-gradient-to-br from-pink-50 via-white to-orange-50 p-6 shadow-lg shadow-pink-100/50 backdrop-blur dark:border-white/10 dark:from-fuchsia-500/15 dark:to-cyan-500/10 dark:shadow-black/20">
             <p className="text-xs font-black uppercase tracking-[0.22em] text-orange-500 dark:text-white/60">
               Why now
@@ -384,6 +369,23 @@ export default function LoginPage() {
               creator activation to real-world shelf influence.
             </p>
           </div>
+
+
+          <div className="mt-5 overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-xl shadow-slate-200/60 flex justify-center">
+            <div className="w-full max-w-[260px] aspect-[9/16] overflow-hidden rounded-[1.5rem]">
+              <video
+                src="/elfTT.mp4"
+                autoPlay
+                muted
+                loop
+                playsInline
+                preload="auto"
+                className="h-full w-full object-cover"
+              />
+            </div>
+          </div>
+
+
         </aside>
       </section>
 
