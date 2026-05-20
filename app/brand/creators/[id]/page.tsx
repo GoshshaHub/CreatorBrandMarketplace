@@ -3,7 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { doc, getDoc } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  where,
+} from "firebase/firestore";
 import { db } from "../../../../lib/firebase";
 
 type CreatorProfile = {
@@ -14,8 +21,6 @@ type CreatorProfile = {
   username?: string;
   bio?: string;
   categories?: string[];
-  campaignsCompleted?: number;
-  campaignViews?: number;
   email?: string;
   contactEmail?: string;
   profilePhotoUrl?: string;
@@ -51,6 +56,10 @@ export default function BrandCreatorProfilePage() {
   const [creator, setCreator] = useState<CreatorProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const [campaignsCompleted, setCampaignsCompleted] = useState(0);
+  const [liveCampaigns, setLiveCampaigns] = useState(0);
+  const [invitesReceived, setInvitesReceived] = useState(0);
+
   useEffect(() => {
     async function loadCreator() {
       if (!creatorId) return;
@@ -74,6 +83,36 @@ export default function BrandCreatorProfilePage() {
           ...creatorData,
           ...userData,
         } as CreatorProfile);
+
+        const campaignsRef = collection(db, "campaigns");
+
+        const completedQuery = query(
+          campaignsRef,
+          where("creatorId", "==", creatorId),
+          where("status", "==", "completed")
+        );
+
+        const liveQuery = query(
+          campaignsRef,
+          where("creatorId", "==", creatorId),
+          where("status", "in", ["accepted", "funded", "submitted", "approved"])
+        );
+
+        const invitesQuery = query(
+          campaignsRef,
+          where("creatorId", "==", creatorId),
+          where("status", "==", "invited")
+        );
+
+        const [completedSnap, liveSnap, invitesSnap] = await Promise.all([
+          getDocs(completedQuery),
+          getDocs(liveQuery),
+          getDocs(invitesQuery),
+        ]);
+
+        setCampaignsCompleted(completedSnap.size);
+        setLiveCampaigns(liveSnap.size);
+        setInvitesReceived(invitesSnap.size);
       } catch (error) {
         console.error("Error loading creator profile:", error);
       } finally {
@@ -94,6 +133,7 @@ export default function BrandCreatorProfilePage() {
 
   const profileUrl = normalizeProfileUrl(creator?.profileUrl);
   const contactEmail = creator?.contactEmail || creator?.email || "";
+
   const initials = useMemo(
     () => getInitials(displayName, contactEmail),
     [displayName, contactEmail]
@@ -166,11 +206,10 @@ export default function BrandCreatorProfilePage() {
                 <p className="mt-2 text-lg text-slate-500">{handle}</p>
               )}
 
-              {profileUrl && (
-                <p className="mt-2 text-sm text-slate-500">
-                  Verified creator link available
-                </p>
-              )}
+              <p className="mt-2 text-sm text-slate-500">
+                {campaignsCompleted} completed · {liveCampaigns} live ·{" "}
+                {invitesReceived} invited
+              </p>
             </div>
           </div>
 
@@ -214,18 +253,25 @@ export default function BrandCreatorProfilePage() {
             )}
           </section>
 
-          <section className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <section className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
               <p className="text-sm text-slate-500">Campaigns Completed</p>
               <p className="mt-2 text-3xl font-bold text-slate-900">
-                {creator.campaignsCompleted || 0}
+                {campaignsCompleted}
               </p>
             </div>
 
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
-              <p className="text-sm text-slate-500">Campaign Views</p>
+              <p className="text-sm text-slate-500">Live Campaigns</p>
               <p className="mt-2 text-3xl font-bold text-slate-900">
-                {creator.campaignViews || 0}
+                {liveCampaigns}
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+              <p className="text-sm text-slate-500">Invites Received</p>
+              <p className="mt-2 text-3xl font-bold text-slate-900">
+                {invitesReceived}
               </p>
             </div>
           </section>
