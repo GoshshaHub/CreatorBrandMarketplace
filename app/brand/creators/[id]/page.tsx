@@ -277,12 +277,25 @@ export default function BrandCreatorProfilePage() {
           </section>
 
           <div className="flex flex-wrap gap-3">
-            <Link
-              href={`/brand/new-campaign?creatorId=${creator.id}`}
-              className="inline-flex min-w-[160px] items-center justify-center rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-slate-800"
-            >
-              Invite Creator
-            </Link>
+          <Link
+            href={`/brand/new-campaign?creatorId=${creator.id}`}
+            style={{
+              backgroundColor: "#0f172a",
+              color: "#ffffff",
+              padding: "12px 24px",
+              borderRadius: "12px",
+              fontSize: "0.875rem",
+              fontWeight: 700,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              minWidth: "160px",
+              boxShadow: "0 1px 2px rgba(0,0,0,0.08)",
+              textDecoration: "none",
+            }}
+          >
+            Invite Creator
+          </Link>
 
             {profileUrl && (
               <a
