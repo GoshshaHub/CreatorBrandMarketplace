@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   collection,
@@ -149,10 +149,7 @@ export default function BrandCreatorsPage() {
                 live: 0,
               };
 
-              const initials = useMemo(
-                () => getInitials(displayName),
-                [displayName]
-              );
+              const initials = getInitials(displayName);    
 
               return (
                 <div
