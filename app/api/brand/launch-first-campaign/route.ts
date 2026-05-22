@@ -6,45 +6,59 @@ export async function POST(req: Request) {
   try {
     const formData = await req.formData();
 
-    const brandName = String(formData.get("brandName") || "").trim();
+    const campaignContentUrl = String(formData.get("campaignContentUrl") || "").trim();
     const campaignTitle = String(formData.get("campaignTitle") || "").trim();
     const productName = String(formData.get("productName") || "").trim();
-    const campaignContentUrl = String(formData.get("campaignContentUrl") || "").trim();
-    const campaignBrief = String(formData.get("campaignBrief") || "").trim();
-    const targetImage = formData.get("targetImage") as File | null;
+    const brandName = String(formData.get("brandName") || "").trim();
+    const brandId = String(formData.get("brandId") || "").trim();
 
-    if (!brandName || !campaignTitle || !productName || !campaignContentUrl || !targetImage) {
+    const fileObj = formData.get("targetImage");
+
+    // ✅ Strong validation
+    if (!campaignContentUrl) {
       return NextResponse.json(
-        { error: "Missing required campaign fields." },
+        { error: "Missing campaign content URL." },
         { status: 400 }
       );
     }
 
+    if (!fileObj || typeof fileObj === "string") {
+      return NextResponse.json(
+        { error: "Missing or invalid image file." },
+        { status: 400 }
+      );
+    }
+
+    const targetImage = fileObj as Blob;
+
     const campaignRef = adminDb.collection("campaigns").doc();
     const campaignId = campaignRef.id;
 
-    const bytes = await targetImage.arrayBuffer();
-    const buffer = Buffer.from(bytes);
+    // ✅ Convert safely
+    const buffer = Buffer.from(await targetImage.arrayBuffer());
 
     const bucket = adminStorage.bucket();
-    const filePath = `brand-ar-targets/${campaignId}/${targetImage.name}`;
+
+    const filePath = `brand-ar-targets/${campaignId}/target.jpg`;
     const file = bucket.file(filePath);
 
     await file.save(buffer, {
       metadata: {
-        contentType: targetImage.type || "image/jpeg",
+        contentType: "image/jpeg",
       },
+      public: true, // 🔥 replaces makePublic()
     });
 
-    await file.makePublic();
-
+    // ✅ Correct public URL
     const arTargetImageUrl = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
 
     await campaignRef.set({
-      brandName,
-      campaignTitle,
-      productName,
-      campaignBrief,
+      brandId: brandId || null,
+
+      brandName: brandName || "Brand",
+      campaignTitle: campaignTitle || "My First IRL Campaign",
+      productName: productName || "My Product",
+
       campaignContentUrl,
       arTargetImageUrl,
 
