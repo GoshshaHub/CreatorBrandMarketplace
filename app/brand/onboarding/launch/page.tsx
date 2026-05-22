@@ -44,7 +44,7 @@ export default function BrandLaunchOnboardingPage() {
         throw new Error(data.error || "Failed to launch campaign.");
       }
 
-      router.push(`/brand/campaign/${data.campaignId}`);
+      router.push(`/brand/campaign/${data.campaignId}/live`);
     } catch (err: any) {
       alert(err.message || "Something went wrong.");
     } finally {
