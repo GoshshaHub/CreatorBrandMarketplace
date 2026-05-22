@@ -31,12 +31,8 @@ function Step({
       </div>
 
       <div className="pb-6">
-        <p className="font-semibold text-slate-900 dark:text-white">
-          {title}
-        </p>
-        <p className="text-sm mt-1 text-slate-600 dark:text-slate-300">
-          {description}
-        </p>
+        <p className="font-semibold text-slate-900 dark:text-white">{title}</p>
+        <p className="text-sm mt-1 text-slate-600 dark:text-slate-300">{description}</p>
       </div>
     </div>
   );
@@ -64,6 +60,13 @@ export default function BrandCampaignDetailPage() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
+  const [showInviteBox, setShowInviteBox] = useState(false);
+  const [creatorName, setCreatorName] = useState("");
+  const [creatorHandle, setCreatorHandle] = useState("");
+  const [platform, setPlatform] = useState("TikTok");
+  const [externalInviteMessage, setExternalInviteMessage] = useState("");
+  const [externalInviteUrl, setExternalInviteUrl] = useState("");
+
   async function loadCampaign() {
     setLoading(true);
     setError("");
@@ -86,6 +89,7 @@ export default function BrandCampaignDetailPage() {
     if (!campaign) return "";
     const status = campaign.status as string | undefined;
 
+    if (status === "live_preview") return "Your free IRL campaign preview is live. Invite creators to expand this campaign.";
     if (status === "invited") return "Waiting for creator to accept the invite.";
     if (status === "accepted" && campaign.fundingStatus !== "funded")
       return "Creator accepted. Fund the campaign so they can begin.";
@@ -111,13 +115,8 @@ export default function BrandCampaignDetailPage() {
 
       const data = await res.json();
 
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to start Stripe Checkout.");
-      }
-
-      if (!data.checkoutUrl) {
-        throw new Error("Stripe Checkout URL was not returned.");
-      }
+      if (!res.ok) throw new Error(data.error || "Failed to start Stripe Checkout.");
+      if (!data.checkoutUrl) throw new Error("Stripe Checkout URL was not returned.");
 
       window.location.href = data.checkoutUrl;
     } catch (err: any) {
@@ -133,8 +132,7 @@ export default function BrandCampaignDetailPage() {
 
     try {
       const submissionUrl =
-        campaign?.normalizedArContentUrl ||
-        campaign?.creatorSubmittedArContentUrl;
+        campaign?.normalizedArContentUrl || campaign?.creatorSubmittedArContentUrl;
 
       if (!campaignId || !submissionUrl) {
         throw new Error("Missing campaignId or submissionUrl");
@@ -143,17 +141,12 @@ export default function BrandCampaignDetailPage() {
       const res = await fetch("/api/approve-campaign-submission", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          campaignId,
-          submissionUrl,
-        }),
+        body: JSON.stringify({ campaignId, submissionUrl }),
       });
 
       const data = await res.json();
 
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to approve submission.");
-      }
+      if (!res.ok) throw new Error(data.error || "Failed to approve submission.");
 
       setMessage("Submission approved. Admin has been notified to release payout.");
       await loadCampaign();
@@ -162,6 +155,50 @@ export default function BrandCampaignDetailPage() {
     } finally {
       setWorking(false);
     }
+  }
+
+  async function handleGenerateExternalInvite() {
+    if (!campaign) return;
+
+    setWorking(true);
+    setError("");
+    setMessage("");
+    setExternalInviteMessage("");
+    setExternalInviteUrl("");
+
+    try {
+      const res = await fetch("/api/brand/external-creator-invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          campaignId,
+          brandId: (campaign as any).brandId || "",
+          brandName: (campaign as any).brandName || "our brand",
+          creatorName,
+          creatorHandle,
+          platform,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error || "Failed to generate invite.");
+
+      setExternalInviteMessage(data.message);
+      setExternalInviteUrl(data.inviteUrl);
+      setMessage("Creator invite generated. Copy and send it by DM.");
+    } catch (err: any) {
+      setError(err?.message || "Failed to generate external creator invite.");
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function handleCopyInvite() {
+    if (!externalInviteMessage) return;
+
+    await navigator.clipboard.writeText(externalInviteMessage);
+    setMessage("Invite message copied.");
   }
 
   return (
@@ -199,12 +236,30 @@ export default function BrandCampaignDetailPage() {
                 {campaign.campaignBrief || "No brief added."}
               </p>
 
+              {(campaign as any).campaignContentUrl && (
+                <a
+                  href={(campaign as any).campaignContentUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-4 inline-block rounded-lg border px-4 py-2"
+                >
+                  View IRL Campaign Content
+                </a>
+              )}
+
               <div className="mt-6 rounded-xl bg-slate-100 p-4 dark:bg-slate-800">
                 <p className="font-semibold">Next step</p>
                 <p className="mt-1 text-slate-700 dark:text-slate-300">{nextAction}</p>
               </div>
 
               <div className="mt-6 flex flex-wrap gap-3">
+                <button
+                  onClick={() => setShowInviteBox((prev) => !prev)}
+                  className="rounded-lg bg-pink-600 px-4 py-2 font-semibold text-white hover:bg-pink-700"
+                >
+                  Invite My Own Creator
+                </button>
+
                 {campaign.status === "accepted" &&
                   campaign.fundingStatus !== "funded" && (
                     <button
@@ -239,6 +294,74 @@ export default function BrandCampaignDetailPage() {
                 )}
               </div>
 
+              {showInviteBox && (
+                <div className="mt-6 rounded-2xl border border-pink-200 bg-pink-50 p-5 text-slate-900">
+                  <h3 className="text-lg font-bold">Invite a creator you already know</h3>
+                  <p className="mt-1 text-sm text-slate-600">
+                    Generate a DM invite they can use to join this campaign inside Goshsha.
+                  </p>
+
+                  <div className="mt-4 grid gap-4">
+                    <input
+                      value={creatorName}
+                      onChange={(e) => setCreatorName(e.target.value)}
+                      className="rounded-xl border px-4 py-3"
+                      placeholder="Creator name optional"
+                    />
+
+                    <input
+                      value={creatorHandle}
+                      onChange={(e) => setCreatorHandle(e.target.value)}
+                      className="rounded-xl border px-4 py-3"
+                      placeholder="@creatorhandle optional"
+                    />
+
+                    <select
+                      value={platform}
+                      onChange={(e) => setPlatform(e.target.value)}
+                      className="rounded-xl border px-4 py-3"
+                    >
+                      <option>TikTok</option>
+                      <option>Instagram</option>
+                      <option>YouTube</option>
+                      <option>Other</option>
+                    </select>
+
+                    <button
+                      onClick={handleGenerateExternalInvite}
+                      disabled={working}
+                      className="rounded-xl bg-slate-950 px-4 py-3 font-semibold text-white disabled:opacity-60"
+                    >
+                      {working ? "Generating..." : "Generate Invite Message"}
+                    </button>
+
+                    {externalInviteMessage && (
+                      <div className="rounded-xl bg-white p-4">
+                        <p className="mb-2 text-sm font-semibold">Copy this DM:</p>
+                        <textarea
+                          readOnly
+                          value={externalInviteMessage}
+                          className="min-h-48 w-full rounded-lg border px-3 py-2 text-sm"
+                        />
+
+                        <button
+                          onClick={handleCopyInvite}
+                          className="mt-3 rounded-lg bg-pink-600 px-4 py-2 font-semibold text-white"
+                        >
+                          Copy DM Invite
+                        </button>
+
+                        {externalInviteUrl && (
+                          <p className="mt-3 break-all text-xs text-slate-500">
+                            Invite link: {externalInviteUrl}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <div className="mt-8 grid gap-3 text-sm text-slate-700 dark:text-slate-300">
                 <p>Creator: {campaign.creatorHandle || "—"}</p>
                 <p>Agreed Price: ${campaign.agreedPrice ?? 0}</p>
@@ -248,9 +371,7 @@ export default function BrandCampaignDetailPage() {
             </section>
 
             <section className="rounded-2xl border p-6">
-              <h3 className="text-xl font-semibold mb-6">
-                Campaign Timeline
-              </h3>
+              <h3 className="text-xl font-semibold mb-6">Campaign Timeline</h3>
 
               <Step title="Invite Sent" description="Creator was invited." state={getStepState(campaign, "invited")} />
               <Step title="Creator Accepted" description="Creator accepts the campaign." state={getStepState(campaign, "accepted")} />
