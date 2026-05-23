@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { signupUser } from "../../lib/auth";
 import { db } from "../../lib/firebase";
@@ -11,10 +11,7 @@ type UserRole = "creator" | "brand";
 
 export default function SignupPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-
-  const initialRole =
-    searchParams.get("role") === "brand" ? "brand" : "creator";
+  const initialRole: UserRole = "creator";
 
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
@@ -28,10 +25,13 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    if (searchParams.get("role") === "brand") setRole("brand");
-    if (searchParams.get("role") === "creator") setRole("creator");
-  }, [searchParams]);
+useEffect(() => {
+  const params = new URLSearchParams(window.location.search);
+  const roleParam = params.get("role");
+
+  if (roleParam === "brand") setRole("brand");
+  if (roleParam === "creator") setRole("creator");
+}, []);
 
   function friendlyError(err: any) {
     const code = err?.code || "";
