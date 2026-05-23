@@ -12,14 +12,21 @@ export async function POST(req: Request) {
       );
     }
 
-    const { email, brandName } = await req.json();
+    const { uid, email, brandName } = await req.json();
+
+    if (!uid || !email) {
+      return NextResponse.json(
+        { error: "Missing uid or email." },
+        { status: 400 }
+      );
+    }
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       payment_method_types: ["card"],
-      customer_email: email || undefined,
+      customer_email: email,
       line_items: [
         {
           price_data: {
@@ -39,19 +46,23 @@ export async function POST(req: Request) {
       subscription_data: {
         trial_period_days: 14,
         metadata: {
+          uid,
+          role: "brand",
           brandName: brandName || "",
         },
       },
       metadata: {
+        uid,
         role: "brand",
         brandName: brandName || "",
       },
-      success_url: `${appUrl}/brand/onboarding/launch?subscription=success`,
+      success_url: `${appUrl}/brand/dashboard?subscription=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${appUrl}/login?subscription=cancelled`,
     });
 
     return NextResponse.json({
       checkoutUrl: session.url,
+      sessionId: session.id,
     });
   } catch (err: any) {
     console.error("Brand subscription checkout error:", err);

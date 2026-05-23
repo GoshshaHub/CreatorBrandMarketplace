@@ -41,6 +41,47 @@ export async function POST(req: Request) {
   try {
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as any;
+
+      // =========================
+      // 🔥 BRAND SUBSCRIPTION FLOW
+      // =========================
+      const uid = session.metadata?.uid;
+
+      if (uid && session.mode === "subscription") {
+        const customerId = session.customer;
+        const subscriptionId = session.subscription;
+
+        await adminDb.collection("users").doc(uid).set(
+          {
+            isActive: true,
+            subscriptionStatus: "trialing",
+            stripeCustomerId: customerId,
+            stripeSubscriptionId: subscriptionId,
+            stripeCheckoutSessionId: session.id,
+            updatedAt: FieldValue.serverTimestamp(),
+          },
+          { merge: true }
+        );
+
+        await adminDb.collection("brands").doc(uid).set(
+          {
+            isActive: true,
+            subscriptionStatus: "trialing",
+            stripeCustomerId: customerId,
+            stripeSubscriptionId: subscriptionId,
+            updatedAt: FieldValue.serverTimestamp(),
+          },
+          { merge: true }
+        );
+
+        console.log("✅ Brand activated after Stripe:", uid);
+
+        return NextResponse.json({ received: true });
+      }
+
+      // =========================
+      // 💰 CAMPAIGN FUNDING FLOW
+      // =========================
       const campaignId = session.metadata?.campaignId;
 
       if (!campaignId) {
@@ -116,50 +157,14 @@ export async function POST(req: Request) {
             <p><strong>${campaign.brandName || "A brand"}</strong> funded your campaign.</p>
             <p><strong>Campaign:</strong> ${campaign.campaignTitle || ""}</p>
             <p><strong>Product:</strong> ${campaign.productName || ""}</p>
-            <p>You can now create your post. When it is completed, submit your post URL here:</p>
-            <p><a href="${creatorCampaignUrl}">Open campaign and submit URL</a></p>
-            <p><a href="${loginUrl}">Log in to Goshsha IRL Campaign Network</a></p>
+            <p><a href="${creatorCampaignUrl}">Submit your content</a></p>
           `,
-          textBody: `
-Your campaign is funded.
-
-Brand: ${campaign.brandName || "A brand"}
-Campaign: ${campaign.campaignTitle || ""}
-Product: ${campaign.productName || ""}
-
-Create your post. When it is completed, submit your post URL here:
-${creatorCampaignUrl}
-
-Log in:
-${loginUrl}
-          `.trim(),
         });
       }
-
-      await sendEmail({
-        to: process.env.ADMIN_EMAIL || "athena@goshsha.com",
-        subject: "Campaign funded",
-        htmlBody: `
-          <h2>Campaign funded</h2>
-          <p><strong>Campaign:</strong> ${campaign.campaignTitle || ""}</p>
-          <p><strong>Brand:</strong> ${campaign.brandName || ""}</p>
-          <p><strong>Creator:</strong> ${campaign.creatorHandle || ""}</p>
-          <p><a href="${adminReviewUrl}">Open admin review</a></p>
-        `,
-        textBody: `
-Campaign funded.
-
-Campaign: ${campaign.campaignTitle || ""}
-Brand: ${campaign.brandName || ""}
-Creator: ${campaign.creatorHandle || ""}
-
-Open admin review:
-${adminReviewUrl}
-        `.trim(),
-      });
     }
 
     return NextResponse.json({ received: true });
+
   } catch (err: any) {
     console.error("Stripe webhook handler error:", err);
     return NextResponse.json(

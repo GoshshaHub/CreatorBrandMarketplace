@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { signupUser } from "../../lib/auth";
 import { db } from "../../lib/firebase";
@@ -11,11 +11,15 @@ type UserRole = "creator" | "brand";
 
 export default function SignupPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const initialRole =
+    searchParams.get("role") === "brand" ? "brand" : "creator";
 
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<UserRole>("creator");
+  const [role, setRole] = useState<UserRole>(initialRole);
 
   const [handle, setHandle] = useState("");
   const [categoriesInput, setCategoriesInput] = useState("");
@@ -23,6 +27,11 @@ export default function SignupPage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (searchParams.get("role") === "brand") setRole("brand");
+    if (searchParams.get("role") === "creator") setRole("creator");
+  }, [searchParams]);
 
   function friendlyError(err: any) {
     const code = err?.code || "";
@@ -82,21 +91,21 @@ export default function SignupPage() {
 
       const uid = credential.user.uid;
 
-      await setDoc(
-        doc(db, "users", uid),
-        {
-          email: normalizedEmail,
-          displayName: displayName.trim(),
-          roles: [role],
-          isActive: true,
-          photoURL: null,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true }
-      );
-
       if (role === "creator") {
+        await setDoc(
+          doc(db, "users", uid),
+          {
+            email: normalizedEmail,
+            displayName: displayName.trim(),
+            roles: ["creator"],
+            isActive: true,
+            photoURL: null,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
+
         await setDoc(
           doc(db, "creators", uid),
           {
@@ -123,23 +132,63 @@ export default function SignupPage() {
         );
 
         router.push("/creator/dashboard");
-      } else {
-        await setDoc(
-          doc(db, "brands", uid),
-          {
-            userId: uid,
-            email: normalizedEmail,
-            contactEmail: normalizedEmail,
-            brandName: displayName.trim(),
-            displayName: displayName.trim(),
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-          },
-          { merge: true }
-        );
-
-        router.push("/brand/dashboard");
+        return;
       }
+
+      // BRAND: create pending/inactive profile only.
+      // Dashboard access should be blocked until Stripe confirms subscription.
+      await setDoc(
+        doc(db, "users", uid),
+        {
+          email: normalizedEmail,
+          displayName: displayName.trim(),
+          roles: ["brand"],
+          isActive: false,
+          subscriptionStatus: "checkout_pending",
+          stripeCheckoutStarted: false,
+          photoURL: null,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+
+      await setDoc(
+        doc(db, "brands", uid),
+        {
+          userId: uid,
+          email: normalizedEmail,
+          contactEmail: normalizedEmail,
+          brandName: displayName.trim(),
+          displayName: displayName.trim(),
+          isActive: false,
+          subscriptionStatus: "checkout_pending",
+          hasLaunchedFirstIRL: false,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+
+      const res = await fetch("/api/brand/create-subscription-checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          uid,
+          email: normalizedEmail,
+          brandName: displayName.trim(),
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.checkoutUrl) {
+        throw new Error(data.error || "Unable to start Stripe checkout.");
+      }
+
+      window.location.href = data.checkoutUrl;
     } catch (err: any) {
       setError(friendlyError(err));
     } finally {
@@ -157,7 +206,7 @@ export default function SignupPage() {
 
         <input
           className="w-full border rounded-lg px-3 py-2"
-          placeholder="Display name"
+          placeholder="Display name / Brand name"
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
           required
@@ -189,6 +238,14 @@ export default function SignupPage() {
           <option value="creator">Creator</option>
           <option value="brand">Brand</option>
         </select>
+
+        {role === "brand" && (
+          <div className="rounded-xl border border-pink-200 bg-pink-50 p-4 text-sm text-slate-700">
+            Brand accounts require a credit card to start the 14-day free trial.
+            You will not be charged today. After checkout, your dashboard will
+            unlock.
+          </div>
+        )}
 
         {role === "creator" && (
           <>
@@ -225,7 +282,13 @@ export default function SignupPage() {
           disabled={loading}
           className="w-full rounded-lg bg-black text-white py-2"
         >
-          {loading ? "Creating account..." : "Create account"}
+          {loading
+            ? role === "brand"
+              ? "Starting trial..."
+              : "Creating account..."
+            : role === "brand"
+            ? "Start 14-Day Free Trial"
+            : "Create account"}
         </button>
 
         <p className="text-sm text-center text-gray-600">
