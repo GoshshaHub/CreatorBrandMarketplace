@@ -75,12 +75,12 @@ export default function BrandCampaignLivePage() {
                     </a>
                   )}
 
-                    <Link
-                    href="/brand/creators"
-                    className="rounded-xl bg-slate-950 px-5 py-3 font-bold text-white hover:bg-slate-800"
-                    >
-                    Invite Creators
-                    </Link>
+                <Link
+                href="/brand/creators"
+                className="rounded-xl bg-slate-950 px-5 py-3 font-bold text-white hover:bg-slate-800"
+                >
+                Invite Creators
+                </Link>
 
                   <Link
                     href="/brand/dashboard"
@@ -100,9 +100,9 @@ export default function BrandCampaignLivePage() {
                 <div className="mt-6 overflow-hidden rounded-2xl border bg-slate-100">
                   {(campaign as any).arTargetImageUrl ? (
                     <img
-                      src={(campaign as any).arTargetImageUrl}
-                      alt="AR target product"
-                      className="h-96 w-full object-contain"
+                    src={`/api/brand/target-image/${campaignId}`}
+                    alt="AR target product"
+                    className="h-96 w-full object-contain"
                     />
                   ) : (
                     <div className="flex h-96 items-center justify-center text-slate-500">

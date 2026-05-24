@@ -7,14 +7,8 @@ export async function POST(req: Request) {
   try {
     const formData = await req.formData();
 
-    const campaignContentUrl = String(
-      formData.get("campaignContentUrl") || ""
-    ).trim();
-
-    const campaignTitle = String(
-      formData.get("campaignTitle") || ""
-    ).trim();
-
+    const campaignContentUrl = String(formData.get("campaignContentUrl") || "").trim();
+    const campaignTitle = String(formData.get("campaignTitle") || "").trim();
     const productName = String(formData.get("productName") || "").trim();
     const brandName = String(formData.get("brandName") || "").trim();
     const brandId = String(formData.get("brandId") || "").trim();
@@ -22,34 +16,28 @@ export async function POST(req: Request) {
     const fileObj = formData.get("targetImage");
 
     if (!campaignContentUrl) {
-      return NextResponse.json(
-        { error: "Missing campaign content URL." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Missing campaign content URL." }, { status: 400 });
     }
 
     if (!fileObj || typeof fileObj === "string") {
-      return NextResponse.json(
-        { error: "Missing or invalid image file." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Missing or invalid image file." }, { status: 400 });
     }
 
     const targetImage = fileObj as Blob;
-
     const campaignRef = adminDb.collection("campaigns").doc();
     const campaignId = campaignRef.id;
 
     const buffer = Buffer.from(await targetImage.arrayBuffer());
 
     const bucket = adminStorage.bucket();
-    const filePath = `brand-ar-targets/${campaignId}/target.jpg`;
-    const file = bucket.file(filePath);
+    const arTargetImagePath = `brand-ar-targets/${campaignId}/target.jpg`;
+    const file = bucket.file(arTargetImagePath);
 
     await file.save(buffer, {
       metadata: {
         contentType: "image/jpeg",
       },
+      resumable: false,
     });
 
     const [arTargetImageUrl] = await file.getSignedUrl({
@@ -69,6 +57,7 @@ export async function POST(req: Request) {
 
       campaignContentUrl,
       arTargetImageUrl,
+      arTargetImagePath,
 
       campaignType: "brand_first_irl_preview",
       status: "live_preview",
@@ -96,8 +85,7 @@ export async function POST(req: Request) {
       updatedAt: FieldValue.serverTimestamp(),
     });
 
-    const appUrl =
-      process.env.NEXT_PUBLIC_APP_URL || "https://irl.goshsha.com";
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://irl.goshsha.com";
 
     await sendEmail({
       to: process.env.ADMIN_EMAIL || "athena@goshsha.com",
