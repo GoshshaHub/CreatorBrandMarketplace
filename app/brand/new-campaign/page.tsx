@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import ProtectedRoute from "../../../components/ProtectedRoute";
 import { auth, db } from "../../../lib/firebase";
@@ -15,6 +16,10 @@ type Creator = {
   contactEmail?: string;
   email?: string;
 };
+
+function isSubscribed(status?: string) {
+  return status === "trialing" || status === "active";
+}
 
 function NewCampaignPageContent() {
   const searchParams = useSearchParams();
@@ -33,6 +38,9 @@ function NewCampaignPageContent() {
 
   const [loadingCreator, setLoadingCreator] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [paywallLoading, setPaywallLoading] = useState(false);
+  const [subscriptionStatus, setSubscriptionStatus] = useState("none");
+  const [brandUid, setBrandUid] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
@@ -42,8 +50,28 @@ function NewCampaignPageContent() {
   }, [deliveryStartDate, deliveryEndDate]);
 
   useEffect(() => {
-    async function loadData() {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       try {
+        if (!user) {
+          setLoadingCreator(false);
+          return;
+        }
+
+        setBrandUid(user.uid);
+
+        const brandSnap = await getDoc(doc(db, "brands", user.uid));
+        const brandData = brandSnap.exists() ? brandSnap.data() : null;
+
+        const status = String(brandData?.subscriptionStatus || "none");
+        setSubscriptionStatus(status);
+        setBrandName(String(brandData?.brandName || user.displayName || ""));
+        setContactEmail(String(brandData?.contactEmail || user.email || ""));
+
+        if (!isSubscribed(status)) {
+          setLoadingCreator(false);
+          return;
+        }
+
         if (!creatorId) {
           setError("Missing creatorId in URL.");
           setLoadingCreator(false);
@@ -59,31 +87,52 @@ function NewCampaignPageContent() {
         }
 
         setCreator(creatorData as Creator);
-
-        const user = auth.currentUser;
-        if (user) {
-          const brandSnap = await getDoc(doc(db, "brands", user.uid));
-
-          if (brandSnap.exists()) {
-            const brandData = brandSnap.data() as {
-              brandName?: string;
-              contactEmail?: string;
-            };
-            setBrandName(brandData.brandName || "");
-            setContactEmail(brandData.contactEmail || user.email || "");
-          } else {
-            setContactEmail(user.email || "");
-          }
-        }
       } catch (err: any) {
         setError(err.message || "Failed to load campaign form.");
       } finally {
         setLoadingCreator(false);
       }
+    });
+
+    return () => unsubscribe();
+  }, [creatorId]);
+
+  async function startStripeCheckout() {
+    const user = auth.currentUser;
+
+    if (!user || !user.email) {
+      alert("Please log in again before starting your trial.");
+      return;
     }
 
-    loadData();
-  }, [creatorId]);
+    setPaywallLoading(true);
+
+    try {
+      const res = await fetch("/api/brand/create-subscription-checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          uid: user.uid,
+          email: user.email,
+          brandName: brandName || user.displayName || "Brand",
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.checkoutUrl) {
+        throw new Error(data.error || "Unable to start Stripe checkout.");
+      }
+
+      window.location.href = data.checkoutUrl;
+    } catch (err: any) {
+      alert(err?.message || "Unable to start trial.");
+    } finally {
+      setPaywallLoading(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -96,6 +145,10 @@ function NewCampaignPageContent() {
 
       if (!user) {
         throw new Error("You must be logged in.");
+      }
+
+      if (!isSubscribed(subscriptionStatus)) {
+        throw new Error("Start your 14-day free trial to invite creators.");
       }
 
       if (!creator) {
@@ -150,6 +203,58 @@ function NewCampaignPageContent() {
     }
   }
 
+  if (loadingCreator) {
+    return (
+      <ProtectedRoute allowedRole="brand">
+        <main className="min-h-screen p-6 max-w-3xl mx-auto">
+          <p>Loading...</p>
+        </main>
+      </ProtectedRoute>
+    );
+  }
+
+  if (!isSubscribed(subscriptionStatus)) {
+    return (
+      <ProtectedRoute allowedRole="brand">
+        <main className="min-h-screen bg-white text-slate-900">
+          <div className="mx-auto max-w-3xl px-6 py-16 text-center">
+            <p className="text-sm font-bold uppercase tracking-wide text-pink-600">
+              Activate Your Campaign
+            </p>
+
+            <h1 className="mt-3 text-4xl font-black">
+              Start your 14-day free trial to invite creators.
+            </h1>
+
+            <p className="mt-4 text-lg text-slate-600">
+              Your first IRL campaign preview is free. Creator invitations and
+              campaign scaling require an active trial.
+            </p>
+
+            <button
+              onClick={startStripeCheckout}
+              disabled={paywallLoading}
+              className="mt-8 rounded-2xl bg-slate-950 px-8 py-4 text-lg font-bold text-white hover:bg-slate-800 disabled:opacity-60"
+            >
+              {paywallLoading ? "Starting trial..." : "Start 14-Day Free Trial"}
+            </button>
+
+            <p className="mt-3 text-sm text-slate-500">
+              $75/month after trial. Cancel anytime.
+            </p>
+
+            <Link
+              href="/brand/dashboard"
+              className="mt-6 inline-block text-sm font-semibold underline"
+            >
+              Back to Dashboard
+            </Link>
+          </div>
+        </main>
+      </ProtectedRoute>
+    );
+  }
+
   return (
     <ProtectedRoute allowedRole="brand">
       <main className="min-h-screen p-6 max-w-3xl mx-auto">
@@ -166,7 +271,6 @@ function NewCampaignPageContent() {
           </Link>
         </div>
 
-        {loadingCreator && <p className="mt-6">Loading creator...</p>}
         {error && <p className="mt-6 text-red-600">{error}</p>}
 
         {creator && (
@@ -184,72 +288,21 @@ function NewCampaignPageContent() {
               onSubmit={handleSubmit}
               className="mt-6 space-y-4 rounded-2xl border p-6"
             >
-              <input
-                className="w-full border rounded-lg px-3 py-2"
-                placeholder="Brand name"
-                value={brandName}
-                onChange={(e) => setBrandName(e.target.value)}
-                required
-              />
-
-              <input
-                className="w-full border rounded-lg px-3 py-2"
-                placeholder="Contact email"
-                type="email"
-                value={contactEmail}
-                onChange={(e) => setContactEmail(e.target.value)}
-                required
-              />
-
-              <input
-                className="w-full border rounded-lg px-3 py-2"
-                placeholder="Product name"
-                value={productName}
-                onChange={(e) => setProductName(e.target.value)}
-                required
-              />
-
-              <input
-                className="w-full border rounded-lg px-3 py-2"
-                placeholder="Campaign title"
-                value={campaignTitle}
-                onChange={(e) => setCampaignTitle(e.target.value)}
-                required
-              />
-
-              <textarea
-                className="w-full border rounded-lg px-3 py-2"
-                placeholder="Campaign brief"
-                value={campaignBrief}
-                onChange={(e) => setCampaignBrief(e.target.value)}
-                required
-              />
+              <input className="w-full border rounded-lg px-3 py-2" placeholder="Brand name" value={brandName} onChange={(e) => setBrandName(e.target.value)} required />
+              <input className="w-full border rounded-lg px-3 py-2" placeholder="Contact email" type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} required />
+              <input className="w-full border rounded-lg px-3 py-2" placeholder="Product name" value={productName} onChange={(e) => setProductName(e.target.value)} required />
+              <input className="w-full border rounded-lg px-3 py-2" placeholder="Campaign title" value={campaignTitle} onChange={(e) => setCampaignTitle(e.target.value)} required />
+              <textarea className="w-full border rounded-lg px-3 py-2" placeholder="Campaign brief" value={campaignBrief} onChange={(e) => setCampaignBrief(e.target.value)} required />
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <label className="mb-1 block text-sm font-medium">
-                    Delivery start date
-                  </label>
-                  <input
-                    className="w-full border rounded-lg px-3 py-2"
-                    type="date"
-                    value={deliveryStartDate}
-                    onChange={(e) => setDeliveryStartDate(e.target.value)}
-                    required
-                  />
+                  <label className="mb-1 block text-sm font-medium">Delivery start date</label>
+                  <input className="w-full border rounded-lg px-3 py-2" type="date" value={deliveryStartDate} onChange={(e) => setDeliveryStartDate(e.target.value)} required />
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium">
-                    Delivery end date
-                  </label>
-                  <input
-                    className="w-full border rounded-lg px-3 py-2"
-                    type="date"
-                    value={deliveryEndDate}
-                    onChange={(e) => setDeliveryEndDate(e.target.value)}
-                    required
-                  />
+                  <label className="mb-1 block text-sm font-medium">Delivery end date</label>
+                  <input className="w-full border rounded-lg px-3 py-2" type="date" value={deliveryEndDate} onChange={(e) => setDeliveryEndDate(e.target.value)} required />
                 </div>
               </div>
 
@@ -259,24 +312,11 @@ function NewCampaignPageContent() {
                 </p>
               )}
 
-              <input
-                className="w-full border rounded-lg px-3 py-2"
-                placeholder="Agreed price"
-                type="number"
-                min="0"
-                step="0.01"
-                value={agreedPrice}
-                onChange={(e) => setAgreedPrice(e.target.value)}
-                required
-              />
+              <input className="w-full border rounded-lg px-3 py-2" placeholder="Agreed price" type="number" min="0" step="0.01" value={agreedPrice} onChange={(e) => setAgreedPrice(e.target.value)} required />
 
               {message && <p className="text-sm text-green-600">{message}</p>}
 
-              <button
-                type="submit"
-                disabled={submitting}
-                className="rounded-lg bg-black text-white px-4 py-2"
-              >
+              <button type="submit" disabled={submitting} className="rounded-lg bg-black text-white px-4 py-2">
                 {submitting ? "Sending invite..." : "Send campaign invite"}
               </button>
             </form>
