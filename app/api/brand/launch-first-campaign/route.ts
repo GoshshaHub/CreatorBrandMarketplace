@@ -50,10 +50,12 @@ export async function POST(req: Request) {
       metadata: {
         contentType: "image/jpeg",
       },
-      public: true,
     });
 
-    const arTargetImageUrl = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
+    const [arTargetImageUrl] = await file.getSignedUrl({
+      action: "read",
+      expires: "01-01-2035",
+    });
 
     const finalBrandName = brandName || "Brand";
     const finalCampaignTitle = campaignTitle || "My First IRL Campaign";

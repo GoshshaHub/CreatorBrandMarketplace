@@ -75,12 +75,12 @@ export default function BrandCampaignLivePage() {
                     </a>
                   )}
 
-                  <Link
-                    href={`/brand/campaign/${campaignId}`}
+                    <Link
+                    href="/brand/creators"
                     className="rounded-xl bg-slate-950 px-5 py-3 font-bold text-white hover:bg-slate-800"
-                  >
+                    >
                     Invite Creators
-                  </Link>
+                    </Link>
 
                   <Link
                     href="/brand/dashboard"
