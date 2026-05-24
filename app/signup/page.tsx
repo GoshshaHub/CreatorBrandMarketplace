@@ -11,12 +11,11 @@ type UserRole = "creator" | "brand";
 
 export default function SignupPage() {
   const router = useRouter();
-  const initialRole: UserRole = "creator";
 
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<UserRole>(initialRole);
+  const [role, setRole] = useState<UserRole>("creator");
 
   const [handle, setHandle] = useState("");
   const [categoriesInput, setCategoriesInput] = useState("");
@@ -25,13 +24,13 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-useEffect(() => {
-  const params = new URLSearchParams(window.location.search);
-  const roleParam = params.get("role");
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const roleParam = params.get("role");
 
-  if (roleParam === "brand") setRole("brand");
-  if (roleParam === "creator") setRole("creator");
-}, []);
+    if (roleParam === "brand") setRole("brand");
+    if (roleParam === "creator") setRole("creator");
+  }, []);
 
   function friendlyError(err: any) {
     const code = err?.code || "";
@@ -91,21 +90,22 @@ useEffect(() => {
 
       const uid = credential.user.uid;
 
-      if (role === "creator") {
-        await setDoc(
-          doc(db, "users", uid),
-          {
-            email: normalizedEmail,
-            displayName: displayName.trim(),
-            roles: ["creator"],
-            isActive: true,
-            photoURL: null,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-          },
-          { merge: true }
-        );
+      await setDoc(
+        doc(db, "users", uid),
+        {
+          email: normalizedEmail,
+          displayName: displayName.trim(),
+          roles: [role],
+          isActive: true,
+          subscriptionStatus: role === "brand" ? "none" : null,
+          photoURL: null,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
 
+      if (role === "creator") {
         await setDoc(
           doc(db, "creators", uid),
           {
@@ -135,24 +135,6 @@ useEffect(() => {
         return;
       }
 
-      // BRAND: create pending/inactive profile only.
-      // Dashboard access should be blocked until Stripe confirms subscription.
-      await setDoc(
-        doc(db, "users", uid),
-        {
-          email: normalizedEmail,
-          displayName: displayName.trim(),
-          roles: ["brand"],
-          isActive: false,
-          subscriptionStatus: "checkout_pending",
-          stripeCheckoutStarted: false,
-          photoURL: null,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true }
-      );
-
       await setDoc(
         doc(db, "brands", uid),
         {
@@ -161,8 +143,8 @@ useEffect(() => {
           contactEmail: normalizedEmail,
           brandName: displayName.trim(),
           displayName: displayName.trim(),
-          isActive: false,
-          subscriptionStatus: "checkout_pending",
+          isActive: true,
+          subscriptionStatus: "none",
           hasLaunchedFirstIRL: false,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
@@ -170,25 +152,7 @@ useEffect(() => {
         { merge: true }
       );
 
-      const res = await fetch("/api/brand/create-subscription-checkout", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          uid,
-          email: normalizedEmail,
-          brandName: displayName.trim(),
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok || !data.checkoutUrl) {
-        throw new Error(data.error || "Unable to start Stripe checkout.");
-      }
-
-      window.location.href = data.checkoutUrl;
+      router.push("/brand/dashboard");
     } catch (err: any) {
       setError(friendlyError(err));
     } finally {
@@ -241,9 +205,9 @@ useEffect(() => {
 
         {role === "brand" && (
           <div className="rounded-xl border border-pink-200 bg-pink-50 p-4 text-sm text-slate-700">
-            Brand accounts require a credit card to start the 14-day free trial.
-            You will not be charged today. After checkout, your dashboard will
-            unlock.
+            You can launch your first IRL campaign preview free. A 14-day trial
+            with credit card is only required when you invite creators or unlock
+            the IRL Campaign Network.
           </div>
         )}
 
@@ -282,13 +246,7 @@ useEffect(() => {
           disabled={loading}
           className="w-full rounded-lg bg-black text-white py-2"
         >
-          {loading
-            ? role === "brand"
-              ? "Starting trial..."
-              : "Creating account..."
-            : role === "brand"
-            ? "Start 14-Day Free Trial"
-            : "Create account"}
+          {loading ? "Creating account..." : "Create account"}
         </button>
 
         <p className="text-sm text-center text-gray-600">
