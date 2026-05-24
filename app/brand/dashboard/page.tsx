@@ -84,6 +84,58 @@ function getFundingDisplay(campaign: Campaign) {
   return "Not funded";
 }
 
+async function compressImage(file: File): Promise<File> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      img.src = reader.result as string;
+    };
+
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+
+      const maxWidth = 1200;
+      const scale = Math.min(1, maxWidth / img.width);
+
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+
+      const ctx = canvas.getContext("2d");
+
+      if (!ctx) {
+        reject(new Error("Could not process image."));
+        return;
+      }
+
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            reject(new Error("Image compression failed."));
+            return;
+          }
+
+          resolve(
+            new File([blob], "target-image.jpg", {
+              type: "image/jpeg",
+            })
+          );
+        },
+        "image/jpeg",
+        0.82
+      );
+    };
+
+    img.onerror = () => reject(new Error("Invalid image file."));
+    reader.onerror = () => reject(new Error("Could not read image file."));
+
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function BrandDashboardPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -212,14 +264,22 @@ export default function BrandDashboardPage() {
       formData.append("campaignTitle", firstCampaignTitle || "My First IRL Campaign");
       formData.append("productName", firstProductName || "My Product");
       formData.append("campaignContentUrl", campaignContentUrl.trim());
-      formData.append("targetImage", targetImage);
+      const compressedTargetImage = await compressImage(targetImage);
+      formData.append("targetImage", compressedTargetImage);
 
       const res = await fetch("/api/brand/launch-first-campaign", {
         method: "POST",
         body: formData,
       });
 
-      const data = await res.json();
+      const text = await res.text();
+
+      let data: any = {};
+      try {
+        data = JSON.parse(text);
+      } catch {
+        throw new Error(text || "Server returned an unexpected response.");
+      }
 
       if (!res.ok) {
         throw new Error(data.error || "Failed to launch first IRL campaign.");
