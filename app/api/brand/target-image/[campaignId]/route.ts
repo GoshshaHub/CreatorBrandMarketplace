@@ -3,10 +3,10 @@ import { adminDb, adminStorage } from "../../../../../lib/firebase-admin";
 
 export async function GET(
   _req: Request,
-  { params }: { params: { campaignId: string } }
+  context: { params: Promise<{ campaignId: string }> }
 ) {
   try {
-    const campaignId = params.campaignId;
+    const { campaignId } = await context.params;
 
     if (!campaignId) {
       return NextResponse.json({ error: "Missing campaignId." }, { status: 400 });
