@@ -40,15 +40,15 @@ export default function BrandCampaignLivePage() {
             <div className="grid gap-8 md:grid-cols-[1fr_0.85fr]">
               <section className="rounded-3xl border border-pink-100 bg-white/90 p-8 shadow-xl">
                 <p className="text-sm font-bold uppercase tracking-wide text-pink-600">
-                  Your IRL Campaign Is Live
+                  Your IRL Campaign Preview Is Ready
                 </p>
 
                 <h1 className="mt-3 text-4xl font-black tracking-tight">
-                  Your product now has an IRL campaign layer.
+                  Your product now has an IRL campaign preview.
                 </h1>
 
                 <p className="mt-4 text-lg text-slate-600">
-                  Shoppers can now experience your campaign content from the product itself.
+                  We've connected your product image with your campaign content. Our team is preparing the scan-ready AR activation now.
                 </p>
 
                 <div className="mt-8 rounded-2xl bg-slate-950 p-5 text-white">
@@ -113,7 +113,7 @@ export default function BrandCampaignLivePage() {
 
                 <div className="mt-6 rounded-2xl bg-pink-50 p-5">
                   <p className="font-bold text-slate-950">
-                    What just happened?
+                    You turned existing campaign content into an IRL activation preview. Our team has been notified to create the scan-ready AR experience.
                   </p>
                   <p className="mt-2 text-sm text-slate-600">
                     You turned existing campaign content into an IRL activation layer

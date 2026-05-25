@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
-import { db } from "../../../lib/firebase";
-import { createNotification } from "../../../lib/notifications";
+import { FieldValue } from "firebase-admin/firestore";
+import { adminDb } from "../../../lib/firebase-admin";
 import { sendEmail } from "../../../lib/postmark";
 
 export async function POST(req: Request) {
@@ -9,70 +8,57 @@ export async function POST(req: Request) {
     const { campaignId } = await req.json();
 
     if (!campaignId) {
-      return NextResponse.json(
-        { error: "Missing campaignId" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Missing campaignId" }, { status: 400 });
     }
 
-    const campaignRef = doc(db, "campaigns", campaignId);
-    const campaignSnap = await getDoc(campaignRef);
+    const campaignRef = adminDb.collection("campaigns").doc(campaignId);
+    const campaignSnap = await campaignRef.get();
 
-    if (!campaignSnap.exists()) {
-      return NextResponse.json(
-        { error: "Campaign not found" },
-        { status: 404 }
-      );
+    if (!campaignSnap.exists) {
+      return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
     }
 
     const campaign = campaignSnap.data() as any;
 
-    await updateDoc(campaignRef, {
-      status: "live",
-      completionStatus: "live",
+    await campaignRef.update({
+      status: "ar_live",
+      arStatus: "live",
       goshshaReviewStatus: "approved",
-      completedAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
+      arLiveAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
     });
 
-    await createNotification({
-      userId: campaign.brandId,
-      role: "brand",
-      type: "campaign_live",
-      title: "Campaign live",
-      message: `"${campaign.campaignTitle}" is now live.`,
-      campaignId,
-    });
+    if (campaign.brandId) {
+      await adminDb.collection("notifications").add({
+        userId: campaign.brandId,
+        role: "brand",
+        type: "first_irl_campaign_ar_live",
+        title: "Your IRL Campaign is scan-ready",
+        message: `"${campaign.campaignTitle || "Your campaign"}" is now scan-ready in Goshsha.`,
+        campaignId,
+        isRead: false,
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    }
 
-    await createNotification({
-      userId: campaign.creatorId,
-      role: "creator",
-      type: "campaign_live",
-      title: "Campaign live",
-      message: `"${campaign.campaignTitle}" is now live.`,
-      campaignId,
-    });
+    const brandEmail = campaign.contactEmail || campaign.brandEmail;
 
-    const creatorRef = doc(db, "creators", campaign.creatorId);
-    const creatorSnap = await getDoc(creatorRef);
-    const creator = creatorSnap.exists() ? creatorSnap.data() : null;
-    const creatorEmail = creator?.contactEmail || creator?.email;
-
-    if (creatorEmail) {
+    if (brandEmail) {
       await sendEmail({
-        to: creatorEmail,
-        subject: `🚀 Your campaign is live`,
+        to: brandEmail,
+        subject: "Your IRL Campaign is now scan-ready",
         htmlBody: `
-          <h2>Your campaign is live</h2>
-          <p><strong>${campaign.campaignTitle}</strong> has been approved and is now live.</p>
-          <p>We’ll continue tracking campaign performance.</p>
+          <h2>Your IRL Campaign is now scan-ready</h2>
+          <p><strong>${campaign.campaignTitle || "Your campaign"}</strong> has been prepared for Goshsha scan activation.</p>
+          <p>Your product is now ready for the next step: inviting creators and scaling your IRL campaign.</p>
         `,
         textBody: `
-Your campaign is live.
+Your IRL Campaign is now scan-ready.
 
-Campaign: ${campaign.campaignTitle}
+Campaign: ${campaign.campaignTitle || "Your campaign"}
 
-We’ll continue tracking campaign performance.
+Your product is now ready for the next step: inviting creators and scaling your IRL campaign.
         `.trim(),
       });
     }
@@ -80,6 +66,7 @@ We’ll continue tracking campaign performance.
     return NextResponse.json({ ok: true });
   } catch (err: any) {
     console.error("Mark campaign live error:", err);
+
     return NextResponse.json(
       { error: err?.message || "Failed to mark campaign live" },
       { status: 500 }
