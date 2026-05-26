@@ -108,27 +108,22 @@ export default function BrandCampaignLivePage() {
                     </a>
                   )}
 
-                  {isArLive && (
+                  {isArLive ? (
                     <Link
                       href="/brand/creators"
                       className="rounded-xl bg-slate-950 px-5 py-3 font-bold text-white hover:bg-slate-800"
                     >
-                      Invite Creators to Scale This Campaign
+                      Invite Creators To Scale Campaign
                     </Link>
-                  )}
-
-                  {!isArLive && (
-                    <Link
-                      href="/brand/dashboard"
-                      className="rounded-xl bg-slate-950 px-5 py-3 font-bold text-white hover:bg-slate-800"
-                    >
-                      Back to Dashboard
-                    </Link>
+                  ) : (
+                    <span className="cursor-not-allowed rounded-xl bg-slate-950 px-5 py-3 font-bold text-white opacity-80">
+                      Generating AR
+                    </span>
                   )}
 
                   <Link
                     href="/brand/dashboard"
-                    className="rounded-xl border border-slate-300 bg-white px-5 py-3 font-bold"
+                    className="rounded-xl border border-slate-300 bg-white px-5 py-3 font-bold text-slate-950 hover:bg-slate-50"
                   >
                     Go to Dashboard
                   </Link>
