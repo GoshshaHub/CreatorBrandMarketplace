@@ -28,13 +28,43 @@ export async function POST(req: Request) {
       updatedAt: FieldValue.serverTimestamp(),
     });
 
+    let brandEmail =
+      campaign.contactEmail ||
+      campaign.brandEmail ||
+      campaign.email ||
+      "";
+
+    let brandName = campaign.brandName || "Brand";
+
     if (campaign.brandId) {
+      const [brandSnap, userSnap] = await Promise.all([
+        adminDb.collection("brands").doc(campaign.brandId).get(),
+        adminDb.collection("users").doc(campaign.brandId).get(),
+      ]);
+
+      const brand = brandSnap.exists ? brandSnap.data() : null;
+      const user = userSnap.exists ? userSnap.data() : null;
+
+      brandEmail =
+        brandEmail ||
+        brand?.contactEmail ||
+        brand?.email ||
+        user?.email ||
+        "";
+
+      brandName =
+        campaign.brandName ||
+        brand?.brandName ||
+        brand?.displayName ||
+        user?.displayName ||
+        "Brand";
+
       await adminDb.collection("notifications").add({
         userId: campaign.brandId,
         role: "brand",
         type: "first_irl_campaign_ar_live",
         title: "Your IRL Campaign is scan-ready",
-        message: `"${campaign.campaignTitle || "Your campaign"}" is now scan-ready in Goshsha.`,
+        message: `"${campaign.campaignTitle || "Your campaign"}" is now scan-ready in Goshsha. Try scanning your product to see the live AR experience.`,
         campaignId,
         isRead: false,
         createdAt: FieldValue.serverTimestamp(),
@@ -42,23 +72,33 @@ export async function POST(req: Request) {
       });
     }
 
-    const brandEmail = campaign.contactEmail || campaign.brandEmail;
-
     if (brandEmail) {
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://irl.goshsha.com";
+      const campaignUrl = `${appUrl}/brand/campaign/${campaignId}/live`;
+
       await sendEmail({
         to: brandEmail,
-        subject: "Your IRL Campaign is now scan-ready",
+        subject: "Your first IRL Campaign is now scan-ready",
         htmlBody: `
           <h2>Your IRL Campaign is now scan-ready</h2>
-          <p><strong>${campaign.campaignTitle || "Your campaign"}</strong> has been prepared for Goshsha scan activation.</p>
-          <p>Your product is now ready for the next step: inviting creators and scaling your IRL campaign.</p>
+          <p>Hi ${brandName},</p>
+          <p><strong>${campaign.campaignTitle || "Your first IRL campaign"}</strong> has been prepared for Goshsha scan activation.</p>
+          <p>Shoppers can now scan your product in Goshsha and unlock your campaign content.</p>
+          <p><strong>Product:</strong> ${campaign.productName || ""}</p>
+          <p><a href="${campaignUrl}">View your scan-ready IRL campaign</a></p>
         `,
         textBody: `
 Your IRL Campaign is now scan-ready.
 
-Campaign: ${campaign.campaignTitle || "Your campaign"}
+Hi ${brandName},
 
-Your product is now ready for the next step: inviting creators and scaling your IRL campaign.
+Campaign: ${campaign.campaignTitle || "Your first IRL campaign"}
+Product: ${campaign.productName || ""}
+
+Shoppers can now scan your product in Goshsha and unlock your campaign content.
+
+View your scan-ready IRL campaign:
+${campaignUrl}
         `.trim(),
       });
     }
