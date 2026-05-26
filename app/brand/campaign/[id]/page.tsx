@@ -2,9 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
+import { doc, getDoc } from "firebase/firestore";
 import ProtectedRoute from "../../../../components/ProtectedRoute";
 import { Campaign, getCampaignById } from "../../../../lib/campaigns";
+import { auth, db } from "../../../../lib/firebase";
+
+function isSubscribed(status?: string) {
+  return status === "trialing" || status === "active";
+}
 
 function Step({
   title,
@@ -32,7 +38,9 @@ function Step({
 
       <div className="pb-6">
         <p className="font-semibold text-slate-900 dark:text-white">{title}</p>
-        <p className="text-sm mt-1 text-slate-600 dark:text-slate-300">{description}</p>
+        <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+          {description}
+        </p>
       </div>
     </div>
   );
@@ -40,7 +48,6 @@ function Step({
 
 function getStepState(campaign: Campaign, step: string) {
   const status = campaign.status as string | undefined;
-
   const order = ["invited", "accepted", "funded", "submitted", "approved", "completed"];
   const currentIndex = order.indexOf(status || "invited");
   const stepIndex = order.indexOf(step);
@@ -52,11 +59,16 @@ function getStepState(campaign: Campaign, step: string) {
 
 export default function BrandCampaignDetailPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const campaignId = params?.id || "";
 
   const [campaign, setCampaign] = useState<Campaign | null>(null);
+  const [subscriptionStatus, setSubscriptionStatus] = useState("none");
+  const [brandName, setBrandName] = useState("Brand");
+
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
+  const [paywallLoading, setPaywallLoading] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
@@ -74,6 +86,26 @@ export default function BrandCampaignDetailPage() {
     try {
       const data = await getCampaignById(campaignId);
       setCampaign(data);
+
+      if (
+        (data as any)?.campaignType === "brand_first_irl_preview" ||
+        (data as any)?.isFirstFreeIRLLaunch
+      ) {
+        router.replace(`/brand/campaign/${campaignId}/live`);
+        return;
+      }
+
+      const user = auth.currentUser;
+
+      if (user) {
+        const brandSnap = await getDoc(doc(db, "brands", user.uid));
+        const brandData = brandSnap.exists() ? brandSnap.data() : null;
+
+        setSubscriptionStatus(String(brandData?.subscriptionStatus || "none"));
+        setBrandName(
+          String(brandData?.brandName || brandData?.displayName || user.displayName || "Brand")
+        );
+      }
     } catch (err: any) {
       setError(err?.message || "Failed to load campaign.");
     } finally {
@@ -85,21 +117,60 @@ export default function BrandCampaignDetailPage() {
     if (campaignId) loadCampaign();
   }, [campaignId]);
 
+  const subscribed = isSubscribed(subscriptionStatus);
+
   const nextAction = useMemo(() => {
     if (!campaign) return "";
     const status = campaign.status as string | undefined;
 
-    if (status === "live_preview") return "Your free IRL campaign preview is live. Invite creators to expand this campaign.";
     if (status === "invited") return "Waiting for creator to accept the invite.";
     if (status === "accepted" && campaign.fundingStatus !== "funded")
       return "Creator accepted. Fund the campaign so they can begin.";
     if (status === "funded") return "Campaign is funded. Waiting for creator submission.";
     if (status === "submitted") return "Creator submitted content. Review and approve it.";
     if (status === "approved") return "Submission approved. Waiting for admin to release payout.";
-    if (status === "completed") return "Campaign completed.";
+    if (status === "completed" || status === "live" || status === "ar_live")
+      return "Campaign completed.";
 
     return "";
   }, [campaign]);
+
+  async function startStripeCheckout() {
+    const user = auth.currentUser;
+
+    if (!user || !user.email) {
+      alert("Please log in again before starting your trial.");
+      return;
+    }
+
+    setPaywallLoading(true);
+
+    try {
+      const res = await fetch("/api/brand/create-subscription-checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          uid: user.uid,
+          email: user.email,
+          brandName,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.checkoutUrl) {
+        throw new Error(data.error || "Unable to start Stripe checkout.");
+      }
+
+      window.location.href = data.checkoutUrl;
+    } catch (err: any) {
+      alert(err?.message || "Unable to start trial.");
+    } finally {
+      setPaywallLoading(false);
+    }
+  }
 
   async function handleFundCampaign() {
     setWorking(true);
@@ -160,6 +231,14 @@ export default function BrandCampaignDetailPage() {
   async function handleGenerateExternalInvite() {
     if (!campaign) return;
 
+    if (!subscribed) {
+      setShowInviteBox(false);
+      setMessage("");
+      setError("");
+      await startStripeCheckout();
+      return;
+    }
+
     setWorking(true);
     setError("");
     setMessage("");
@@ -196,7 +275,6 @@ export default function BrandCampaignDetailPage() {
 
   async function handleCopyInvite() {
     if (!externalInviteMessage) return;
-
     await navigator.clipboard.writeText(externalInviteMessage);
     setMessage("Invite message copied.");
   }
@@ -249,15 +327,25 @@ export default function BrandCampaignDetailPage() {
 
               <div className="mt-6 rounded-xl bg-slate-100 p-4 dark:bg-slate-800">
                 <p className="font-semibold">Next step</p>
-                <p className="mt-1 text-slate-700 dark:text-slate-300">{nextAction}</p>
+                <p className="mt-1 text-slate-700 dark:text-slate-300">
+                  {nextAction}
+                </p>
               </div>
 
               <div className="mt-6 flex flex-wrap gap-3">
                 <button
-                  onClick={() => setShowInviteBox((prev) => !prev)}
-                  className="rounded-lg bg-pink-600 px-4 py-2 font-semibold text-white hover:bg-pink-700"
+                  onClick={() => {
+                    if (!subscribed) {
+                      startStripeCheckout();
+                      return;
+                    }
+
+                    setShowInviteBox((prev) => !prev);
+                  }}
+                  disabled={paywallLoading}
+                  className="rounded-lg bg-pink-600 px-4 py-2 font-semibold text-white hover:bg-pink-700 disabled:opacity-60"
                 >
-                  Invite My Own Creator
+                  {paywallLoading ? "Starting trial..." : "Invite My Own Creator"}
                 </button>
 
                 {campaign.status === "accepted" &&
@@ -294,9 +382,29 @@ export default function BrandCampaignDetailPage() {
                 )}
               </div>
 
-              {showInviteBox && (
+              {!subscribed && (
+                <div className="mt-5 rounded-2xl border border-pink-200 bg-pink-50 p-5 text-slate-900">
+                  <p className="font-bold">Creator invites are locked.</p>
+                  <p className="mt-1 text-sm text-slate-600">
+                    Start your 14-day free trial to invite creators and scale this campaign.
+                  </p>
+
+                  <button
+                    onClick={startStripeCheckout}
+                    disabled={paywallLoading}
+                    className="mt-4 rounded-xl bg-slate-950 px-4 py-3 font-semibold text-white disabled:opacity-60"
+                  >
+                    {paywallLoading ? "Starting trial..." : "Start 14-Day Free Trial"}
+                  </button>
+                </div>
+              )}
+
+              {showInviteBox && subscribed && (
                 <div className="mt-6 rounded-2xl border border-pink-200 bg-pink-50 p-5 text-slate-900">
-                  <h3 className="text-lg font-bold">Invite a creator you already know</h3>
+                  <h3 className="text-lg font-bold">
+                    Invite a creator you already know
+                  </h3>
+
                   <p className="mt-1 text-sm text-slate-600">
                     Generate a DM invite they can use to join this campaign inside Goshsha.
                   </p>
@@ -338,6 +446,7 @@ export default function BrandCampaignDetailPage() {
                     {externalInviteMessage && (
                       <div className="rounded-xl bg-white p-4">
                         <p className="mb-2 text-sm font-semibold">Copy this DM:</p>
+
                         <textarea
                           readOnly
                           value={externalInviteMessage}
