@@ -508,10 +508,14 @@ export default function BrandDashboardPage() {
 
                       <div className="pt-2 flex flex-wrap gap-3">
                         <Link
-                          href={`/brand/campaign/${campaign.id}`}
+                          href={
+                            campaign.campaignType === "brand_first_irl_preview"
+                              ? `/brand/campaign/${campaign.id}/live`
+                              : `/brand/campaign/${campaign.id}`
+                          }
                           className="inline-block rounded-lg border px-4 py-2"
                         >
-                          View Campaign
+                          View IRL Experience
                         </Link>
 
                         {campaign.status === "live_preview" && (

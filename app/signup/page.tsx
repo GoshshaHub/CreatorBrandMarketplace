@@ -205,7 +205,7 @@ export default function SignupPage() {
 
         {role === "brand" && (
           <div className="rounded-xl border border-pink-200 bg-pink-50 p-4 text-sm text-slate-700">
-            You can launch your first IRL campaign preview free. A 14-day trial
+            Start your free first IRL campaign now. A 14-day trial
             with credit card is only required when you invite creators or unlock
             the IRL Campaign Network.
           </div>
