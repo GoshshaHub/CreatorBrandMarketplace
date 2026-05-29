@@ -95,7 +95,18 @@ function getFundingDisplay(campaign: Campaign) {
     return "AR being prepared";
   }
 
-  // keep existing normal campaign logic below
+  if (
+    campaign.payoutStatus === "released" ||
+    campaign.payoutReleaseStatus === "released" ||
+    campaign.status === "completed" ||
+    campaign.status === "live"
+  ) {
+    return "Payout Released";
+  }
+
+  if (campaign.brandApprovalStatus === "approved") return "Awaiting Release";
+  if (campaign.fundingStatus === "funded") return "Funded";
+  return "Not funded";
 }
 
 async function compressImage(file: File): Promise<File> {

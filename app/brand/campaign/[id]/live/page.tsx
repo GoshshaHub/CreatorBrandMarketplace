@@ -109,14 +109,39 @@ export default function BrandCampaignLivePage() {
                   )}
 
                   {isArLive ? (
-                    <Link
-                      href="/brand/creators"
-                      className="rounded-xl bg-slate-950 px-5 py-3 font-bold text-white hover:bg-slate-800"
+                  <Link href="/brand/creators" className="inline-block no-underline">
+                    <button
+                      type="button"
+                      style={{
+                        backgroundColor: "#0f172a",
+                        color: "#ffffff",
+                        padding: "12px 20px",
+                        borderRadius: "12px",
+                        fontWeight: 700,
+                        border: "none",
+                        cursor: "pointer",
+                        opacity: 1,
+                        WebkitTextFillColor: "#ffffff",
+                      }}
                     >
                       Invite Creators To Scale Campaign
-                    </Link>
+                    </button>
+                  </Link>
                   ) : (
-                    <span className="cursor-not-allowed rounded-xl bg-slate-950 px-5 py-3 font-bold text-white opacity-80">
+                    <span
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: "#0f172a",
+                        color: "#ffffff",
+                        padding: "12px 20px",
+                        borderRadius: "12px",
+                        fontWeight: 700,
+                        opacity: 1,
+                        WebkitTextFillColor: "#ffffff",
+                      }}
+                    >
                       Generating AR
                     </span>
                   )}
