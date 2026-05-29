@@ -54,6 +54,22 @@ function getTimestamp(item: any) {
 }
 
 function getCampaignDisplayStatus(campaign: Campaign) {
+
+  if (
+  campaign.campaignType === "brand_first_irl_preview" ||
+  campaign.isFirstFreeIRLLaunch
+) {
+  if (campaign.status === "ar_live" || (campaign as any).arStatus === "live") {
+    return "live";
+  }
+
+  if (
+    campaign.status === "preview_ready" ||
+    (campaign as any).arStatus === "needs_admin_creation"
+  ) {
+    return "preview";
+  }
+}
   if (campaign.status === "live_preview") return "live";
   if (campaign.payoutStatus === "released") return "live";
   if (campaign.payoutReleaseStatus === "released") return "live";
@@ -68,20 +84,18 @@ function getCampaignDisplayStatus(campaign: Campaign) {
 }
 
 function getFundingDisplay(campaign: Campaign) {
-  if (campaign.status === "live_preview") return "Free IRL Preview";
-
   if (
-    campaign.payoutStatus === "released" ||
-    campaign.payoutReleaseStatus === "released" ||
-    campaign.status === "completed" ||
-    campaign.status === "live"
+    campaign.campaignType === "brand_first_irl_preview" ||
+    campaign.isFirstFreeIRLLaunch
   ) {
-    return "Payout Released";
+    if (campaign.status === "ar_live" || (campaign as any).arStatus === "live") {
+      return "Scan-ready";
+    }
+
+    return "AR being prepared";
   }
 
-  if (campaign.brandApprovalStatus === "approved") return "Awaiting Release";
-  if (campaign.fundingStatus === "funded") return "Funded";
-  return "Not funded";
+  // keep existing normal campaign logic below
 }
 
 async function compressImage(file: File): Promise<File> {
