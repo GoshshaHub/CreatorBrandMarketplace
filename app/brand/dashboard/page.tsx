@@ -6,6 +6,7 @@ import ProtectedRoute from "../../../components/ProtectedRoute";
 import StatCard from "../../../components/StatCard";
 import StatusPill from "../../../components/StatusPill";
 import { auth } from "../../../lib/firebase";
+import { onAuthStateChanged } from "firebase/auth";
 import {
   getBrandCampaigns,
   getUserNotifications,
@@ -201,7 +202,16 @@ export default function BrandDashboardPage() {
   }
 
   useEffect(() => {
-    loadDashboard();
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      await loadDashboard();
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const sortedCampaigns = useMemo(() => {

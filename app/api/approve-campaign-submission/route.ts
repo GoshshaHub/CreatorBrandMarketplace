@@ -40,7 +40,7 @@ export async function POST(req: Request) {
       role: "creator",
       type: "campaign_approved_creator",
       title: "Submission approved",
-      message: `Your submission for "${campaign.campaignTitle}" was approved. Payout is pending release.`,
+      message: `Your submission for "${campaign.campaignTitle}" was approved. Payout is pending release. Connect your Stripe payout account so you can receive campaign payouts if you have not already. `,
       campaignId,
       read: false,
       createdAt: FieldValue.serverTimestamp(),
