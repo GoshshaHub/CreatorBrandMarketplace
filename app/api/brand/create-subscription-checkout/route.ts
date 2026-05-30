@@ -31,7 +31,7 @@ export async function POST(req: Request) {
         {
           price_data: {
             currency: "usd",
-            unit_amount: 7500,
+            unit_amount: 100,
             recurring: {
               interval: "month",
             },
