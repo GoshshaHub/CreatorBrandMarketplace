@@ -46,7 +46,7 @@ export default function BrandCampaignLivePage() {
 
   const body = isArLive
     ? "Shoppers can now scan your product in Goshsha and unlock your campaign content."
-    : "We received your product image and campaign content. Our team is preparing the scan-ready AR activation now.";
+    : "We received your product image and campaign content. Our team is preparing the scan-ready AR activation now. This typically will be completed within 30 minutes.";
 
   const previewTitle = isArLive ? "Scan-Ready Target" : "Preview Target";
 

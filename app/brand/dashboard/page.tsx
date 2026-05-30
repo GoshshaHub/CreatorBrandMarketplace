@@ -217,7 +217,10 @@ export default function BrandDashboardPage() {
       (c) =>
         c.isFirstFreeIRLLaunch ||
         c.campaignType === "brand_first_irl_preview" ||
-        c.status === "live_preview"
+        c.status === "live_preview" ||
+        c.status === "preview_ready" ||
+        c.status === "ar_live" ||
+        (c as any).arStatus === "live"
     );
   }, [campaigns]);
 
@@ -352,6 +355,14 @@ export default function BrandDashboardPage() {
           <Link href="/brand/creators" className="rounded-lg border px-4 py-2">
             IRL Campaign Network
           </Link>
+
+          <Link
+            href="/brand/invite-creator"
+            className="rounded-lg border px-4 py-2"
+          >
+            Invite My Existing Creator
+          </Link>
+
         </div>
 
         {error && <p className="mt-6 text-red-600">{error}</p>}
@@ -458,7 +469,11 @@ export default function BrandDashboardPage() {
                         {item.campaignId && (
                           <div className="mt-4">
                             <Link
-                              href={`/brand/campaign/${item.campaignId}`}
+                              href={
+                                item.title?.toLowerCase().includes("scan-ready")
+                                  ? `/brand/campaign/${item.campaignId}/live`
+                                  : `/brand/campaign/${item.campaignId}`
+                              }
                               className="inline-block rounded-lg border px-4 py-2"
                             >
                               View Campaign
