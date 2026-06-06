@@ -59,10 +59,20 @@ export async function POST(req: Request) {
       updatedAt: FieldValue.serverTimestamp(),
     });
 
-    const creatorSnap = await adminDb.collection("users").doc(campaign.creatorId).get();
-    const creator = creatorSnap.exists ? creatorSnap.data() : null;
+    const [userCreatorSnap, legacyCreatorSnap] = await Promise.all([
+      adminDb.collection("users").doc(campaign.creatorId).get(),
+      adminDb.collection("creators").doc(campaign.creatorId).get(),
+    ]);
+
+    const userCreator = userCreatorSnap.exists ? userCreatorSnap.data() : null;
+    const legacyCreator = legacyCreatorSnap.exists ? legacyCreatorSnap.data() : null;
+
     const creatorEmail =
-      creator?.contactEmail || creator?.email || campaign.creatorEmail;
+      userCreator?.contactEmail ||
+      userCreator?.email ||
+      legacyCreator?.contactEmail ||
+      legacyCreator?.email ||
+      campaign.creatorEmail;
 
     if (creatorEmail) {
       await sendEmail({

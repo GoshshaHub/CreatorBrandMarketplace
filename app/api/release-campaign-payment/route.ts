@@ -42,10 +42,20 @@ export async function POST(req: Request) {
       campaignId,
     });
 
-    const creatorRef = doc(db, "creators", campaign.creatorId);
-    const creatorSnap = await getDoc(creatorRef);
+    const [creatorSnap, userCreatorSnap] = await Promise.all([
+      getDoc(doc(db, "creators", campaign.creatorId)),
+      getDoc(doc(db, "users", campaign.creatorId)),
+    ]);
+
     const creator = creatorSnap.exists() ? creatorSnap.data() : null;
-    const creatorEmail = creator?.contactEmail || creator?.email;
+    const userCreator = userCreatorSnap.exists() ? userCreatorSnap.data() : null;
+
+    const creatorEmail =
+      creator?.contactEmail ||
+      creator?.email ||
+      userCreator?.contactEmail ||
+      userCreator?.email ||
+      campaign.creatorEmail;
 
     if (creatorEmail) {
       await sendEmail({

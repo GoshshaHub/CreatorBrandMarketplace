@@ -362,7 +362,15 @@ export default function BrandCampaignDetailPage() {
                 {campaign.status === "submitted" &&
                   campaign.brandApprovalStatus !== "approved" && (
                     <button
-                      onClick={handleApproveSubmission}
+                      onClick={() => {
+                        const confirmed = window.confirm(
+                          "Approve this creator submission?\n\nThis will confirm the creator completed the campaign and move it to payout review."
+                        );
+
+                        if (!confirmed) return;
+
+                        handleApproveSubmission();
+                      }}
                       disabled={working}
                       className="rounded-lg bg-black text-white px-4 py-2"
                     >

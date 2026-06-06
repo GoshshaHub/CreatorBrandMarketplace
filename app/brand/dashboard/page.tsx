@@ -402,28 +402,28 @@ export default function BrandDashboardPage() {
                     value={firstCampaignTitle}
                     onChange={(e) => setFirstCampaignTitle(e.target.value)}
                     placeholder="Campaign title"
-                    className="rounded-xl border px-4 py-3"
+                    className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-950 placeholder:text-slate-500"
                   />
 
                   <input
                     value={firstProductName}
                     onChange={(e) => setFirstProductName(e.target.value)}
                     placeholder="Product name"
-                    className="rounded-xl border px-4 py-3"
+                    className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-950 placeholder:text-slate-500"
                   />
 
                   <input
                     value={campaignContentUrl}
                     onChange={(e) => setCampaignContentUrl(e.target.value)}
                     placeholder="TikTok, Instagram Reel, YouTube Shorts, campaign page, or video URL"
-                    className="rounded-xl border px-4 py-3 md:col-span-2"
+                    className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-950 placeholder:text-slate-500 md:col-span-2"
                   />
 
                   <input
                     type="file"
                     accept="image/*"
                     onChange={(e) => setTargetImage(e.target.files?.[0] || null)}
-                    className="rounded-xl border bg-white px-4 py-3 md:col-span-2"
+                    className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-950 file:text-slate-950 file:font-semibold md:col-span-2"
                   />
                 </div>
 
@@ -565,7 +565,10 @@ export default function BrandDashboardPage() {
                           }
                           className="inline-block rounded-lg border px-4 py-2"
                         >
-                          View IRL Experience
+                          {campaign.campaignType === "brand_first_irl_preview" ||
+                          campaign.isFirstFreeIRLLaunch
+                            ? "View IRL Experience"
+                            : "View Campaign Details"}
                         </Link>
 
                         {campaign.status === "live_preview" && (

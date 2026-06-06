@@ -21,7 +21,8 @@ function CreatorStripeRefreshContent() {
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
               href="/creator/profile"
-              className="rounded-lg bg-black text-white px-4 py-2"
+              className="inline-flex items-center justify-center rounded-lg bg-slate-950 px-4 py-2 font-semibold !text-white no-underline hover:bg-slate-800"
+              style={{ WebkitTextFillColor: "#ffffff" }}
             >
               Back to Profile
             </Link>
