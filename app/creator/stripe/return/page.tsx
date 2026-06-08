@@ -94,7 +94,7 @@ function CreatorStripeReturnContent() {
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
               href="/creator/profile"
-              className="rounded-lg bg-black text-white px-4 py-2"
+              className="rounded-lg bg-black !text-white px-4 py-2"
             >
               Back to Profile
             </Link>
