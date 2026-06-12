@@ -465,6 +465,27 @@ export default function LoginPage() {
         </div>
       </section>
 
+      <section className="relative mx-auto max-w-7xl px-5 pb-16 sm:px-8 lg:px-10">
+        <div className="grid gap-5 md:grid-cols-3">
+          {["/elfTT2.mp4", "/Kitsch.mp4", "/LipBalmTT.mp4"].map((src, index) => (
+            <div
+              key={index}
+              className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-xl shadow-slate-200/60"
+            >
+              <video
+                src={src}
+                autoPlay
+                muted
+                loop
+                playsInline
+                preload="auto"
+                className="h-[560px] w-full object-cover object-center"
+              />
+            </div>
+          ))}
+        </div>
+      </section>
+
       <footer className="relative border-t border-slate-200 bg-white/80 px-5 py-10 text-center text-sm text-slate-600 backdrop-blur sm:px-8 lg:px-10">
         <div className="mx-auto max-w-7xl">
           <p className="font-semibold text-[#0b1234]">
