@@ -190,6 +190,7 @@ export default function LoginPage() {
                 </span>
                 <span className="mt-1 block text-xs font-semibold text-white/90">
                   Launch Campaigns
+                  14-Days Trial, $75/Month
                 </span>
               </Link>
 
@@ -204,7 +205,7 @@ export default function LoginPage() {
                   </span>
                 </span>
                 <span className="mt-1 block text-xs font-semibold text-violet-500">
-                  Join the Network
+                  Join the Network For Free
                 </span>
               </Link>
             </div>
