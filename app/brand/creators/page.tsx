@@ -21,6 +21,8 @@ type CreatorProfile = {
   username?: string;
   bio?: string;
   categories?: string[];
+  platforms?: string[];
+  followerRange?: string;
   profilePhotoUrl?: string;
 };
 
@@ -269,6 +271,13 @@ export default function BrandCreatorsPage() {
                   ? creator.categories.join(", ")
                   : "No categories listed yet";
 
+              const platforms =
+                creator.platforms && creator.platforms.length > 0
+                    ? creator.platforms.join(", ")
+                    : "";
+
+              const followerRange = creator.followerRange || "";
+              
               const stats = campaignStats[creator.id] || {
                 completed: 0,
                 live: 0,
@@ -311,7 +320,23 @@ export default function BrandCreatorsPage() {
                     {creator.bio || "This creator has not added a bio yet."}
                   </p>
 
-                  <p className="mt-5 text-slate-700">{categories}</p>
+                  <div className="mt-5 flex flex-wrap gap-2">
+                    <span className="rounded-full bg-pink-50 px-3 py-1 text-sm font-semibold text-pink-700">
+                      {categories}
+                    </span>
+
+                    {platforms && (
+                      <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">
+                        {platforms}
+                      </span>
+                    )}
+
+                    {followerRange && (
+                      <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">
+                        {followerRange}
+                      </span>
+                    )}
+                  </div>
 
                   <div className="mt-5 text-sm text-slate-700">
                     <p>
