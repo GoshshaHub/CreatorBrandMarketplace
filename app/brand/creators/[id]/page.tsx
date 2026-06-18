@@ -22,6 +22,8 @@ type CreatorProfile = {
   username?: string;
   bio?: string;
   categories?: string[];
+  platforms?: string[];
+  followerRange?: string;
   email?: string;
   contactEmail?: string;
   profilePhotoUrl?: string;
@@ -332,6 +334,20 @@ export default function BrandCreatorProfilePage() {
           <section className="mb-6">
             <h2 className="text-xl font-bold text-slate-900">Categories</h2>
             <p className="mt-3 text-slate-700">{categories}</p>
+          </section>
+
+          <section className="mb-6">
+            <h2 className="text-xl font-bold text-slate-900">Platforms</h2>
+            <p className="mt-3 text-slate-700">
+              {platforms || "No platforms listed yet."}
+            </p>
+          </section>
+
+          <section className="mb-6">
+            <h2 className="text-xl font-bold text-slate-900">Follower Range</h2>
+            <p className="mt-3 text-slate-700">
+              {followerRange || "No follower range listed yet."}
+            </p>
           </section>
 
           <section className="mb-6">

@@ -97,8 +97,8 @@ export default function BrandCreatorsPage() {
   async function loadCreators() {
     try {
       const q = query(
-        collection(db, "users"),
-        where("roles", "array-contains", "creator")
+        collection(db, "creators"),
+        where("isMarketplaceVisible", "==", true)
       );
 
       const snapshot = await getDocs(q);
