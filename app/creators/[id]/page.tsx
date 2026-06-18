@@ -16,7 +16,7 @@ type CreatorProfile = {
   categories?: string[];
   profilePhotoUrl?: string;
   profileUrl?: string;
-  platform?: string;
+  platforms?: string[];
   followerRange?: string;
   followers?: number;
   creatorStatus?: string;
@@ -238,10 +238,10 @@ export default function PublicCreatorProfilePage() {
                   {getFollowerRange(creator)}
                 </span>
 
-                {creator.platform && (
-                  <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">
-                    {creator.platform}
-                  </span>
+                {creator.platforms?.length > 0 && (
+                <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">
+                    {creator.platforms.join(", ")}
+                </span>
                 )}
               </div>
             </div>

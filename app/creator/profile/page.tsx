@@ -257,7 +257,6 @@ export default function CreatorProfilePage() {
         bio: bio.trim(),
         categories: categoryArray,
         platforms,
-        platform: platforms.join(", "),
         followerRange,
         email: email.trim(),
         profilePhotoUrl: uploadedPhotoUrl || "",
