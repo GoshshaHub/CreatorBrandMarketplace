@@ -206,6 +206,13 @@ export default function BrandCreatorProfilePage() {
       ? creator.categories.join(", ")
       : "No categories listed yet";
 
+  const platforms =
+  creator?.platforms && creator.platforms.length > 0
+    ? creator.platforms.join(", ")
+    : "";
+
+  const followerRange = creator?.followerRange || "";    
+
   if (loading) {
     return (
       <main className="min-h-screen bg-white px-6 py-8 text-slate-900">
