@@ -31,6 +31,24 @@ function normalizeProfileUrl(value: string) {
   return `https://${trimmed}`;
 }
 
+const platformOptions = [
+  "TikTok",
+  "Instagram",
+  "YouTube",
+  "Facebook",
+  "Pinterest",
+  "Snapchat",
+  "X",
+  "Blog",
+];
+
+const followerRangeOptions = [
+  "Less than 1K",
+  "1K-5K",
+  "5K-10K",
+  "Over 10K",
+];
+
 export default function CreatorProfilePage() {
   const { user, loading: authLoading } = useAuth();
 
@@ -45,6 +63,8 @@ export default function CreatorProfilePage() {
   const [profileUrl, setProfileUrl] = useState("");
   const [bio, setBio] = useState("");
   const [categories, setCategories] = useState("");
+  const [platforms, setPlatforms] = useState<string[]>([]);
+  const [followerRange, setFollowerRange] = useState("");
   const [email, setEmail] = useState("");
 
   const [profilePhotoUrl, setProfilePhotoUrl] = useState("");
@@ -93,6 +113,11 @@ export default function CreatorProfilePage() {
         const mergedCategories =
           userData.categories || creatorData.categories || "";
 
+        const mergedPlatforms = userData.platforms || creatorData.platforms || [];
+
+        const mergedFollowerRange =
+          userData.followerRange || creatorData.followerRange || "";
+
         const mergedEmail =
           userData.email ||
           creatorData.email ||
@@ -129,6 +154,8 @@ export default function CreatorProfilePage() {
             ? mergedCategories.join(", ")
             : mergedCategories || ""
         );
+        setPlatforms(Array.isArray(mergedPlatforms) ? mergedPlatforms : []);
+        setFollowerRange(mergedFollowerRange);
       } catch (err: any) {
         setError(err.message || "We couldn’t load your profile.");
       } finally {
@@ -167,6 +194,14 @@ export default function CreatorProfilePage() {
 
     await uploadBytes(photoRef, profilePhotoFile);
     return await getDownloadURL(photoRef);
+  }
+
+  function togglePlatform(platform: string) {
+  setPlatforms((current) =>
+    current.includes(platform)
+      ? current.filter((item) => item !== platform)
+      : [...current, platform]
+  );
   }
 
   async function handleSave(e: React.FormEvent) {
@@ -221,6 +256,9 @@ export default function CreatorProfilePage() {
         profileUrl: normalizedProfileUrl,
         bio: bio.trim(),
         categories: categoryArray,
+        platforms,
+        platform: platforms.join(", "),
+        followerRange,
         email: email.trim(),
         profilePhotoUrl: uploadedPhotoUrl || "",
         ...stripeData,
@@ -501,6 +539,56 @@ export default function CreatorProfilePage() {
                         Separate categories with commas.
                       </p>
                     </div>
+
+                    <div>
+                      <label className="app-text-soft">Platforms</label>
+
+                      <div
+                        style={{
+                          marginTop: "10px",
+                          display: "grid",
+                          gap: "10px",
+                          gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
+                        }}
+                      >
+                        {platformOptions.map((platform) => (
+                          <label
+                            key={platform}
+                            className="app-text-soft"
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "8px",
+                              cursor: "pointer",
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={platforms.includes(platform)}
+                              onChange={() => togglePlatform(platform)}
+                            />
+                            {platform}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="app-text-soft">Follower Range</label>
+                      <select
+                        className="app-input"
+                        value={followerRange}
+                        onChange={(e) => setFollowerRange(e.target.value)}
+                      >
+                        <option value="">Select follower range</option>
+                        {followerRangeOptions.map((range) => (
+                          <option key={range} value={range}>
+                            {range}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
                   </div>
                 </div>
 
@@ -778,6 +866,30 @@ export default function CreatorProfilePage() {
                     </p>
                     <p className="app-text-soft" style={{ marginTop: "8px" }}>
                       {categories || "No categories added yet"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p
+                      className="app-text-faint"
+                      style={{ margin: 0, fontWeight: 600 }}
+                    >
+                      Platforms
+                    </p>
+                    <p className="app-text-soft" style={{ marginTop: "8px" }}>
+                      {platforms.length > 0 ? platforms.join(", ") : "No platforms added yet"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p
+                      className="app-text-faint"
+                      style={{ margin: 0, fontWeight: 600 }}
+                    >
+                      Follower Range
+                    </p>
+                    <p className="app-text-soft" style={{ marginTop: "8px" }}>
+                      {followerRange || "No follower range added yet"}
                     </p>
                   </div>
 
