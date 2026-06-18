@@ -43,16 +43,37 @@ export default function AppHeader() {
       }
 
       try {
-        const snap = await getDoc(doc(db, "users", firebaseUser.uid));
-        const data: any = snap.exists() ? snap.data() : {};
+    const [userSnap, creatorSnap, brandSnap] = await Promise.all([
+      getDoc(doc(db, "users", firebaseUser.uid)),
+      getDoc(doc(db, "creators", firebaseUser.uid)),
+      getDoc(doc(db, "brands", firebaseUser.uid)),
+    ]);
 
-        setUser({
-          uid: firebaseUser.uid,
-          email: firebaseUser.email || data.email || "",
-          displayName: data.displayName || firebaseUser.displayName || "",
-          roles: Array.isArray(data.roles) ? data.roles : [],
-          isAdmin: data.isAdmin === true,
-        });
+    const userData: any = userSnap.exists() ? userSnap.data() : {};
+    const creatorData: any = creatorSnap.exists() ? creatorSnap.data() : {};
+    const brandData: any = brandSnap.exists() ? brandSnap.data() : {};
+
+    const roles = Array.isArray(userData.roles)
+      ? userData.roles
+      : creatorSnap.exists()
+      ? ["creator"]
+      : brandSnap.exists()
+      ? ["brand"]
+      : [];
+
+    setUser({
+      uid: firebaseUser.uid,
+      email: firebaseUser.email || userData.email || creatorData.email || brandData.email || "",
+      displayName:
+        userData.displayName ||
+        creatorData.displayName ||
+        brandData.displayName ||
+        brandData.brandName ||
+        firebaseUser.displayName ||
+        "",
+      roles,
+      isAdmin: userData.isAdmin === true,
+    });
       } catch {
         setUser({
           uid: firebaseUser.uid,

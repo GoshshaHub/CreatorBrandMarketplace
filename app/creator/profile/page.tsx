@@ -405,19 +405,28 @@ export default function CreatorProfilePage() {
     <ProtectedRoute allowedRole="creator">
       <main className="app-page">
         <div className="app-shell">
-          <div className="app-header">
-            <div>
-              <h1 className="app-title">Creator Profile</h1>
-              <p className="app-subtitle">
-                Present your profile clearly so brands understand your style,
-                niche, and fit at a glance.
-              </p>
-            </div>
-
-            <Link href="/creator/dashboard" className="app-button-secondary">
-              Back to Dashboard
-            </Link>
+        <div
+          className="app-header"
+          style={{
+            display: "flex",
+            alignItems: "flex-start",
+            justifyContent: "space-between",
+            gap: "24px",
+            flexWrap: "wrap",
+          }}
+        >
+          <div>
+            <h1 className="app-title">Creator Profile</h1>
+            <p className="app-subtitle">
+              Present your profile clearly so brands understand your style,
+              niche, and fit at a glance.
+            </p>
           </div>
+
+          <Link href="/creator/dashboard" className="app-button-secondary">
+            Back to Dashboard
+          </Link>
+        </div>
 
           {loading || authLoading ? (
             <p className="app-subtitle" style={{ marginTop: "24px" }}>
