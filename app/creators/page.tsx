@@ -70,7 +70,7 @@ export default function PublicCreatorsPage() {
     async function loadCreators() {
       try {
         const q = query(
-          collection(db, "users"),
+          collection(db, "creators")
           where("isMarketplaceVisible", "==", true)
         );
 

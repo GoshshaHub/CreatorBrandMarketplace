@@ -21,15 +21,25 @@ export default function SignupPage() {
   const [categoriesInput, setCategoriesInput] = useState("");
   const [bio, setBio] = useState("");
 
+  const [claimCreatorId, setClaimCreatorId] = useState("");
+  const [claimMode, setClaimMode] = useState(false);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const roleParam = params.get("role");
+    const claimId = params.get("claimCreatorId") || "";
 
     if (roleParam === "brand") setRole("brand");
     if (roleParam === "creator") setRole("creator");
+
+    if (claimId) {
+      setRole("creator");
+      setClaimCreatorId(claimId);
+      setClaimMode(true);
+    }
   }, []);
 
   function friendlyError(err: any) {
@@ -57,7 +67,7 @@ export default function SignupPage() {
       return;
     }
 
-    if (role === "creator") {
+    if (role === "creator" && !claimMode) {
       if (!handle.trim()) {
         setError("Creator handle is required.");
         return;
@@ -96,7 +106,7 @@ export default function SignupPage() {
           email: normalizedEmail,
           displayName: displayName.trim(),
           roles: [role],
-          isActive: true,
+          isActive: claimMode ? false : true,
           subscriptionStatus: role === "brand" ? "none" : null,
           photoURL: null,
           createdAt: serverTimestamp(),
@@ -106,6 +116,32 @@ export default function SignupPage() {
       );
 
       if (role === "creator") {
+        if (claimMode) {
+          const res = await fetch("/api/creator/request-claim", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              uid,
+              email: normalizedEmail,
+              claimCreatorId,
+            }),
+          });
+
+          const data = await res.json();
+
+          if (!res.ok) {
+            throw new Error(
+              data?.error ||
+                "Unable to start claim verification. Please contact support."
+            );
+          }
+
+          router.push("/creator/claim-pending");
+          return;
+        }
+
         await setDoc(
           doc(db, "creators", uid),
           {
@@ -116,6 +152,7 @@ export default function SignupPage() {
             handle: handle.trim(),
             bio: bio.trim(),
             categories,
+            creatorStatus: "verified",
             isMarketplaceVisible: true,
             campaignsCompleted: 0,
             totalCampaignViews: 0,
@@ -164,12 +201,21 @@ export default function SignupPage() {
     <main className="min-h-screen flex items-center justify-center p-6">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-md rounded-2xl border p-6 shadow-sm space-y-4"
+        className="w-full max-w-md rounded-2xl border p-6 shadow-sm space-y-4 bg-white text-slate-900"
       >
-        <h1 className="text-2xl font-semibold">Sign up</h1>
+        <h1 className="text-2xl font-semibold">
+          {claimMode ? "Claim creator profile" : "Sign up"}
+        </h1>
+
+        {claimMode && (
+          <div className="rounded-xl border border-pink-200 bg-pink-50 p-4 text-sm text-slate-700">
+            Create your creator account using the email connected to this listed
+            profile. We’ll send a verification link before activating the claim.
+          </div>
+        )}
 
         <input
-          className="w-full border rounded-lg px-3 py-2"
+          className="w-full border rounded-lg px-3 py-2 bg-white text-slate-900"
           placeholder="Display name / Brand name"
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
@@ -177,7 +223,7 @@ export default function SignupPage() {
         />
 
         <input
-          className="w-full border rounded-lg px-3 py-2"
+          className="w-full border rounded-lg px-3 py-2 bg-white text-slate-900"
           placeholder="Email"
           type="email"
           value={email}
@@ -186,7 +232,7 @@ export default function SignupPage() {
         />
 
         <input
-          className="w-full border rounded-lg px-3 py-2"
+          className="w-full border rounded-lg px-3 py-2 bg-white text-slate-900"
           placeholder="Password"
           type="password"
           value={password}
@@ -194,27 +240,29 @@ export default function SignupPage() {
           required
         />
 
-        <select
-          className="w-full border rounded-lg px-3 py-2"
-          value={role}
-          onChange={(e) => setRole(e.target.value as UserRole)}
-        >
-          <option value="creator">Creator</option>
-          <option value="brand">Brand</option>
-        </select>
+        {!claimMode && (
+          <select
+            className="w-full border rounded-lg px-3 py-2 bg-white text-slate-900"
+            value={role}
+            onChange={(e) => setRole(e.target.value as UserRole)}
+          >
+            <option value="creator">Creator</option>
+            <option value="brand">Brand</option>
+          </select>
+        )}
 
         {role === "brand" && (
           <div className="rounded-xl border border-pink-200 bg-pink-50 p-4 text-sm text-slate-700">
-            Start your free first IRL campaign now. A 14-day trial
-            with credit card is only required when you invite creators or unlock
-            the IRL Campaign Network.
+            Start your free first IRL campaign now. A 14-day trial with credit
+            card is only required when you invite creators or unlock the IRL
+            Campaign Network.
           </div>
         )}
 
-        {role === "creator" && (
+        {role === "creator" && !claimMode && (
           <>
             <input
-              className="w-full border rounded-lg px-3 py-2"
+              className="w-full border rounded-lg px-3 py-2 bg-white text-slate-900"
               placeholder="Creator handle (TikTok or Instagram)"
               value={handle}
               onChange={(e) => setHandle(e.target.value)}
@@ -222,7 +270,7 @@ export default function SignupPage() {
             />
 
             <input
-              className="w-full border rounded-lg px-3 py-2"
+              className="w-full border rounded-lg px-3 py-2 bg-white text-slate-900"
               placeholder="Categories (comma separated, e.g. dupes, skincare)"
               value={categoriesInput}
               onChange={(e) => setCategoriesInput(e.target.value)}
@@ -230,7 +278,7 @@ export default function SignupPage() {
             />
 
             <textarea
-              className="w-full border rounded-lg px-3 py-2"
+              className="w-full border rounded-lg px-3 py-2 bg-white text-slate-900"
               placeholder="Bio (optional)"
               value={bio}
               onChange={(e) => setBio(e.target.value)}
@@ -244,9 +292,13 @@ export default function SignupPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-lg bg-black text-white py-2"
+          className="w-full rounded-lg bg-black text-white py-2 disabled:opacity-60"
         >
-          {loading ? "Creating account..." : "Create account"}
+          {loading
+            ? "Creating account..."
+            : claimMode
+            ? "Create account and verify claim"
+            : "Create account"}
         </button>
 
         <p className="text-sm text-center text-gray-600">
