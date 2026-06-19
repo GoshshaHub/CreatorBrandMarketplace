@@ -191,7 +191,7 @@ export default function LoginPage() {
                 <span className="mt-1 block text-xs font-semibold text-white/90">
                   Launch Campaigns • 14-Day Trial • $75/Month
                 </span>
-                <span className="block text-[11px] font-medium text-white/80">
+                <span className="block text-[11px] font-medium text-white/90">
                   Move fast. Unlimited Campaigns. Unlimited Creator Invites.
                 </span>
               </Link>
