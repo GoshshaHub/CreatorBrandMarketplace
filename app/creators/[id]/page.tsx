@@ -260,10 +260,15 @@ export default function PublicCreatorProfilePage() {
 
           <div className="mt-10 flex flex-wrap gap-3">
             <Link
-              href={`/brand/new-campaign?creatorId=${creator.id}`}
-              className="rounded-xl bg-slate-950 px-6 py-3 text-sm font-bold text-white shadow-sm hover:bg-slate-800"
+            href={`/signup?role=brand&creatorId=${creator.id}`}
+            className="rounded-xl px-5 py-2 text-sm font-semibold shadow-sm hover:opacity-90"
+            style={{
+                backgroundColor: "#0f172a",
+                color: "#ffffff",
+                textDecoration: "none",
+            }}
             >
-              Invite Creator
+            Invite Creator
             </Link>
 
             <Link

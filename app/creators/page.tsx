@@ -223,9 +223,21 @@ export default function PublicCreatorsPage() {
                         </h2>
 
                         <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
-                          {creator.creatorStatus === "verified"
-                            ? "Verified Creator"
-                            : "Publicly Listed"}
+                            {creator.creatorStatus === "verified" ? (
+                            <span
+                                className="inline-flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold"
+                                style={{
+                                backgroundColor: "#2563eb",
+                                color: "#ffffff",
+                                }}
+                            >
+                                ✓
+                            </span>
+                            ) : (
+                            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
+                                Publicly Listed
+                            </span>
+                            )}
                         </span>
                       </div>
 
@@ -262,10 +274,15 @@ export default function PublicCreatorsPage() {
                     </Link>
 
                     <Link
-                      href={`/brand/new-campaign?creatorId=${creator.id}`}
-                      className="rounded-xl bg-slate-950 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800"
+                        href={`/signup?role=brand&creatorId=${creator.id}`}
+                        className="rounded-xl px-5 py-2 text-sm font-semibold shadow-sm hover:opacity-90"
+                        style={{
+                            backgroundColor: "#0f172a",
+                            color: "#ffffff",
+                            textDecoration: "none",
+                        }}
                     >
-                      Invite Creator
+                        Invite Creator
                     </Link>
 
                     <Link
