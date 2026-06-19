@@ -192,7 +192,7 @@ export default function LoginPage() {
                   Launch Campaigns • 14-Day Trial • $75/Month
                 </span>
                 <span className="block text-[11px] font-medium text-white/90">
-                  Move fast. Unlimited Campaigns. Unlimited Creator Invites.
+                  Move fast. Unlimited Campaigns. Unlimited Creator Invites. Get IRL Engagement Data.
                 </span>
               </Link>
 
