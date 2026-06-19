@@ -219,9 +219,21 @@ export default function PublicCreatorProfilePage() {
                 </h1>
 
                 <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
-                  {creator.creatorStatus === "verified"
-                    ? "Verified Creator"
-                    : "Publicly Listed Creator"}
+                    {creator.creatorStatus === "verified" ? (
+                    <span
+                        className="inline-flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold"
+                        style={{
+                        backgroundColor: "#2563eb",
+                        color: "#ffffff",
+                        }}
+                    >
+                        ✓
+                    </span>
+                    ) : (
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
+                        Publicly Listed
+                    </span>
+                    )}
                 </span>
               </div>
 
