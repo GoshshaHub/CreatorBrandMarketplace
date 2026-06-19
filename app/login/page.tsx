@@ -209,7 +209,7 @@ export default function LoginPage() {
                 <span className="mt-1 block text-xs font-semibold text-violet-500">
                   Join the Network For Free
                 </span>
-                <span className="block text-[11px] font-medium text-white/90">
+                <span className="block text-[11px] font-medium text-violet/90">
                   Extend your influence into the stores. Get discovered for paid collab work.
                 </span>
               </Link>
