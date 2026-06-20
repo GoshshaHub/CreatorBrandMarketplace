@@ -24,13 +24,25 @@ type CreatorProfile = {
 
 const followerRanges = [
   "All followers",
-  "1K–10K",
-  "10K–50K",
-  "50K–100K",
-  "100K–500K",
-  "500K–1M",
-  "1M+",
+  "Less than 1K",
+  "1K-5K",
+  "5K-10K",
+  "Over 10K",
 ];
+
+const platformOptions = [
+  "All platforms",
+  "TikTok",
+  "Instagram",
+  "YouTube",
+  "Facebook",
+  "Pinterest",
+  "Snapchat",
+  "X",
+  "Blog",
+];
+
+const [platformFilter, setPlatformFilter] = useState("All platforms");
 
 function getInitials(name: string) {
   const source = (name || "U").trim();
@@ -106,19 +118,32 @@ export default function PublicCreatorsPage() {
     return ["All categories", ...Array.from(set).sort()];
   }, [creators]);
 
-  const filteredCreators = useMemo(() => {
+    const filteredCreators = useMemo(() => {
     return creators.filter((creator) => {
-      const matchesCategory =
+        const matchesCategory =
         categoryFilter === "All categories" ||
         creator.categories?.includes(categoryFilter);
 
-      const matchesFollowers =
+        const matchesFollowers =
         followerFilter === "All followers" ||
         getFollowerRange(creator) === followerFilter;
 
-      return matchesCategory && matchesFollowers;
+        const matchesPlatform =
+        platformFilter === "All platforms" ||
+        creator.platforms?.includes(platformFilter);
+
+        return (
+        matchesCategory &&
+        matchesFollowers &&
+        matchesPlatform
+        );
     });
-  }, [creators, categoryFilter, followerFilter]);
+    }, [
+    creators,
+    categoryFilter,
+    followerFilter,
+    platformFilter,
+    ]);
 
   if (loading) {
     return (
@@ -146,7 +171,7 @@ export default function PublicCreatorsPage() {
           </p>
         </div>
 
-        <div className="mb-8 grid grid-cols-1 gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-5 md:grid-cols-2">
+        <div className="mb-8 grid grid-cols-1 gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-5 md:grid-cols-3">
           <div>
             <label className="mb-2 block text-sm font-bold text-slate-700">
               Category
@@ -176,6 +201,21 @@ export default function PublicCreatorsPage() {
               ))}
             </select>
           </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-bold text-slate-700">
+                Platform
+            </label>
+            <select
+                value={platformFilter}
+                onChange={(e) => setPlatformFilter(e.target.value)}
+                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900"
+            >
+                {platformOptions.map((platform) => (
+                <option key={platform}>{platform}</option>
+                ))}
+            </select>
+            </div>
         </div>
 
         {filteredCreators.length === 0 ? (

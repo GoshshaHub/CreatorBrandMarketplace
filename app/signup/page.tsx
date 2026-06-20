@@ -23,6 +23,7 @@ export default function SignupPage() {
 
   const [claimCreatorId, setClaimCreatorId] = useState("");
   const [claimMode, setClaimMode] = useState(false);
+  const [inviteCreatorId, setInviteCreatorId] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -31,9 +32,14 @@ export default function SignupPage() {
     const params = new URLSearchParams(window.location.search);
     const roleParam = params.get("role");
     const claimId = params.get("claimCreatorId") || "";
+    const inviteId = params.get("creatorId") || "";
 
     if (roleParam === "brand") setRole("brand");
     if (roleParam === "creator") setRole("creator");
+    if (inviteId) {
+      setRole("brand");
+      setInviteCreatorId(inviteId);
+    }
 
     if (claimId) {
       setRole("creator");
@@ -188,6 +194,11 @@ export default function SignupPage() {
         },
         { merge: true }
       );
+
+      if (inviteCreatorId) {
+        router.push(`/brand/new-campaign?creatorId=${inviteCreatorId}`);
+        return;
+      }
 
       router.push("/brand/dashboard");
     } catch (err: any) {
