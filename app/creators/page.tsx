@@ -42,10 +42,6 @@ const platformOptions = [
   "Blog",
 ];
 
-export default function CreatorsPage() {
-  const [platformFilter, setPlatformFilter] =
-    useState("All platforms");
-
 function getInitials(name: string) {
   const source = (name || "U").trim();
   const parts = source.split(/\s+/).filter(Boolean);
@@ -79,6 +75,7 @@ export default function PublicCreatorsPage() {
   const [loading, setLoading] = useState(true);
   const [categoryFilter, setCategoryFilter] = useState("All categories");
   const [followerFilter, setFollowerFilter] = useState("All followers");
+  const [platformFilter, setPlatformFilter] = useState("All platforms");
 
   useEffect(() => {
     async function loadCreators() {
