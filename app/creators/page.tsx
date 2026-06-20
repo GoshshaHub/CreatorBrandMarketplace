@@ -42,7 +42,9 @@ const platformOptions = [
   "Blog",
 ];
 
-const [platformFilter, setPlatformFilter] = useState("All platforms");
+export default function CreatorsPage() {
+  const [platformFilter, setPlatformFilter] =
+    useState("All platforms");
 
 function getInitials(name: string) {
   const source = (name || "U").trim();
