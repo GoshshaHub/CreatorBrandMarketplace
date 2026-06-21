@@ -9,6 +9,7 @@ import {
   getApprovedCampaignsReadyForPayout,
   getSubmittedCampaigns,
 } from "../../../lib/campaigns";
+import Link from "next/link";
 
 function money(value?: number) {
   return `$${Number(value || 0).toFixed(2)}`;
@@ -138,6 +139,15 @@ export default function AdminReviewPage() {
           <p className="mt-2 text-gray-600">
             Review first IRL campaign previews, creator submissions, and payout releases.
           </p>
+
+          <Link
+            href="/admin/creators/new"
+            className="inline-flex items-center rounded-xl px-4 py-2 font-semibold text-white"
+            style={{ backgroundColor: "#0f172a" }}
+          >
+            Add Listed Creator
+          </Link>
+
         </div>
 
         {loading && <p className="mt-8">Loading admin queue...</p>}

@@ -244,7 +244,7 @@ export default function SignupPage() {
 
         <input
           className="w-full border rounded-lg px-3 py-2 bg-white text-slate-900"
-          placeholder="Password"
+          placeholder="Create Password"
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
