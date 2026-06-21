@@ -27,12 +27,19 @@ export default function SignupPage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [verifiedCreatorId, setVerifiedCreatorId] = useState("");
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const roleParam = params.get("role");
     const claimId = params.get("claimCreatorId") || "";
     const inviteId = params.get("creatorId") || "";
+    const verifiedId = params.get("verifiedCreatorId") || "";
+
+    if (verifiedId) {
+      setRole("creator");
+      setVerifiedCreatorId(verifiedId);
+    }
 
     if (roleParam === "brand") setRole("brand");
     if (roleParam === "creator") setRole("creator");
@@ -73,7 +80,7 @@ export default function SignupPage() {
       return;
     }
 
-    if (role === "creator" && !claimMode) {
+    if (role === "creator" && !claimMode && !verifiedCreatorId) {
       if (!handle.trim()) {
         setError("Creator handle is required.");
         return;
@@ -148,6 +155,29 @@ export default function SignupPage() {
           return;
         }
 
+        if (verifiedCreatorId) {
+          const res = await fetch("/api/creator/complete-verified-signup", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              uid,
+              email: normalizedEmail,
+              displayName: displayName.trim(),
+              verifiedCreatorId,
+            }),
+          });
+
+          const data = await res.json();
+
+          if (!res.ok) {
+            throw new Error(data?.error || "Unable to connect verified creator profile.");
+          }
+
+          router.push("/creator/profile");
+          return;
+        }
         await setDoc(
           doc(db, "creators", uid),
           {
@@ -214,9 +244,13 @@ export default function SignupPage() {
         onSubmit={handleSubmit}
         className="w-full max-w-md rounded-2xl border p-6 shadow-sm space-y-4 bg-white text-slate-900"
       >
-        <h1 className="text-2xl font-semibold">
-          {claimMode ? "Claim creator profile" : "Sign up"}
-        </h1>
+      <h1 className="text-2xl font-semibold">
+        {claimMode
+          ? "Claim creator profile"
+          : verifiedCreatorId
+          ? "Complete creator signup"
+          : "Sign up"}
+      </h1>
 
         {claimMode && (
           <div className="rounded-xl border border-pink-200 bg-pink-50 p-4 text-sm text-slate-700">
@@ -270,7 +304,7 @@ export default function SignupPage() {
           </div>
         )}
 
-        {role === "creator" && !claimMode && (
+        {role === "creator" && !claimMode && !verifiedCreatorId && (
           <>
             <input
               className="w-full border rounded-lg px-3 py-2 bg-white text-slate-900"
