@@ -18,53 +18,32 @@ function makeToken() {
 
 export async function POST(req: Request) {
   try {
-    const { uid, email, claimCreatorId } = await req.json();
+    const { creatorId } = await req.json();
 
-    if (!uid || typeof uid !== "string") {
-      return NextResponse.json({ error: "Missing uid" }, { status: 400 });
+    if (!creatorId || typeof creatorId !== "string") {
+      return NextResponse.json({ error: "Missing creatorId" }, { status: 400 });
     }
 
-    if (!email || typeof email !== "string") {
-      return NextResponse.json({ error: "Missing email" }, { status: 400 });
-    }
+    const creatorRef = adminDb.collection("creators").doc(creatorId);
+    const creatorSnap = await creatorRef.get();
 
-    if (!claimCreatorId || typeof claimCreatorId !== "string") {
-      return NextResponse.json(
-        { error: "Missing claimCreatorId" },
-        { status: 400 }
-      );
-    }
-
-    const normalizedEmail = normalizeEmail(email);
-
-    const userCreatorSnap = await adminDb
-      .collection("users")
-      .doc(claimCreatorId)
-      .get();
-
-    const legacyCreatorSnap = await adminDb
-      .collection("creators")
-      .doc(claimCreatorId)
-      .get();
-
-    if (!userCreatorSnap.exists && !legacyCreatorSnap.exists) {
+    if (!creatorSnap.exists) {
       return NextResponse.json(
         { error: "Creator profile not found" },
         { status: 404 }
       );
     }
 
-    const userCreator = userCreatorSnap.exists ? userCreatorSnap.data() : {};
-    const legacyCreator = legacyCreatorSnap.exists
-      ? legacyCreatorSnap.data()
-      : {};
+    const creator = creatorSnap.data() as any;
 
-    const profileEmail = normalizeEmail(
-      userCreator?.contactEmail ||
-        userCreator?.email ||
-        legacyCreator?.contactEmail ||
-        legacyCreator?.email
-    );
+    if (creator.creatorStatus === "removed") {
+      return NextResponse.json(
+        { error: "This creator profile is no longer listed." },
+        { status: 400 }
+      );
+    }
+
+    const profileEmail = normalizeEmail(creator.contactEmail || creator.email);
 
     if (!profileEmail) {
       return NextResponse.json(
@@ -76,23 +55,12 @@ export async function POST(req: Request) {
       );
     }
 
-    if (profileEmail !== normalizedEmail) {
-      return NextResponse.json(
-        {
-          error:
-            "This email does not match the email connected to this creator profile.",
-        },
-        { status: 403 }
-      );
-    }
-
     const token = makeToken();
 
     await adminDb.collection("creatorClaimRequests").doc(token).set({
       token,
-      uid,
-      email: normalizedEmail,
-      claimCreatorId,
+      creatorId,
+      email: profileEmail,
       status: "pending",
       type: "claim",
       createdAt: FieldValue.serverTimestamp(),
@@ -105,17 +73,18 @@ export async function POST(req: Request) {
     const verifyUrl = `${appUrl}/api/creator/verify-claim?token=${token}`;
 
     await sendEmail({
-      to: normalizedEmail,
+      to: profileEmail,
       subject: "Verify your Goshsha creator profile claim",
       htmlBody: `
         <h2>Verify your creator profile claim</h2>
         <p>You requested to claim your creator profile on Goshsha IRL Campaign Network.</p>
-        <p>Click the button below to verify your email and activate your creator account.</p>
+        <p>Click the button below to verify this email and mark your creator profile as verified.</p>
         <p>
           <a href="${verifyUrl}" style="background:#0f172a;color:#ffffff;padding:10px 16px;border-radius:8px;text-decoration:none;display:inline-block;">
             Verify and claim profile
           </a>
         </p>
+        <p>After verification, you can complete creator signup and manage your profile.</p>
         <p>If you did not request this, you can ignore this email.</p>
         <p>If the button does not work, copy and paste this link into your browser:</p>
         <p><a href="${verifyUrl}">${verifyUrl}</a></p>
@@ -127,6 +96,8 @@ You requested to claim your creator profile on Goshsha IRL Campaign Network.
 
 Click here to verify and claim your profile:
 ${verifyUrl}
+
+After verification, you can complete creator signup and manage your profile.
 
 If you did not request this, you can ignore this email.
       `.trim(),

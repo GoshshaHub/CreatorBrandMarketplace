@@ -324,19 +324,23 @@ export default function PublicCreatorsPage() {
                         Invite Creator
                     </Link>
 
-                    <Link
-                      href={`/signup?role=creator&claimCreatorId=${creator.id}`}
-                      className="rounded-xl border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-100"
-                    >
-                      Claim
-                    </Link>
+                    {creator.creatorStatus !== "verified" && (
+                      <>
+                        <Link
+                          href={`/creator/claim?creatorId=${creator.id}`}
+                          className="rounded-xl border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-100"
+                        >
+                          Claim
+                        </Link>
 
-                    <Link
-                      href={`/creator/remove?creatorId=${creator.id}`}
-                      className="rounded-xl border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-600 shadow-sm hover:bg-slate-100"
-                    >
-                      Remove
-                    </Link>
+                        <Link
+                          href={`/creator/remove?creatorId=${creator.id}`}
+                          className="rounded-xl border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-600 shadow-sm hover:bg-slate-100"
+                        >
+                          Remove
+                        </Link>
+                      </>
+                    )}
                   </div>
                 </div>
               );

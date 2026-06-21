@@ -9,63 +9,42 @@ export async function GET(req: Request) {
     const token = searchParams.get("token");
 
     if (!token) {
-      return NextResponse.redirect(`${appUrl}/login?error=missing-token`);
+      return NextResponse.redirect(`${appUrl}/creators?claim=missing-token`);
     }
 
     const claimRef = adminDb.collection("creatorClaimRequests").doc(token);
     const claimSnap = await claimRef.get();
 
     if (!claimSnap.exists) {
-      return NextResponse.redirect(`${appUrl}/login?error=invalid-token`);
+      return NextResponse.redirect(`${appUrl}/creators?claim=invalid-token`);
     }
 
     const claim = claimSnap.data() as any;
 
     if (claim.status === "verified") {
-      return NextResponse.redirect(`${appUrl}/login?claimed=already`);
+      return NextResponse.redirect(
+        `${appUrl}/signup?role=creator&verifiedCreatorId=${claim.creatorId}&claim=already`
+      );
     }
 
-    const uid = claim.uid;
-    const listedCreatorId = claim.claimCreatorId;
+    const creatorId = claim.creatorId;
 
-    const listedCreatorRef = adminDb.collection("creators").doc(listedCreatorId);
-    const listedCreatorSnap = await listedCreatorRef.get();
-
-    if (!listedCreatorSnap.exists) {
-      return NextResponse.redirect(`${appUrl}/login?error=creator-not-found`);
+    if (!creatorId) {
+      return NextResponse.redirect(`${appUrl}/creators?claim=missing-creator`);
     }
 
-    const listedCreator = listedCreatorSnap.data() as any;
+    const creatorRef = adminDb.collection("creators").doc(creatorId);
+    const creatorSnap = await creatorRef.get();
 
-    await adminDb.collection("users").doc(uid).set(
-      {
-        isActive: true,
-        roles: ["creator"],
-        creatorStatus: "verified",
-        claimedListedCreatorId: listedCreatorId,
-        updatedAt: FieldValue.serverTimestamp(),
-      },
-      { merge: true }
-    );
+    if (!creatorSnap.exists) {
+      return NextResponse.redirect(`${appUrl}/creators?claim=creator-not-found`);
+    }
 
-    await adminDb.collection("creators").doc(uid).set(
+    await creatorRef.set(
       {
-        ...listedCreator,
-        userId: uid,
-        claimedListedCreatorId: listedCreatorId,
         creatorStatus: "verified",
         isMarketplaceVisible: true,
-        claimedAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
-      },
-      { merge: true }
-    );
-
-    await listedCreatorRef.set(
-      {
-        creatorStatus: "claimed",
-        isMarketplaceVisible: false,
-        claimedByUid: uid,
+        verifiedAt: FieldValue.serverTimestamp(),
         claimedAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
       },
@@ -78,10 +57,12 @@ export async function GET(req: Request) {
       updatedAt: FieldValue.serverTimestamp(),
     });
 
-    return NextResponse.redirect(`${appUrl}/login?claimed=success`);
+    return NextResponse.redirect(
+      `${appUrl}/signup?role=creator&verifiedCreatorId=${creatorId}&claim=success`
+    );
   } catch (err) {
     console.error("Verify creator claim error:", err);
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://irl.goshsha.com";
-    return NextResponse.redirect(`${appUrl}/login?error=claim-failed`);
+    return NextResponse.redirect(`${appUrl}/creators?claim=failed`);
   }
 }

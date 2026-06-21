@@ -283,19 +283,23 @@ export default function PublicCreatorProfilePage() {
             Invite Creator
             </Link>
 
-            <Link
-              href={`/signup?role=creator&claimCreatorId=${creator.id}`}
-              className="rounded-xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-100"
-            >
-              Claim Profile
-            </Link>
+            {creator.creatorStatus !== "verified" && (
+              <Link
+                href={`/creator/claim?creatorId=${creator.id}`}
+                className="rounded-xl border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-100"
+              >
+                Claim Profile
+              </Link>
+            )}
 
-            <Link
-              href={`/creator/remove?creatorId=${creator.id}`}
-              className="rounded-xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-600 shadow-sm hover:bg-slate-100"
-            >
-              Request Removal
-            </Link>
+            {creator.creatorStatus !== "verified" && (
+              <Link
+                href={`/creator/remove?creatorId=${creator.id}`}
+                className="rounded-xl border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-600 shadow-sm hover:bg-slate-100"
+              >
+                Request Removal
+              </Link>
+            )}
 
             {profileUrl && (
               <a
