@@ -8,12 +8,14 @@ export async function POST(req: Request) {
     const { campaignId } = await req.json();
 
     if (!campaignId || typeof campaignId !== "string") {
-      return NextResponse.json({ error: "Missing campaignId" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Missing campaignId" },
+        { status: 400 }
+      );
     }
 
     const appUrl =
-      process.env.NEXT_PUBLIC_APP_URL ||
-      "https://irl.goshsha.com";
+      process.env.NEXT_PUBLIC_APP_URL || "https://irl.goshsha.com";
 
     const creatorCampaignUrl = `${appUrl}/creator/campaign/${campaignId}`;
     const loginUrl = `${appUrl}/login`;
@@ -22,7 +24,10 @@ export async function POST(req: Request) {
     const campaignSnap = await campaignRef.get();
 
     if (!campaignSnap.exists) {
-      return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Campaign not found" },
+        { status: 404 }
+      );
     }
 
     const campaign = campaignSnap.data() as any;
@@ -44,7 +49,10 @@ export async function POST(req: Request) {
       .doc(campaign.creatorId)
       .get();
 
-    const userCreator = userCreatorSnap.exists ? userCreatorSnap.data() : null;
+    const userCreator = userCreatorSnap.exists
+      ? userCreatorSnap.data()
+      : null;
+
     const legacyCreator = legacyCreatorSnap.exists
       ? legacyCreatorSnap.data()
       : null;
@@ -63,6 +71,13 @@ export async function POST(req: Request) {
       );
     }
 
+    const isVerifiedCreator =
+      userCreator?.creatorStatus === "verified" ||
+      legacyCreator?.creatorStatus === "verified";
+
+    const creatorClaimUrl = `${appUrl}/creator/claim?creatorId=${campaign.creatorId}`;
+    const exploreNetworkUrl = `${appUrl}/creators`;
+
     // await adminDb.collection("notifications").add({
     //   userId: campaign.creatorId,
     //   role: "creator",
@@ -77,23 +92,40 @@ export async function POST(req: Request) {
     //   updatedAt: FieldValue.serverTimestamp(),
     // });
 
-    await sendEmail({
-      to: creatorEmail,
-      subject: "You have a new campaign invite",
-      htmlBody: `
-        <h2>You have a new campaign invite</h2>
-        <p><strong>${campaign.brandName || "A brand"}</strong> invited you to a campaign.</p>
-        <p><strong>Campaign:</strong> ${campaign.campaignTitle || ""}</p>
-        <p><strong>Product:</strong> ${campaign.productName || ""}</p>
-        <p>Please log in to review, accept, or decline the invite.</p>
-        <p>
-          <a href="${creatorCampaignUrl}" style="background:#0f172a;color:#ffffff;padding:10px 16px;border-radius:8px;text-decoration:none;display:inline-block;">
-            Open campaign invite
-          </a>
-        </p>
-        <p>If the button does not work, log in here: <a href="${loginUrl}">${loginUrl}</a></p>
-      `,
-      textBody: `
+    if (isVerifiedCreator) {
+      await sendEmail({
+        to: creatorEmail,
+        subject: "You have a new campaign invite",
+        htmlBody: `
+          <h2>You have a new campaign invite</h2>
+
+          <p>
+            <strong>${campaign.brandName || "A brand"}</strong>
+            invited you to a campaign.
+          </p>
+
+          <p><strong>Campaign:</strong> ${campaign.campaignTitle || ""}</p>
+          <p><strong>Product:</strong> ${campaign.productName || ""}</p>
+
+          <p>
+            Please log in to review, accept, or decline the invite.
+          </p>
+
+          <p>
+            <a
+              href="${creatorCampaignUrl}"
+              style="background:#0f172a;color:#ffffff;padding:10px 16px;border-radius:8px;text-decoration:none;display:inline-block;"
+            >
+              Open Campaign Invite
+            </a>
+          </p>
+
+          <p>
+            If the button does not work, log in here:
+            <a href="${loginUrl}">${loginUrl}</a>
+          </p>
+        `,
+        textBody: `
 You have a new campaign invite.
 
 Brand: ${campaign.brandName || "A brand"}
@@ -105,14 +137,84 @@ ${creatorCampaignUrl}
 
 Log in:
 ${loginUrl}
-      `.trim(),
-    });
+        `.trim(),
+      });
+    } else {
+      await sendEmail({
+        to: creatorEmail,
+        subject: "A brand noticed you on Goshsha",
+        htmlBody: `
+          <h2>A Brand Noticed You on Goshsha</h2>
 
-    return NextResponse.json({ ok: true, sentTo: creatorEmail });
+          <p>
+            <strong>${campaign.brandName || "A brand"}</strong>
+            just noticed you in the Goshsha IRL Campaign Network public directory
+            for a potential social collaboration.
+          </p>
+
+          <p><strong>Campaign:</strong> ${campaign.campaignTitle || ""}</p>
+          <p><strong>Product:</strong> ${campaign.productName || ""}</p>
+
+          <p>
+            Brands are actively discovering creators through Goshsha's IRL
+            Campaign Network. Explore the network, claim your creator profile,
+            and unlock future collaboration opportunities.
+          </p>
+
+          <p style="margin-top:24px;">
+            <a
+              href="${creatorClaimUrl}"
+              style="background:#0f172a;color:#ffffff;padding:10px 16px;border-radius:8px;text-decoration:none;display:inline-block;margin-right:10px;"
+            >
+              Explore Network & Sign Up
+            </a>
+
+            <a
+              href="${creatorCampaignUrl}"
+              style="background:#ffffff;color:#0f172a;padding:10px 16px;border-radius:8px;text-decoration:none;display:inline-block;border:1px solid #cbd5e1;"
+            >
+              View Brand Invite
+            </a>
+          </p>
+
+          <p style="margin-top:24px;">
+            Browse the creator network:
+            <a href="${exploreNetworkUrl}">
+              ${exploreNetworkUrl}
+            </a>
+          </p>
+        `,
+        textBody: `
+A brand noticed you on Goshsha.
+
+${campaign.brandName || "A brand"} just noticed you in the Goshsha IRL Campaign Network public directory for a potential social collaboration.
+
+Campaign: ${campaign.campaignTitle || ""}
+Product: ${campaign.productName || ""}
+
+Explore Network & Sign Up:
+${creatorClaimUrl}
+
+View Brand Invite:
+${creatorCampaignUrl}
+
+Browse the creator network:
+${exploreNetworkUrl}
+        `.trim(),
+      });
+    }
+
+    return NextResponse.json({
+      ok: true,
+      sentTo: creatorEmail,
+    });
   } catch (err: any) {
     console.error("Send campaign invite error:", err);
+
     return NextResponse.json(
-      { error: err?.message || "Failed to send campaign invite" },
+      {
+        error: err?.message || "Failed to send campaign invite",
+      },
       { status: 500 }
     );
   }
