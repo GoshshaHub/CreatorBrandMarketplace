@@ -63,7 +63,7 @@ function CreatorClaimPageContent() {
             </button>
 
             <Link
-                href="/login"
+                href="http://irl.goshsha.com/login"
                 className="mt-3 flex w-full items-center justify-center rounded-lg border border-slate-300 bg-white py-3 font-semibold text-slate-800 hover:bg-slate-50"
             >
                 Explore Network
