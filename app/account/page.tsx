@@ -26,10 +26,12 @@ export default function AccountRouterPage() {
         const userRef = doc(db, "users", user.uid);
         const userSnap = await getDoc(userRef);
 
-        if (!userSnap.exists()) {
-          setMessage("Your account profile could not be found.");
-          return;
-        }
+      if (!userSnap.exists()) {
+        setMessage(
+          "Your login exists, but your Goshsha profile has not been completed yet."
+        );
+        return;
+      }
 
         const data = userSnap.data();
         const roles = Array.isArray(data.roles) ? data.roles : [];
@@ -70,7 +72,11 @@ export default function AccountRouterPage() {
           <p className="app-subtitle">{message}</p>
 
           {message !== "Checking your account..." && (
-            <div style={{ marginTop: "24px" }}>
+            <div style={{ marginTop: "24px", display: "flex", gap: "12px", flexWrap: "wrap" }}>
+              <Link href="/signup?role=creator" className="app-button-primary">
+                Complete Creator Profile
+              </Link>
+
               <Link href="/login" className="app-button-secondary">
                 Back to Login
               </Link>

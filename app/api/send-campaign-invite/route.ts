@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "../../../lib/firebase-admin";
 import { sendEmail } from "../../../lib/postmark";
 
@@ -19,6 +18,7 @@ export async function POST(req: Request) {
 
     const creatorCampaignUrl = `${appUrl}/creator/campaign/${campaignId}`;
     const loginUrl = `${appUrl}/login`;
+    const exploreNetworkUrl = `${appUrl}/creators`;
 
     const campaignRef = adminDb.collection("campaigns").doc(campaignId);
     const campaignSnap = await campaignRef.get();
@@ -39,7 +39,8 @@ export async function POST(req: Request) {
       );
     }
 
-    const creatorSignupUrl = `${appUrl}/signup?role=creator&verifiedCreatorId=${campaign.creatorId}`;
+    const creatorProfileUrl = `${appUrl}/creators/${campaign.creatorId}`;
+    const creatorClaimUrl = `${appUrl}/creator/claim?creatorId=${campaign.creatorId}`;
 
     const userCreatorSnap = await adminDb
       .collection("users")
@@ -76,23 +77,6 @@ export async function POST(req: Request) {
     const isVerifiedCreator =
       userCreator?.creatorStatus === "verified" ||
       legacyCreator?.creatorStatus === "verified";
-
-    const creatorClaimUrl = `${appUrl}/creators/${campaign.creatorId}`;
-    const exploreNetworkUrl = `${appUrl}/creators`;
-
-    // await adminDb.collection("notifications").add({
-    //   userId: campaign.creatorId,
-    //   role: "creator",
-    //   type: "campaign_invite",
-    //   title: "New campaign invite",
-    //   message: `${campaign.brandName || "A brand"} invited you to "${
-    //     campaign.campaignTitle || "a campaign"
-    //   }".`,
-    //   campaignId,
-    //   read: false,
-    //   createdAt: FieldValue.serverTimestamp(),
-    //   updatedAt: FieldValue.serverTimestamp(),
-    // });
 
     if (isVerifiedCreator) {
       await sendEmail({
@@ -159,23 +143,25 @@ ${loginUrl}
 
           <p>
             Brands are actively discovering creators through Goshsha's IRL
-            Campaign Network. Explore the network, and claim your creator profile.
-            Unlock this and future collaboration opportunities. 
-            <p>
-              Join the network as a creator for free and expand your collaboration opportunities to real-world stores.
-            </p>
+            Campaign Network. Explore the network and claim your creator profile
+            to unlock this and future collaboration opportunities.
+          </p>
+
+          <p>
+            Join the network as a creator for free and expand your collaboration
+            opportunities to real-world stores.
           </p>
 
           <p style="margin-top:24px;">
             <a
-              href="https://irl.goshsha.com/login"
+              href="${creatorProfileUrl}"
               style="background:#0f172a;color:#ffffff;padding:10px 16px;border-radius:8px;text-decoration:none;display:inline-block;margin-right:10px;"
             >
               Explore Network & Sign Up
             </a>
 
             <a
-              href="${creatorSignupUrl}"
+              href="${creatorClaimUrl}"
               style="background:#ffffff;color:#0f172a;padding:10px 16px;border-radius:8px;text-decoration:none;display:inline-block;border:1px solid #cbd5e1;"
             >
               Join Network & View Brand Invite
@@ -197,11 +183,13 @@ ${campaign.brandName || "A brand"} just noticed you in the Goshsha IRL Campaign 
 Campaign: ${campaign.campaignTitle || ""}
 Product: ${campaign.productName || ""}
 
-Explore Network & Sign Up:
-${creatorClaimUrl}
+Join the network as a creator for free and expand your collaboration opportunities to real-world stores.
 
-View Brand Invite:
-${creatorCampaignUrl}
+Explore Network & Sign Up:
+${creatorProfileUrl}
+
+Join Network & View Brand Invite:
+${creatorClaimUrl}
 
 Browse the creator network:
 ${exploreNetworkUrl}
