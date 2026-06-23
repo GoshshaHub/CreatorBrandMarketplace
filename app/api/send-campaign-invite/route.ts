@@ -39,6 +39,8 @@ export async function POST(req: Request) {
       );
     }
 
+    const creatorSignupUrl = `${appUrl}/signup?role=creator&verifiedCreatorId=${campaign.creatorId}`;
+
     const userCreatorSnap = await adminDb
       .collection("users")
       .doc(campaign.creatorId)
@@ -75,7 +77,7 @@ export async function POST(req: Request) {
       userCreator?.creatorStatus === "verified" ||
       legacyCreator?.creatorStatus === "verified";
 
-    const creatorClaimUrl = `${appUrl}/creator/claim?creatorId=${campaign.creatorId}`;
+    const creatorClaimUrl = `${appUrl}/creators/${campaign.creatorId}`;
     const exploreNetworkUrl = `${appUrl}/creators`;
 
     // await adminDb.collection("notifications").add({
@@ -157,8 +159,11 @@ ${loginUrl}
 
           <p>
             Brands are actively discovering creators through Goshsha's IRL
-            Campaign Network. Explore the network, claim your creator profile,
-            and unlock future collaboration opportunities.
+            Campaign Network. Explore the network, and claim your creator profile.
+            Unlock this and future collaboration opportunities. 
+            <p>
+              Join the network as a creator for free and expand your collaboration opportunities to real-world stores.
+            </p>
           </p>
 
           <p style="margin-top:24px;">
@@ -170,10 +175,10 @@ ${loginUrl}
             </a>
 
             <a
-              href="${creatorCampaignUrl}"
+              href="${creatorSignupUrl}"
               style="background:#ffffff;color:#0f172a;padding:10px 16px;border-radius:8px;text-decoration:none;display:inline-block;border:1px solid #cbd5e1;"
             >
-              View Brand Invite
+              Join Network & View Brand Invite
             </a>
           </p>
 

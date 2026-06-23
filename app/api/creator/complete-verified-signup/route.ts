@@ -66,6 +66,27 @@ export async function POST(req: Request) {
       { merge: true }
     );
 
+    const campaignsSnap = await adminDb
+  .collection("campaigns")
+  .where("creatorId", "==", verifiedCreatorId)
+  .get();
+
+const batch = adminDb.batch();
+
+campaignsSnap.forEach((campaignDoc) => {
+  batch.update(campaignDoc.ref, {
+    creatorId: uid,
+    originalListedCreatorId: verifiedCreatorId,
+    creatorStatus: "verified",
+    creatorClaimedAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+});
+
+if (!campaignsSnap.empty) {
+  await batch.commit();
+}
+
     return NextResponse.json({ ok: true });
   } catch (err: any) {
     console.error("Complete verified signup error:", err);

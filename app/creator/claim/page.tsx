@@ -2,6 +2,7 @@
 
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 
 function CreatorClaimPageContent() {
   const searchParams = useSearchParams();
@@ -47,7 +48,7 @@ function CreatorClaimPageContent() {
           <>
             <p className="mt-4 text-slate-600">
               We will send a verification link to the email associated with this
-              creator profile.
+              creator profile. Verification is free. Joining our IRL Campaign Network as a creator is always free.
             </p>
 
             {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
@@ -60,6 +61,14 @@ function CreatorClaimPageContent() {
             >
               {loading ? "Sending verification email..." : "Send Verification Email"}
             </button>
+
+            <Link
+                href="/login"
+                className="mt-3 flex w-full items-center justify-center rounded-lg border border-slate-300 bg-white py-3 font-semibold text-slate-800 hover:bg-slate-50"
+            >
+                Explore Network
+            </Link>
+
           </>
         ) : (
           <div className="mt-4 rounded-xl border border-green-200 bg-green-50 p-4">
