@@ -168,7 +168,7 @@ ${loginUrl}
 
           <p style="margin-top:24px;">
             <a
-              href="${creatorClaimUrl}"
+              href="https://irl.goshsha.com/login"
               style="background:#0f172a;color:#ffffff;padding:10px 16px;border-radius:8px;text-decoration:none;display:inline-block;margin-right:10px;"
             >
               Explore Network & Sign Up
