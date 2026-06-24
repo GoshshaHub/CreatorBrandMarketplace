@@ -92,7 +92,17 @@ export default function LoginPage() {
       await loginUser(email, password);
       router.replace("/account");
     } catch (err: any) {
-      setError(err.message || "Unable to log in.");
+      const code = err?.code || "";
+
+      if (code === "auth/user-not-found" || code === "auth/invalid-credential") {
+        setError("No account was found with that email and password. If you were invited as a creator, please claim your profile first or use Forgot Password if you already created access.");
+      } else if (code === "auth/wrong-password") {
+        setError("That password is incorrect. Please try again or click Forgot Password.");
+      } else if (code === "auth/invalid-email") {
+        setError("Please enter a valid email address.");
+      } else {
+        setError("Unable to log in. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -111,7 +121,15 @@ export default function LoginPage() {
       await sendResetPasswordEmail(email.trim());
       setMessage("Password reset email sent.");
     } catch (err: any) {
-      setError(err.message || "Unable to send reset email.");
+      const code = err?.code || "";
+
+      if (code === "auth/user-not-found") {
+        setError("No account was found with that email. If you were listed in the creator directory, please claim your profile first.");
+      } else if (code === "auth/invalid-email") {
+        setError("Please enter a valid email address.");
+      } else {
+        setError("Unable to send reset email. Please try again.");
+      }
     }
   }
 

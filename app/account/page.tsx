@@ -73,13 +73,28 @@ export default function AccountRouterPage() {
 
           {message !== "Checking your account..." && (
             <div style={{ marginTop: "24px", display: "flex", gap: "12px", flexWrap: "wrap" }}>
-              <Link href="/signup?role=creator" className="app-button-primary">
+              <Link
+                href="/signup?role=creator"
+                className="app-button-secondary"
+                style={{
+                  backgroundColor: "#0f172a",
+                  color: "#ffffff",
+                  textDecoration: "none",
+                }}
+              >
                 Complete Creator Profile
               </Link>
 
-              <Link href="/login" className="app-button-secondary">
+              <button
+                type="button"
+                onClick={async () => {
+                  await auth.signOut();
+                  router.replace("/login");
+                }}
+                className="app-button-secondary"
+              >
                 Back to Login
-              </Link>
+              </button>
             </div>
           )}
         </div>

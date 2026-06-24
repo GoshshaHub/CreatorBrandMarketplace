@@ -105,6 +105,26 @@ export default function SignupPage() {
               .filter(Boolean)
           : [];
 
+
+      if (role === "creator" && !verifiedCreatorId && !claimMode) {
+        const checkRes = await fetch("/api/creator/check-listed-email", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: normalizedEmail,
+          }),
+        });
+
+        const checkData = await checkRes.json();
+
+        if (checkData.exists) {
+          throw new Error(
+            "This email is already connected to a listed creator profile. Please claim your profile first or click Forgot Password."
+          );
+        }
+      }
       const credential = await signupUser(
         normalizedEmail,
         password,
