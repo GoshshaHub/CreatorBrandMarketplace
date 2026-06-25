@@ -41,6 +41,28 @@ function isSubscribed(status?: string) {
   return status === "trialing" || status === "active";
 }
 
+function getFollowerRange(creator: CreatorProfile) {
+  return creator.followerRange || "Unknown";
+}
+
+function uniqueCategories(creators: CreatorProfile[]) {
+  return [
+    "All categories",
+    ...new Set(
+      creators.flatMap((c) => c.categories || [])
+    ),
+  ];
+}
+
+function uniquePlatforms(creators: CreatorProfile[]) {
+  return [
+    "All platforms",
+    ...new Set(
+      creators.flatMap((c) => c.platforms || [])
+    ),
+  ];
+}
+
 export default function BrandCreatorsPage() {
   const [creators, setCreators] = useState<CreatorProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,6 +75,35 @@ export default function BrandCreatorsPage() {
   const [campaignStats, setCampaignStats] = useState<
     Record<string, { completed: number; live: number }>
   >({});
+
+  const filteredCreators = creators.filter((creator) => {
+  const matchesCategory =
+    categoryFilter === "All categories" ||
+    creator.categories?.includes(categoryFilter);
+
+  const matchesFollowers =
+    followerFilter === "All followers" ||
+    getFollowerRange(creator) === followerFilter;
+
+  const matchesPlatform =
+    platformFilter === "All platforms" ||
+    creator.platforms?.includes(platformFilter);
+
+  return (
+    matchesCategory &&
+    matchesFollowers &&
+    matchesPlatform
+  );
+});
+
+  const [categoryFilter, setCategoryFilter] =
+  useState("All categories");
+
+  const [platformFilter, setPlatformFilter] =
+    useState("All platforms");
+
+  const [followerFilter, setFollowerFilter] =
+    useState("All followers");
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -238,6 +289,42 @@ export default function BrandCreatorsPage() {
             <p className="mt-2 text-base text-slate-600">
               Discover creators and invite the right fit for your next campaign.
             </p>
+
+            <div className="mt-6 grid gap-4 md:grid-cols-3">
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className="rounded-xl border border-slate-300 px-4 py-3"
+              >
+                {uniqueCategories(creators).map((category) => (
+                  <option key={category}>{category}</option>
+                ))}
+              </select>
+
+              <select
+                value={platformFilter}
+                onChange={(e) => setPlatformFilter(e.target.value)}
+                className="rounded-xl border border-slate-300 px-4 py-3"
+              >
+                {uniquePlatforms(creators).map((platform) => (
+                  <option key={platform}>{platform}</option>
+                ))}
+              </select>
+
+              <select
+                value={followerFilter}
+                onChange={(e) => setFollowerFilter(e.target.value)}
+                className="rounded-xl border border-slate-300 px-4 py-3"
+              >
+                <option>All followers</option>
+                <option>Less than 1K</option>
+                <option>1K-5K</option>
+                <option>5K-10K</option>
+                <option>10K-50K</option>
+                <option>50K-100K</option>
+                <option>100K+</option>
+              </select>
+            </div>
           </div>
 
           <Link
@@ -254,7 +341,7 @@ export default function BrandCreatorsPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            {creators.map((creator) => {
+            {filteredCreators.map((creator) => {
               const displayName =
                 creator.displayName || creator.name || "Unnamed Creator";
 
