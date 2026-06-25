@@ -313,11 +313,10 @@ export default function PublicCreatorProfilePage() {
             )}
           </div>
 
-          <p className="mt-10 text-sm text-slate-500">
-            Creator information is displayed from publicly
-            available sources for discovery purposes.
-            Creators may claim, update, or request removal
-            of their profile at any time.
+          <p className="mt-10 text-sm leading-6 text-slate-500">
+            This creator profile may include publicly available information and is shown
+            for professional discovery purposes. Creators may claim, update, or request
+            removal of their profile at any time.
           </p>
         </div>
       </div>
