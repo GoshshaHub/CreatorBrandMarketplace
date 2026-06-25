@@ -76,6 +76,15 @@ export default function BrandCreatorsPage() {
     Record<string, { completed: number; live: number }>
   >({});
 
+  const [categoryFilter, setCategoryFilter] =
+    useState("All categories");
+
+  const [platformFilter, setPlatformFilter] =
+    useState("All platforms");
+
+  const [followerFilter, setFollowerFilter] =
+    useState("All followers");
+
   const filteredCreators = creators.filter((creator) => {
   const matchesCategory =
     categoryFilter === "All categories" ||
@@ -95,15 +104,6 @@ export default function BrandCreatorsPage() {
     matchesPlatform
   );
 });
-
-  const [categoryFilter, setCategoryFilter] =
-  useState("All categories");
-
-  const [platformFilter, setPlatformFilter] =
-    useState("All platforms");
-
-  const [followerFilter, setFollowerFilter] =
-    useState("All followers");
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
