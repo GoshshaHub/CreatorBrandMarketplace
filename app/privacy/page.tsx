@@ -140,9 +140,23 @@ export default function PrivacyPage() {
             <h3 className="mt-5 font-black text-[#0b1234]">
               3.1 Between Users
             </h3>
+
             <ul className="mt-3 list-disc space-y-2 pl-5">
-              <li>Brands may see creator profiles, creator metrics, campaign submissions, and related information.</li>
-              <li>Creators may see brand campaign details, campaign requirements, and contact information.</li>
+              <li>
+                Brands and visitors to the public Creator Directory may view creator
+                profiles and related professional information that creators or Goshsha
+                have made publicly available for discovery purposes.
+              </li>
+
+              <li>
+                Brands may also view creator metrics, campaign submissions, and
+                collaboration information as permitted by the platform.
+              </li>
+
+              <li>
+                Creators may view brand campaign details, campaign requirements,
+                and contact information necessary to participate in collaborations.
+              </li>
             </ul>
 
             <h3 className="mt-5 font-black text-[#0b1234]">
@@ -182,15 +196,85 @@ export default function PrivacyPage() {
             <h2 className="text-xl font-black text-[#0b1234]">
               4. Creator Content and Public Visibility
             </h2>
+
+            <h3 className="mt-5 font-black text-[#0b1234]">
+              4.1 Creator Content
+            </h3>
+
             <p className="mt-3">
-              Content submitted by creators may be displayed within the Goshsha
-              app, associated with specific products in retail environments, and
-              visible to users who scan those products.
+              Creator content may be displayed within the Goshsha mobile application,
+              the Goshsha IRL Campaign Network, associated websites, and other
+              Goshsha-operated experiences.
             </p>
+
+            <p className="mt-3">
+              Creator content may be associated with products, brands, retail
+              locations, campaigns, and real-world augmented reality (AR)
+              experiences.
+            </p>
+
             <p className="mt-3">
               If content is linked from public platforms such as TikTok,
-              Instagram, or YouTube, that content remains subject to the privacy
-              settings, terms, and policies of those platforms.
+              Instagram, YouTube, or similar services, that content remains
+              subject to the privacy settings, terms, and policies of those
+              third-party platforms.
+            </p>
+
+            <h3 className="mt-6 font-black text-[#0b1234]">
+              4.2 Public Creator Directory
+            </h3>
+
+            <p className="mt-3">
+              To help brands discover creators for collaboration opportunities,
+              Goshsha may maintain a publicly accessible Creator Directory.
+            </p>
+
+            <p className="mt-3">
+              Public creator profiles may include professional information such as:
+            </p>
+
+            <ul className="mt-3 list-disc space-y-2 pl-5">
+              <li>Display name</li>
+              <li>Creator handle</li>
+              <li>Profile photograph</li>
+              <li>Biography</li>
+              <li>Content categories</li>
+              <li>Supported social platforms</li>
+              <li>Follower range</li>
+              <li>Public profile links</li>
+              <li>Verification status</li>
+              <li>Other professional creator information intended for discovery</li>
+            </ul>
+
+            <p className="mt-3">
+              We do not intentionally display private account information,
+              authentication credentials, payment information, private
+              communications, or other sensitive account data in the public
+              Creator Directory.
+            </p>
+
+            <p className="mt-3">
+              Creator profiles may be created by the creator directly,
+              information submitted during registration, publicly available
+              professional information, information provided during brand
+              collaborations, or by Goshsha administrators to facilitate
+              creator discovery.
+            </p>
+
+            <p className="mt-3">
+              Creators may claim their profile, update profile information,
+              request corrections, or request removal of their public listing
+              at any time.
+            </p>
+
+            <p className="mt-3">
+              Participation in campaigns, creator verification, or inclusion
+              in the public directory does not constitute endorsement by
+              Goshsha. We reserve the right to review, modify, remove,
+              decline, or disable public creator listings that violate our
+              policies, contain inaccurate information, infringe the rights
+              of others, or otherwise interfere with the integrity of the
+              platform.
             </p>
           </section>
 
@@ -256,6 +340,26 @@ export default function PrivacyPage() {
               We will delete or anonymize your data unless retention is required
               or permitted for legal, financial, security, fraud prevention,
               operational, or dispute-resolution reasons.
+            </p>
+          </section>
+
+          <section>
+            <h3 className="mt-5 font-black text-[#0b1234]">
+              8.1 Public Creator Listing Removal
+            </h3>
+
+            <p className="mt-3">
+              Creators whose profiles appear in the public Creator Directory may
+              request removal of their public listing at any time using the
+              profile removal tools provided by Goshsha or by contacting
+              <strong> support@goshsha.com</strong>.
+            </p>
+
+            <p className="mt-3">
+              Removing a public listing does not automatically delete a Goshsha
+              account or historical campaign records that we are required or
+              permitted to retain for legal, contractual, financial, security,
+              fraud prevention, or operational purposes.
             </p>
           </section>
 

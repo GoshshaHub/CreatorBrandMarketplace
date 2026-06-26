@@ -119,6 +119,40 @@ export default function TermsPage() {
           </section>
 
           <section>
+            <h3 className="mt-5 font-black text-[#0b1234]">
+              6.1 Public Creator Directory
+            </h3>
+
+            <p className="mt-3">
+              Goshsha may maintain a publicly accessible Creator Directory to help
+              brands discover creators for potential collaborations.
+            </p>
+
+            <p className="mt-3">
+              Public creator profiles may be created by creators themselves,
+              information submitted during registration, publicly available
+              professional information, information provided during brand
+              collaborations, or by Goshsha administrators to facilitate creator
+              discovery.
+            </p>
+
+            <p className="mt-3">
+              If a creator has not yet created a Goshsha account, Goshsha may
+              provide a mechanism for that creator to claim, verify, update, or
+              request removal of the profile.
+            </p>
+
+            <p className="mt-3">
+              Inclusion in the Creator Directory does not constitute endorsement,
+              certification, employment, partnership, or representation by
+              Goshsha. Goshsha reserves the right to review, edit, verify, decline,
+              suspend, or remove creator listings that violate these Terms,
+              applicable laws, intellectual property rights, or platform policies,
+              or that otherwise compromise the integrity of the platform.
+            </p>
+          </section>
+
+          <section>
             <h2 className="text-xl font-black text-[#0b1234]">
               7. Campaigns, Funding, Approval, and Payouts
             </h2>
@@ -259,6 +293,8 @@ export default function TermsPage() {
               <li>Circumventing Goshsha fees by moving platform-originated campaigns off-platform.</li>
               <li>Harassing, threatening, exploiting, or discriminating against other users.</li>
               <li>Violating advertising, endorsement, consumer protection, intellectual property, privacy, or data protection laws.</li>
+              <li>Claiming or attempting to claim a creator profile that does not belong to you.</li>
+              <li>Submitting false, misleading, or unauthorized information for inclusion in the public Creator Directory.</li>
             </ul>
           </section>
 
