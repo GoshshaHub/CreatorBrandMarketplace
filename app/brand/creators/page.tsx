@@ -71,6 +71,7 @@ export default function BrandCreatorsPage() {
   const [brandName, setBrandName] = useState("");
   const [brandEmail, setBrandEmail] = useState("");
   const [brandUid, setBrandUid] = useState("");
+  const [handleSearch, setHandleSearch] = useState("");
 
   const [campaignStats, setCampaignStats] = useState<
     Record<string, { completed: number; live: number }>
@@ -86,24 +87,34 @@ export default function BrandCreatorsPage() {
     useState("All followers");
 
   const filteredCreators = creators.filter((creator) => {
-  const matchesCategory =
-    categoryFilter === "All categories" ||
-    creator.categories?.includes(categoryFilter);
+    const matchesCategory =
+      categoryFilter === "All categories" ||
+      creator.categories?.includes(categoryFilter);
 
-  const matchesFollowers =
-    followerFilter === "All followers" ||
-    getFollowerRange(creator) === followerFilter;
+    const matchesFollowers =
+      followerFilter === "All followers" ||
+      getFollowerRange(creator) === followerFilter;
 
-  const matchesPlatform =
-    platformFilter === "All platforms" ||
-    creator.platforms?.includes(platformFilter);
+    const matchesPlatform =
+      platformFilter === "All platforms" ||
+      creator.platforms?.includes(platformFilter);
 
-  return (
-    matchesCategory &&
-    matchesFollowers &&
-    matchesPlatform
-  );
-});
+    const searchText = handleSearch.trim().toLowerCase();
+
+    const matchesHandle =
+      !searchText ||
+      creator.handle?.toLowerCase().includes(searchText) ||
+      creator.username?.toLowerCase().includes(searchText) ||
+      creator.displayName?.toLowerCase().includes(searchText) ||
+      creator.name?.toLowerCase().includes(searchText);
+
+    return (
+      matchesCategory &&
+      matchesFollowers &&
+      matchesPlatform &&
+      matchesHandle
+    );
+  });
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -290,7 +301,7 @@ export default function BrandCreatorsPage() {
               Discover creators and invite the right fit for your next campaign.
             </p>
 
-            <div className="mt-6 grid gap-4 md:grid-cols-3">
+            <div className="mt-6 grid gap-4 md:grid-cols-4">
               <select
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
@@ -324,6 +335,14 @@ export default function BrandCreatorsPage() {
                 <option>50K-100K</option>
                 <option>100K+</option>
               </select>
+
+              <input
+                value={handleSearch}
+                onChange={(e) => setHandleSearch(e.target.value)}
+                placeholder="Search handle"
+                className="rounded-xl border border-slate-300 px-4 py-3"
+              />
+              
             </div>
           </div>
 

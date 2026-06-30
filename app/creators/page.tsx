@@ -76,6 +76,7 @@ export default function PublicCreatorsPage() {
   const [categoryFilter, setCategoryFilter] = useState("All categories");
   const [followerFilter, setFollowerFilter] = useState("All followers");
   const [platformFilter, setPlatformFilter] = useState("All platforms");
+  const [handleSearch, setHandleSearch] = useState("");
 
   useEffect(() => {
     async function loadCreators() {
@@ -118,30 +119,41 @@ export default function PublicCreatorsPage() {
   }, [creators]);
 
     const filteredCreators = useMemo(() => {
-    return creators.filter((creator) => {
+      return creators.filter((creator) => {
         const matchesCategory =
-        categoryFilter === "All categories" ||
-        creator.categories?.includes(categoryFilter);
+          categoryFilter === "All categories" ||
+          creator.categories?.includes(categoryFilter);
 
         const matchesFollowers =
-        followerFilter === "All followers" ||
-        getFollowerRange(creator) === followerFilter;
+          followerFilter === "All followers" ||
+          getFollowerRange(creator) === followerFilter;
 
         const matchesPlatform =
-        platformFilter === "All platforms" ||
-        creator.platforms?.includes(platformFilter);
+          platformFilter === "All platforms" ||
+          creator.platforms?.includes(platformFilter);
+
+        const searchText = handleSearch.trim().toLowerCase();
+
+        const matchesHandle =
+          !searchText ||
+          creator.handle?.toLowerCase().includes(searchText) ||
+          creator.username?.toLowerCase().includes(searchText) ||
+          creator.displayName?.toLowerCase().includes(searchText) ||
+          creator.name?.toLowerCase().includes(searchText);
 
         return (
-        matchesCategory &&
-        matchesFollowers &&
-        matchesPlatform
+          matchesCategory &&
+          matchesFollowers &&
+          matchesPlatform &&
+          matchesHandle
         );
-    });
+      });
     }, [
-    creators,
-    categoryFilter,
-    followerFilter,
-    platformFilter,
+      creators,
+      categoryFilter,
+      followerFilter,
+      platformFilter,
+      handleSearch,
     ]);
 
   if (loading) {
@@ -170,7 +182,7 @@ export default function PublicCreatorsPage() {
           </p>
         </div>
 
-        <div className="mb-8 grid grid-cols-1 gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-5 md:grid-cols-3">
+        <div className="mb-8 grid grid-cols-1 gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-5 md:grid-cols-4">
           <div>
             <label className="mb-2 block text-sm font-bold text-slate-700">
               Category
@@ -214,7 +226,19 @@ export default function PublicCreatorsPage() {
                 <option key={platform}>{platform}</option>
                 ))}
             </select>
-            </div>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-bold text-slate-700">
+              Search handle
+            </label>
+            <input
+              value={handleSearch}
+              onChange={(e) => setHandleSearch(e.target.value)}
+              placeholder="@creatorhandle"
+              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900"
+            />
+          </div>
         </div>
 
         {filteredCreators.length === 0 ? (
@@ -234,6 +258,15 @@ export default function PublicCreatorsPage() {
                   : "Categories not listed";
 
               const initials = getInitials(displayName);
+
+              const searchText = handleSearch.trim().toLowerCase();
+
+              const matchesHandle =
+                !searchText ||
+                creator.handle?.toLowerCase().includes(searchText) ||
+                creator.username?.toLowerCase().includes(searchText) ||
+                creator.displayName?.toLowerCase().includes(searchText) ||
+                creator.name?.toLowerCase().includes(searchText);
 
               return (
                 <div
