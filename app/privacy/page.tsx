@@ -247,6 +247,13 @@ export default function PrivacyPage() {
             </ul>
 
             <p className="mt-3">
+              Public profile images may be displayed to help identify creators in the
+              public Creator Directory. If a creator claims their profile, requests a
+              correction, or requests removal, Goshsha will update or remove the image as
+              appropriate.
+            </p>
+
+            <p className="mt-3">
               We do not intentionally display private account information,
               authentication credentials, payment information, private
               communications, or other sensitive account data in the public
@@ -262,19 +269,24 @@ export default function PrivacyPage() {
             </p>
 
             <p className="mt-3">
+              Public creator profiles are intended for professional discovery and may be
+              based on information that creators have intentionally made publicly available
+              through social media profiles or other public sources.
+            </p>
+
+            <p className="mt-3">
               Creators may claim their profile, update profile information,
               request corrections, or request removal of their public listing
               at any time.
             </p>
 
             <p className="mt-3">
-              Participation in campaigns, creator verification, or inclusion
-              in the public directory does not constitute endorsement by
-              Goshsha. We reserve the right to review, modify, remove,
-              decline, or disable public creator listings that violate our
-              policies, contain inaccurate information, infringe the rights
-              of others, or otherwise interfere with the integrity of the
-              platform.
+              Participation in campaigns, creator verification, or inclusion in the public
+              Creator Directory does not constitute endorsement, employment, partnership,
+              representation, or affiliation with Goshsha. We reserve the right to review,
+              modify, remove, decline, or disable public creator listings that violate our
+              policies, contain inaccurate information, infringe the rights of others, or
+              otherwise interfere with the integrity of the platform.
             </p>
           </section>
 

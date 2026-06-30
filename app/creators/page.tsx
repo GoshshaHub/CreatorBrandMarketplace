@@ -351,7 +351,7 @@ export default function PublicCreatorsPage() {
         <p className="mt-10 text-sm leading-6 text-slate-500">
           Creator profiles may include publicly available information and are displayed
           for professional discovery purposes. Creators may claim, update, or request
-          removal of their profile at any time. See our{" "}
+          removal of their profile at any time. Goshsha is an independent creator discovery platform and is not affiliated with, endorsed by, or sponsored by TikTok, Instagram, YouTube, or any other social media platform. See our{" "}
           <Link href="/privacy" className="font-semibold underline">
             Privacy Policy
           </Link>{" "}

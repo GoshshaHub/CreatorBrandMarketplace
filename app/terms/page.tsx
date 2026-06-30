@@ -129,11 +129,17 @@ export default function TermsPage() {
             </p>
 
             <p className="mt-3">
-              Public creator profiles may be created by creators themselves,
+              Public creator listings may be created by creators themselves,
               information submitted during registration, publicly available
               professional information, information provided during brand
               collaborations, or by Goshsha administrators to facilitate creator
               discovery.
+            </p>
+
+            <p className="mt-3">
+              Public creator listings are compiled from information that creators have intentionally made publicly available through their professional social media profiles or other public sources. Listing a creator does not imply
+              endorsement, partnership, employment, representation, or affiliation
+              with Goshsha.
             </p>
 
             <p className="mt-3">
@@ -149,6 +155,14 @@ export default function TermsPage() {
               suspend, or remove creator listings that violate these Terms,
               applicable laws, intellectual property rights, or platform policies,
               or that otherwise compromise the integrity of the platform.
+            </p>
+
+            <p className="mt-3">
+              Goshsha is an independent creator discovery platform and is not
+              endorsed by, affiliated with, or sponsored by TikTok, Instagram,
+              YouTube, Meta, Google, or any other social media platform. All
+              trademarks, logos, and platform names are the property of their
+              respective owners.
             </p>
           </section>
 
