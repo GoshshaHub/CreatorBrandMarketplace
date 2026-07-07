@@ -381,6 +381,21 @@ export default function PublicCreatorsPage() {
           </div>
         )}
 
+        <div className="mt-10 rounded-3xl border border-pink-200 bg-gradient-to-r from-pink-50 via-purple-50 to-orange-50 p-8 text-center shadow-sm">
+          <p className="text-sm font-bold uppercase tracking-wide text-pink-600">
+            Creator Network Growing
+          </p>
+
+          <h2 className="mt-2 text-2xl font-black text-slate-950">
+            More creators are being added every day.
+          </h2>
+
+          <p className="mt-3 text-slate-600">
+            Check back often as Goshsha continues expanding the IRL Campaign Creator Network
+            across beauty, lifestyle, food, home, pets, and more.
+          </p>
+        </div>
+        
         <p className="mt-10 text-sm leading-6 text-slate-500">
           Creator profiles may include publicly available information and are displayed
           for professional discovery purposes. Creators may claim, update, or request

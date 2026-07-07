@@ -167,12 +167,21 @@ export default function LoginPage() {
           </p>
         </div>
 
-            <Link
-              href="/signup"
-              className="rounded-2xl bg-gradient-to-r from-pink-500 via-rose-500 to-orange-400 px-5 py-3 text-sm font-black text-white shadow-lg shadow-pink-500/25 transition hover:translate-y-[-1px] hover:shadow-xl"
-            >
-              Join Network
-            </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/creators"
+            className="rounded-2xl border border-slate-300 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:-translate-y-[1px] hover:bg-slate-50"
+          >
+            Creator Directory
+          </Link>
+
+          <Link
+            href="/signup"
+            className="rounded-2xl bg-gradient-to-r from-pink-500 via-rose-500 to-orange-400 px-5 py-3 text-sm font-black text-white shadow-lg shadow-pink-500/25 transition hover:-translate-y-[1px] hover:shadow-xl"
+          >
+            Join Network
+          </Link>
+        </div>
           </header>
 
           <div className="max-w-4xl pt-4 lg:pt-6">
