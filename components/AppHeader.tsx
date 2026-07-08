@@ -110,7 +110,7 @@ export default function AppHeader() {
 
     if (!user) {
       if (isAuthPage) {
-        return [{ href: "/", label: "Home" }];
+        return [];
       }
 
       return [
