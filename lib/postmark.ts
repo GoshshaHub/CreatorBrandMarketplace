@@ -18,8 +18,8 @@ export async function sendEmail(params: {
   const client = new postmark.ServerClient(token);
 
   return client.sendEmail({
-    From: "Athena from Goshsha <athena@goshsha.com>",
-    ReplyTo: replyTo || "athena@goshsha.com",
+    From: "Goshsha <support@goshsha.com>",
+    ReplyTo: replyTo || "support@goshsha.com",
     To: to,
     Subject: subject,
     HtmlBody: htmlBody,

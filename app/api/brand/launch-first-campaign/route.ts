@@ -88,7 +88,7 @@ export async function POST(req: Request) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://irl.goshsha.com";
 
     await sendEmail({
-      to: process.env.ADMIN_EMAIL || "athena@goshsha.com",
+      to: process.env.ADMIN_EMAIL || "support@goshsha.com",
       subject: "New IRL Campaign Needs AR",
       htmlBody: `
         <h2>New First IRL Campaign Needs AR</h2>
