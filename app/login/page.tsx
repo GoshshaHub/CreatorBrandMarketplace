@@ -526,54 +526,40 @@ export default function LoginPage() {
         </div>
       </section>
 
-      <footer className="relative border-t border-slate-200 bg-white/80 px-5 py-10 text-center text-sm text-slate-600 backdrop-blur sm:px-8 lg:px-10">
-        <div className="mx-auto max-w-7xl">
-          <p className="font-semibold text-[#0b1234]">
-            © 2026 by Goshsha, Matt Dot LLC. All rights reserved.
-          </p>
+    <footer className="relative border-t border-slate-200 bg-white/80 px-5 py-10 text-center text-sm text-slate-600 backdrop-blur sm:px-8 lg:px-10">
+      <div className="mx-auto max-w-7xl">
+        <p className="font-semibold text-[#0b1234]">
+          © 2026 by Goshsha, Matt Dot LLC. All rights reserved.
+        </p>
 
-          <div className="mt-4 flex flex-wrap justify-center gap-x-6 gap-y-2">
-            <Link
-              href="/terms"
-              className="font-bold text-pink-600 underline-offset-4 hover:underline"
-            >
-              Terms of Service
-            </Link>
+        <div className="mt-4 flex flex-wrap justify-center gap-x-6 gap-y-2">
+          <Link
+            href="/terms"
+            className="font-bold text-pink-600 underline-offset-4 hover:underline"
+          >
+            Terms of Service
+          </Link>
 
-            <Link
-              href="/privacy"
-              className="font-bold text-pink-600 underline-offset-4 hover:underline"
-            >
-              Privacy Policy
-            </Link>
+          <Link
+            href="/privacy"
+            className="font-bold text-pink-600 underline-offset-4 hover:underline"
+          >
+            Privacy Policy
+          </Link>
 
-            <a
-              href="mailto:support@goshsha.com?subject=Goshsha%20IRL%20Campaign%20Network%20Inquiry"
-              className="font-bold text-pink-600 underline-offset-4 hover:underline"
-            >
-              Contact Us
-            </a>
-          </div>
-            <Link
-              href="/terms"
-              className="font-bold text-pink-600 underline-offset-4 hover:underline"
-            >
-              Terms of Service
-            </Link>
-
-            <Link
-              href="/privacy"
-              className="font-bold text-pink-600 underline-offset-4 hover:underline"
-            >
-              Privacy Policy
-            </Link>
-          </div>
-
-          <p className="mt-4">
-            430 S Anaheim Hills Road, Suite G, Anaheim, CA, USA
-          </p>
+          <a
+            href="mailto:support@goshsha.com?subject=Goshsha%20IRL%20Campaign%20Network%20Inquiry"
+            className="font-bold text-pink-600 underline-offset-4 hover:underline"
+          >
+            Contact Us
+          </a>
         </div>
-      </footer>
+
+        <p className="mt-4">
+          430 S Anaheim Hills Road, Suite G, Anaheim, CA, USA
+        </p>
+      </div>
+    </footer>
     </main>
   );
 }
