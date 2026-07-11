@@ -175,6 +175,13 @@ export default function LoginPage() {
             Creator Directory
           </Link>
 
+          <a
+            href="mailto:support@goshsha.com?subject=Goshsha%20IRL%20Campaign%20Network%20Inquiry"
+            className="rounded-2xl border border-pink-200 bg-pink-50 px-5 py-3 text-sm font-black text-pink-600 shadow-sm transition hover:-translate-y-[1px] hover:bg-pink-100"
+          >
+            Contact Us
+          </a>
+
           <Link
             href="/signup"
             className="rounded-2xl bg-gradient-to-r from-pink-500 via-rose-500 to-orange-400 px-5 py-3 text-sm font-black text-white shadow-lg shadow-pink-500/25 transition hover:-translate-y-[1px] hover:shadow-xl"
@@ -526,6 +533,27 @@ export default function LoginPage() {
           </p>
 
           <div className="mt-4 flex flex-wrap justify-center gap-x-6 gap-y-2">
+            <Link
+              href="/terms"
+              className="font-bold text-pink-600 underline-offset-4 hover:underline"
+            >
+              Terms of Service
+            </Link>
+
+            <Link
+              href="/privacy"
+              className="font-bold text-pink-600 underline-offset-4 hover:underline"
+            >
+              Privacy Policy
+            </Link>
+
+            <a
+              href="mailto:support@goshsha.com?subject=Goshsha%20IRL%20Campaign%20Network%20Inquiry"
+              className="font-bold text-pink-600 underline-offset-4 hover:underline"
+            >
+              Contact Us
+            </a>
+          </div>
             <Link
               href="/terms"
               className="font-bold text-pink-600 underline-offset-4 hover:underline"
