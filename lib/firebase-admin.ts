@@ -9,19 +9,42 @@ import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 
+/**
+ * Supports Firebase private keys stored as:
+ *
+ * 1. A normal multiline PEM value
+ * 2. A one-line value containing literal \n sequences
+ * 3. A JSON-quoted value copied from a service-account file
+ */
 function normalizePrivateKey(value: string): string {
   let key = value.trim();
 
-  // Remove one pair of surrounding quotes, if present.
-  if (
-    (key.startsWith('"') && key.endsWith('"')) ||
-    (key.startsWith("'") && key.endsWith("'"))
+  /*
+   * When the environment value was copied as a JSON string,
+   * JSON.parse safely removes surrounding quotes and converts
+   * escaped line breaks.
+   */
+  if (key.startsWith('"') && key.endsWith('"')) {
+    try {
+      const parsed = JSON.parse(key);
+
+      if (typeof parsed === "string") {
+        key = parsed;
+      }
+    } catch {
+      key = key.slice(1, -1);
+    }
+  } else if (
+    key.startsWith("'") &&
+    key.endsWith("'")
   ) {
     key = key.slice(1, -1);
   }
 
-  // Convert escaped line breaks, then trim again to remove
-  // the trailing newline commonly included in Firebase JSON keys.
+  /*
+   * Support literal escaped line breaks commonly stored in
+   * environment-variable dashboards and local env files.
+   */
   return key
     .replace(/\\n/g, "\n")
     .replace(/\\r/g, "")
@@ -37,17 +60,21 @@ function getFirebaseAdminApp() {
   }
 
   const projectId =
-    process.env.FIREBASE_PROJECT_ID;
+    process.env.FIREBASE_PROJECT_ID?.trim();
 
   const clientEmail =
-    process.env.FIREBASE_CLIENT_EMAIL;
+    process.env.FIREBASE_CLIENT_EMAIL?.trim();
 
   const rawPrivateKey =
     process.env.FIREBASE_PRIVATE_KEY;
 
   const storageBucket =
-    process.env.FIREBASE_STORAGE_BUCKET;
+    process.env.FIREBASE_STORAGE_BUCKET?.trim();
 
+  /*
+   * Use the explicit Firebase service-account credentials
+   * whenever all required values are configured.
+   */
   if (
     projectId &&
     clientEmail &&
@@ -56,32 +83,25 @@ function getFirebaseAdminApp() {
     const privateKey =
       normalizePrivateKey(rawPrivateKey);
 
-    if (
-      !privateKey.startsWith(
-        "-----BEGIN PRIVATE KEY-----"
-      ) ||
-      !privateKey.endsWith(
-        "-----END PRIVATE KEY-----"
-      )
-    ) {
-      throw new Error(
-        "FIREBASE_PRIVATE_KEY is not a valid PEM private key."
-      );
-    }
-
     return initializeApp({
       credential: cert({
         projectId,
         clientEmail,
         privateKey,
       }),
-      storageBucket,
+      storageBucket:
+        storageBucket || undefined,
     });
   }
 
+  /*
+   * This fallback supports environments that provide Google
+   * Application Default Credentials automatically.
+   */
   return initializeApp({
     credential: applicationDefault(),
-    storageBucket,
+    storageBucket:
+      storageBucket || undefined,
   });
 }
 
