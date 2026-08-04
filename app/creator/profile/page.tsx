@@ -129,7 +129,11 @@ export default function CreatorProfilePage() {
           userData.profilePhotoUrl || creatorData.profilePhotoUrl || "";
 
         const mergedStripeAccountId =
-          userData.stripeAccountId || creatorData.stripeAccountId || "";
+          userData.stripeAccountId ||
+          userData.stripeConnectedAccountId ||
+          creatorData.stripeAccountId ||
+          creatorData.stripeConnectedAccountId ||
+          "";
 
         const mergedStripeOnboardingComplete =
           userData.stripeOnboardingComplete === true ||
@@ -165,6 +169,20 @@ export default function CreatorProfilePage() {
 
     fetchProfile();
   }, [user?.uid, authLoading]);
+
+  useEffect(() => {
+    if (
+      authLoading ||
+      !user
+    ) {
+      return;
+    }
+
+    refreshStripeStatus();
+  }, [
+    user?.uid,
+    authLoading,
+  ]);
 
   function handleProfilePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -296,74 +314,179 @@ export default function CreatorProfilePage() {
     }
   }
 
-  async function handleConnectStripe() {
-    if (stripeOnboardingComplete && stripePayoutsEnabled) {
-      setMessage("Stripe payout account is already connected.");
+  async function refreshStripeStatus() {
+    if (!user) {
       return;
     }
 
+    try {
+      const idToken =
+        await user.getIdToken(true);
+
+      const response =
+        await fetch(
+          "/api/stripe/account-status",
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+
+              Authorization:
+                `Bearer ${idToken}`,
+            },
+
+            body: JSON.stringify({}),
+          }
+        );
+
+      const data =
+        await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+            "Unable to verify Stripe payout status."
+        );
+      }
+
+      setStripeAccountId(
+        data.accountId || ""
+      );
+
+      setStripeOnboardingComplete(
+        data.onboardingComplete ===
+          true
+      );
+
+      setStripePayoutsEnabled(
+        data.payoutsEnabled ===
+          true
+      );
+    } catch (err) {
+      console.error(
+        "Refresh Stripe status error:",
+        err
+      );
+    }
+  }
+
+  async function handleConnectStripe() {
     setConnectingStripe(true);
     setMessage("");
     setError("");
 
     try {
-      const response = await fetch("/api/stripe/create-account", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          existingAccountId: stripeAccountId || null,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Unable to start Stripe onboarding.");
+      if (!user) {
+        throw new Error(
+          "Please log out, log back in, and try again."
+        );
       }
 
-      if (!user) {
-        throw new Error("You must be logged in.");
+      /*
+      * Force-refresh the Firebase token so the hardened
+      * server route receives current authentication.
+      */
+      const idToken =
+        await user.getIdToken(true);
+
+      if (!idToken) {
+        throw new Error(
+          "Firebase authentication token could not be created."
+        );
+      }
+
+      const response =
+        await fetch(
+          "/api/stripe/create-account",
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+
+              Authorization:
+                `Bearer ${idToken}`,
+            },
+
+            /*
+            * The server resolves any existing Stripe account
+            * from users/{uid} and creators/{uid}. The client
+            * does not need to choose or create an account ID.
+            */
+            body: JSON.stringify({}),
+          }
+        );
+
+      const data =
+        await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+            "Unable to start Stripe onboarding."
+        );
       }
 
       if (data.accountId) {
-        await setDoc(
-          doc(db, "users", user.uid),
-          {
-            stripeAccountId: data.accountId,
-            stripeOnboardingComplete: false,
-            stripePayoutsEnabled: false,
-            updatedAt: serverTimestamp(),
-          },
-          { merge: true }
+        setStripeAccountId(
+          data.accountId
         );
-
-        await setDoc(
-          doc(db, "creators", user.uid),
-          {
-            stripeAccountId: data.accountId,
-            stripeOnboardingComplete: false,
-            stripePayoutsEnabled: false,
-            updatedAt: serverTimestamp(),
-          },
-          { merge: true }
-        );
-
-        setStripeAccountId(data.accountId);
       }
 
-      if (data.url) {
-        window.location.href = data.url;
+      /*
+      * The Creator may have completed Stripe previously.
+      * In that case, the server repairs the Firestore status
+      * and returns success without a new onboarding URL.
+      */
+      if (
+        data.ready === true ||
+        (
+          data.onboardingComplete ===
+            true &&
+          data.payoutsEnabled ===
+            true
+        )
+      ) {
+        setStripeOnboardingComplete(
+          true
+        );
+
+        setStripePayoutsEnabled(
+          true
+        );
+
+        setMessage(
+          "Your Stripe payout account is already connected and ready."
+        );
+
         return;
       }
 
-      throw new Error("Stripe onboarding URL was not returned.");
+      if (data.url) {
+        window.location.href =
+          data.url;
+
+        return;
+      }
+
+      throw new Error(
+        "Stripe onboarding URL was not returned."
+      );
     } catch (err: any) {
-      setError(err.message || "We couldn’t connect your payout account.");
-      setConnectingStripe(false);
+      setError(
+        err?.message ||
+          "We couldn’t connect your payout account."
+      );
+    } finally {
+      setConnectingStripe(
+        false
+      );
     }
   }
+
 
   function handleProfileUrlPrompt() {
     const nextUrl = window.prompt(
