@@ -658,26 +658,40 @@ export default function BrandCampaignDetailPage() {
     setMessage("");
 
     try {
-      const res =
-        await fetch(
-          "/api/fund-campaign",
-          {
-            method: "POST",
+      const user = auth.currentUser;
 
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-
-            body:
-              JSON.stringify({
-                campaignId,
-              }),
-          }
+      if (!user) {
+        throw new Error(
+          "Please log out, log back in, and try again."
         );
+      }
 
-      const data =
-        await res.json();
+      // Force-refresh the Firebase ID token.
+      const idToken = await user.getIdToken(true);
+
+      if (!idToken) {
+        throw new Error(
+          "Firebase authentication token could not be created."
+        );
+      }
+
+      const res = await fetch(
+        "/api/fund-campaign",
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${idToken}`,
+          },
+
+          body: JSON.stringify({
+            campaignId,
+          }),
+        }
+      );
+
+      const data = await res.json();
 
       if (!res.ok) {
         throw new Error(
@@ -699,7 +713,7 @@ export default function BrandCampaignDetailPage() {
         err?.message ||
           "Failed to start Stripe Checkout."
       );
-
+    } finally {
       setWorking(false);
     }
   }
