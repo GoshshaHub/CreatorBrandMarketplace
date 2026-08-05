@@ -362,16 +362,28 @@ export default function BrandDashboardPage() {
             </p>
           </div>
 
-          <Link href="/brand/creators" className="rounded-lg border px-4 py-2">
-            IRL Campaign Network
-          </Link>
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            <Link
+              href="/brand/creators"
+              className="rounded-lg border px-4 py-2"
+            >
+              IRL Campaign Network
+            </Link>
 
-          <Link
-            href="/brand/invite-creator"
-            className="rounded-lg border px-4 py-2"
-          >
-            Invite My Existing Creator
-          </Link>
+            <Link
+              href="/brand/retail-media"
+              className="rounded-lg bg-slate-950 px-4 py-2 font-semibold text-white hover:bg-slate-800"
+            >
+              Retail Media Infrastructure
+            </Link>
+
+            <Link
+              href="/brand/invite-creator"
+              className="rounded-lg border px-4 py-2"
+            >
+              Invite My Existing Creator
+            </Link>
+          </div>
 
         </div>
 
