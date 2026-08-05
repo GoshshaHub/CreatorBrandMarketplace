@@ -700,35 +700,29 @@ export async function createDraftRetailAsset(
     },
 
     activation: {
-      ...assetDefaults.activation,
+    ...assetDefaults.activation,
 
-      status:
+    status:
         "draft",
 
-      startsAt:
+    startsAt:
         null,
 
-      endsAt:
+    endsAt:
         null,
-
-      publishedAt:
-        undefined,
     },
 
     distribution: {
-      ...assetDefaults.distribution,
+    ...assetDefaults.distribution,
 
-      status:
+    status:
         "not_published",
 
-      publishedToPlaylist:
+    publishedToPlaylist:
         false,
 
-      playlistVersion:
+    playlistVersion:
         0,
-
-      publishedAt:
-        undefined,
     },
 
     audit: {
