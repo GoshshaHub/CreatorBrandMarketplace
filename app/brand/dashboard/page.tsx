@@ -372,7 +372,7 @@ export default function BrandDashboardPage() {
 
             <Link
               href="/brand/retail-media"
-              className="rounded-lg bg-slate-950 px-4 py-2 font-semibold text-white hover:bg-slate-800"
+              className="rounded-lg border px-4 py-2"
             >
               Retail Media Infrastructure
             </Link>
