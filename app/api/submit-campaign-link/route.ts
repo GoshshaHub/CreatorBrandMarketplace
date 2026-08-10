@@ -79,12 +79,26 @@ function cleanOptionalString(
 }
 
 function isAllowedMediaType(
-  contentType: string
+  contentType: string,
+  originalName?: string | null
 ): boolean {
-  return (
-    contentType.startsWith("video/") ||
+  if (
     contentType.startsWith("image/")
-  );
+  ) {
+    return true;
+  }
+
+  if (
+    contentType.startsWith("video/")
+  ) {
+    return (
+      (originalName || "")
+        .toLowerCase()
+        .endsWith(".mp4")
+    );
+  }
+
+  return false;
 }
 
 function isValidHttpUrl(
@@ -285,7 +299,8 @@ export async function POST(
 
     if (
       !isAllowedMediaType(
-        submittedContentType
+        submittedContentType,
+        mediaOriginalName
       )
     ) {
       return NextResponse.json(
@@ -572,13 +587,14 @@ export async function POST(
 
     if (
       !isAllowedMediaType(
-        storedContentType
+        storedContentType,
+        mediaOriginalName
       )
     ) {
       return NextResponse.json(
         {
           error:
-            "The uploaded file type is not supported.",
+            "Please upload your video as an MP4 (.mp4 or .MP4). MOV and other video formats are not yet supported by Goshsha Retail Media.",
         },
         {
           status: 400,
