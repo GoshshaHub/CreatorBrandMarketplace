@@ -306,7 +306,7 @@ export async function POST(
       return NextResponse.json(
         {
           error:
-            "Only image and video files are supported.",
+            "Only image and video of .mp4 or .MP4 files are supported.",
         },
         {
           status: 400,

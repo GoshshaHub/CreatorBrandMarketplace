@@ -15,6 +15,10 @@ import {
   type RebuildMasterPlaylistResult,
 } from "./playlist-builder";
 
+import {
+  createPlaybackCopy,
+} from "./create-playback-copy";
+
 const DEFAULT_LICENSE_DURATION_DAYS = 90;
 const RETAIL_ASSET_SCHEMA_VERSION = 2;
 
@@ -252,12 +256,22 @@ function getPublicPostUrl(
   ) || "";
 }
 
-function getMediaUrl(
+function getSourceMediaUrl(
   asset: Record<string, any>
 ): string {
   return cleanRequiredString(
     asset.media?.url,
-    "Retail Asset media URL"
+    "Retail Asset source media URL"
+  );
+}
+
+function getPlaybackMediaUrl(
+  asset: Record<string, any>
+): string {
+  return cleanRequiredString(
+    asset.media?.playbackUrl ||
+      asset.media?.url,
+    "Retail Asset playback media URL"
   );
 }
 
@@ -280,13 +294,123 @@ function getTargetImageStoragePath(
   );
 }
 
-function getMediaStoragePath(
+function getSourceMediaStoragePath(
   asset: Record<string, any>
 ): string {
   return cleanRequiredString(
     asset.media?.storagePath,
-    "Retail Asset media storage path"
+    "Retail Asset source media storage path"
   );
+}
+
+function getPlaybackMediaStoragePath(
+  asset: Record<string, any>
+): string {
+  return cleanRequiredString(
+    asset.media?.playbackStoragePath ||
+      asset.media?.storagePath,
+    "Retail Asset playback media storage path"
+  );
+}
+
+type PreparedPlaybackMedia = {
+  sourceUrl: string;
+  sourceStoragePath: string;
+
+  playbackUrl: string;
+  playbackStoragePath: string;
+
+  contentType: string;
+
+  reusedExistingCopy: boolean;
+};
+
+async function preparePlaybackMedia(
+  asset: Record<string, any>
+): Promise<PreparedPlaybackMedia> {
+  const sourceUrl =
+    getSourceMediaUrl(asset);
+
+  const sourceStoragePath =
+    getSourceMediaStoragePath(
+      asset
+    );
+
+  const contentType =
+    cleanOptionalString(
+      asset.media?.contentType
+    ) || "";
+
+  const lowerContentType =
+    contentType.toLowerCase();
+
+  const lowerStoragePath =
+    sourceStoragePath.toLowerCase();
+
+  const isVideo =
+    lowerContentType.startsWith(
+      "video/"
+    ) ||
+    /\.(mp4|mov|m4v)$/i.test(
+      sourceStoragePath
+    );
+
+  /*
+   * Images do not need the MP4 compatibility bridge.
+   */
+  if (!isVideo) {
+    return {
+      sourceUrl,
+      sourceStoragePath,
+
+      playbackUrl:
+        sourceUrl,
+
+      playbackStoragePath:
+        sourceStoragePath,
+
+      contentType:
+        contentType ||
+        "application/octet-stream",
+
+      reusedExistingCopy:
+        true,
+    };
+  }
+
+  /*
+   * Videos are projected through a standardized lowercase
+   * .mp4 Firebase Storage object for compatibility with the
+   * current iOS renderer.
+   */
+  return createPlaybackCopy({
+    retailAssetId:
+      cleanRequiredString(
+        asset.retailAssetId,
+        "retailAssetId"
+      ),
+
+    sourceUrl,
+    sourceStoragePath,
+
+    campaignId:
+      cleanOptionalString(
+        asset.campaignId
+      ),
+
+    creatorId:
+      cleanOptionalString(
+        asset.creatorId
+      ),
+
+    brandId:
+      cleanOptionalString(
+        asset.brandId
+      ),
+
+    contentType:
+      contentType || null,
+  });
 }
 
 function validatePublisherAuthorization(
@@ -329,12 +453,15 @@ function validateDraftForPublication(
   asset: Record<string, any>
 ) {
   const mediaUrl =
-    getMediaUrl(asset);
+    getSourceMediaUrl(asset);
 
   const targetImageUrl =
     getTargetImageUrl(asset);
 
-  getMediaStoragePath(asset);
+  getSourceMediaStoragePath(
+    asset
+    );
+
   getTargetImageStoragePath(
     asset
   );
@@ -441,7 +568,7 @@ function createIosCompatibleEntry(
   } = params;
 
   const mediaUrl =
-    getMediaUrl(asset);
+    getPlaybackMediaUrl(asset);
 
   const publicPostUrl =
     getPublicPostUrl(
@@ -458,7 +585,9 @@ function createIosCompatibleEntry(
     );
 
   const mediaStoragePath =
-    getMediaStoragePath(asset);
+    getPlaybackMediaStoragePath(
+        asset
+    );
 
   const existingMetrics =
     asset.metrics || {};
@@ -921,56 +1050,167 @@ export async function publishRetailAsset(
     existingActivationEnd;
 
   if (alreadyPublished) {
+    /*
+    * A previously published Retail Asset may predate the
+    * standardized playback layer. Prepare/repair it without
+    * restarting its existing license window.
+    */
+    const preparedPlayback =
+        await preparePlaybackMedia(
+        asset
+        );
+
+    const repairedAsset = {
+        ...asset,
+
+        media: {
+        ...(asset.media || {}),
+
+        url:
+            preparedPlayback.sourceUrl,
+
+        storagePath:
+            preparedPlayback
+            .sourceStoragePath,
+
+        playbackUrl:
+            preparedPlayback
+            .playbackUrl,
+
+        playbackStoragePath:
+            preparedPlayback
+            .playbackStoragePath,
+
+        playbackContentType:
+            preparedPlayback
+            .contentType,
+
+        playbackReusedExistingCopy:
+            preparedPlayback
+            .reusedExistingCopy,
+        },
+    };
+
+    const entryRef =
+        adminDb
+        .collection(
+            collectionId
+        )
+        .doc("_meta")
+        .collection("entries")
+        .doc(entryId);
+
+    const repairedEntry =
+        createIosCompatibleEntry({
+        asset:
+            repairedAsset,
+
+        campaign,
+
+        activationStartsAt:
+            existingActivationStart,
+
+        activationEndsAt:
+            existingActivationEnd,
+
+        publishedByUserId,
+        });
+
+    await Promise.all([
+        entryRef.set(
+        repairedEntry,
+        {
+            merge: true,
+        }
+        ),
+
+        retailAssetRef.update({
+        "media.playbackUrl":
+            preparedPlayback
+            .playbackUrl,
+
+        "media.playbackStoragePath":
+            preparedPlayback
+            .playbackStoragePath,
+
+        "media.playbackContentType":
+            preparedPlayback
+            .contentType,
+
+        "media.playbackSourceUrl":
+            preparedPlayback
+            .sourceUrl,
+
+        "media.playbackSourceStoragePath":
+            preparedPlayback
+            .sourceStoragePath,
+
+        "media.playbackReusedExistingCopy":
+            preparedPlayback
+            .reusedExistingCopy,
+
+        "media.playbackPreparedAt":
+            FieldValue.serverTimestamp(),
+
+        updatedAt:
+            FieldValue.serverTimestamp(),
+        }),
+    ]);
+
     const playlist =
-      await rebuildMasterPlaylistForEntry({
+        await rebuildMasterPlaylistForEntry({
         collectionId,
         entryId,
-      });
+        });
 
     return {
-      retailAssetId,
+        retailAssetId,
 
-      campaignId,
+        campaignId,
 
-      creatorId:
+        creatorId:
         cleanOptionalString(
-          asset.creatorId
+            asset.creatorId
         ),
 
-      brandId:
+        brandId:
         cleanOptionalString(
-          asset.brandId
+            asset.brandId
         ),
 
-      collectionId,
-      entryId,
+        collectionId,
+        entryId,
 
-      activationStartsAt:
+        /*
+        * Preserve the original 90-day period.
+        * Repairing playback does NOT restart licensing.
+        */
+        activationStartsAt:
         existingActivationStart,
 
-      activationEndsAt:
+        activationEndsAt:
         existingActivationEnd,
 
-      licenseStartsAt:
+        licenseStartsAt:
         existingActivationStart,
 
-      licenseExpiresAt:
+        licenseExpiresAt:
         existingActivationEnd,
 
-      masterPlaylistPath:
+        masterPlaylistPath:
         playlist
-          .masterPlaylistPath,
+            .masterPlaylistPath,
 
-      playlistItemCount:
+        playlistItemCount:
         playlist
-          .playlistItemCount,
+            .playlistItemCount,
 
-      alreadyPublished:
+        alreadyPublished:
         true,
 
-      playlist,
+        playlist,
     };
-  }
+    }
 
   validateDraftForPublication(
     asset
@@ -1053,8 +1293,46 @@ export async function publishRetailAsset(
             ?.eventIds
         );
 
+  const preparedPlayback =
+    await preparePlaybackMedia(
+        asset
+    );
+
   const activeAsset: RetailAssetFields = {
     ...(asset as RetailAssetFields),
+
+  media: {
+    ...(asset.media || {}),
+
+    /*
+    * Original Creator upload stays authoritative.
+    */
+    url:
+        preparedPlayback.sourceUrl,
+
+    storagePath:
+        preparedPlayback
+        .sourceStoragePath,
+
+    /*
+    * Distribution copy consumed by iOS.
+    */
+    playbackUrl:
+        preparedPlayback
+        .playbackUrl,
+
+    playbackStoragePath:
+        preparedPlayback
+        .playbackStoragePath,
+
+    playbackContentType:
+        preparedPlayback
+        .contentType,
+
+    playbackReusedExistingCopy:
+        preparedPlayback
+        .reusedExistingCopy,
+    },
 
     license: {
       ...asset.license,
@@ -1244,6 +1522,33 @@ export async function publishRetailAsset(
         {
           status:
             "publishing",
+
+          "media.playbackUrl":
+            preparedPlayback
+             .playbackUrl,
+
+          "media.playbackStoragePath":
+            preparedPlayback
+                .playbackStoragePath,
+
+          "media.playbackContentType":
+            preparedPlayback
+                .contentType,
+
+          "media.playbackSourceUrl":
+            preparedPlayback
+                .sourceUrl,
+
+          "media.playbackSourceStoragePath":
+             preparedPlayback
+                 .sourceStoragePath,
+
+          "media.playbackReusedExistingCopy":
+            preparedPlayback
+                .reusedExistingCopy,
+
+          "media.playbackPreparedAt":
+            FieldValue.serverTimestamp(),
 
           license: {
             ...freshAsset.license,

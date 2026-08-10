@@ -122,10 +122,24 @@ function getStepState(
 function isAllowedMediaFile(
   file: File
 ): boolean {
-  return (
-    file.type.startsWith("video/") ||
+  const fileName =
+    file.name.toLowerCase();
+
+  // Images remain fully supported.
+  if (
     file.type.startsWith("image/")
-  );
+  ) {
+    return true;
+  }
+
+  // Videos must currently be MP4.
+  if (
+    file.type.startsWith("video/")
+  ) {
+    return fileName.endsWith(".mp4");
+  }
+
+  return false;
 }
 
 function isValidHttpUrl(
@@ -419,7 +433,7 @@ export default function CreatorCampaignDetailPage() {
       !isAllowedMediaFile(file)
     ) {
       throw new Error(
-        "Only image and video files are supported."
+        "Only image and video of .mp4 or .MP4 files are supported."
       );
     }
 
@@ -534,7 +548,7 @@ export default function CreatorCampaignDetailPage() {
       )
     ) {
       setError(
-        "Only image and video files are supported."
+        "Please upload your video as an MP4 (.mp4 or .MP4). MOV and other video formats are not yet supported by Goshsha Retail Media."
       );
 
       return;
@@ -854,7 +868,7 @@ export default function CreatorCampaignDetailPage() {
 
                       <input
                         type="file"
-                        accept="video/*,image/*"
+                        accept=".mp4,image/*"
                         required
                         onChange={(
                           event
@@ -876,7 +890,7 @@ export default function CreatorCampaignDetailPage() {
                             );
 
                             setError(
-                              "Only image and video files are supported."
+                              "Please upload your video as an MP4 (.mp4 or .MP4). MOV and other video formats are not yet supported by Goshsha Retail Media."
                             );
 
                             return;
