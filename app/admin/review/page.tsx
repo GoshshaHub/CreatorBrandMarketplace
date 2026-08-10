@@ -258,22 +258,89 @@ function PayoutReviewCard({
         .brandApprovalSnapshot
     );
 
-  const snapshotComplete =
-    Boolean(
-      publishedPostUrl &&
-        originalMediaUrl &&
-        contentRightsConfirmed &&
-        audioRightsConfirmed &&
-        appearanceRightsConfirmed &&
-        creatorRetainsCopyright &&
-        brandUsageLicenseGranted &&
-        goshshaDistributionLicenseGranted &&
-        postWindowRoyaltyAcknowledged &&
-        futureRoyaltyEarningsAcknowledged &&
-        futurePaidReactivationAllowed &&
-        automaticRenewalDisabled &&
-        licenseHasNotStarted
+  const snapshotProblems: string[] = [];
+
+  if (!publishedPostUrl) {
+    snapshotProblems.push(
+      "Published campaign post URL is missing."
     );
+  }
+
+  if (!originalMediaUrl) {
+    snapshotProblems.push(
+      "Original Creator media URL is missing."
+    );
+  }
+
+  if (!contentRightsConfirmed) {
+    snapshotProblems.push(
+      "Content rights confirmation is missing."
+    );
+  }
+
+  if (!audioRightsConfirmed) {
+    snapshotProblems.push(
+      "Audio rights confirmation is missing."
+    );
+  }
+
+  if (!appearanceRightsConfirmed) {
+    snapshotProblems.push(
+      "Appearance rights confirmation is missing."
+    );
+  }
+
+  if (!creatorRetainsCopyright) {
+    snapshotProblems.push(
+      "Creator copyright ownership confirmation is missing."
+    );
+  }
+
+  if (!brandUsageLicenseGranted) {
+    snapshotProblems.push(
+      "Brand usage license confirmation is missing."
+    );
+  }
+
+  if (!goshshaDistributionLicenseGranted) {
+    snapshotProblems.push(
+      "Goshsha distribution license confirmation is missing."
+    );
+  }
+
+  if (!postWindowRoyaltyAcknowledged) {
+    snapshotProblems.push(
+      "Post-window royalty acknowledgment is missing."
+    );
+  }
+
+  if (!futureRoyaltyEarningsAcknowledged) {
+    snapshotProblems.push(
+      "Future Royalty Earnings acknowledgment is missing."
+    );
+  }
+
+  if (!futurePaidReactivationAllowed) {
+    snapshotProblems.push(
+      "Future paid reactivation permission is missing."
+    );
+  }
+
+  if (!automaticRenewalDisabled) {
+    snapshotProblems.push(
+      "Automatic renewal is not explicitly disabled."
+    );
+  }
+
+  if (!licenseHasNotStarted) {
+    snapshotProblems.push(
+      "The Retail Media license appears to have already started."
+    );
+  }
+
+  const snapshotComplete =
+    hasSnapshot &&
+    snapshotProblems.length === 0;
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-950">
@@ -596,7 +663,27 @@ function PayoutReviewCard({
 
       {!snapshotComplete && (
         <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
-          Warning: the frozen approval package is incomplete or the Retail Media license appears to have started unexpectedly. Review the campaign record before releasing payout.
+          <p className="font-semibold">
+            Payout safety check needs attention.
+          </p>
+
+          <p className="mt-2">
+            The following issue
+            {snapshotProblems.length === 1
+              ? ""
+              : "s"}{" "}
+            were detected in the frozen Brand approval package:
+          </p>
+
+          <ul className="mt-3 list-disc space-y-1 pl-5">
+            {snapshotProblems.map(
+              (problem) => (
+                <li key={problem}>
+                  {problem}
+                </li>
+              )
+            )}
+          </ul>
         </div>
       )}
 
@@ -613,7 +700,10 @@ function PayoutReviewCard({
           onClick={() =>
             onRelease(campaign)
           }
-          disabled={working}
+          disabled={
+            working ||
+            !snapshotComplete
+          }
           className="mt-4 rounded-xl bg-black px-5 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-black"
         >
           {working
