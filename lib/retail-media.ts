@@ -270,6 +270,33 @@ export type RetailAssetFields = {
 
   masterPlaylistId?: string | null;
 
+  media?: {
+    url: string;
+    storagePath: string;
+
+    contentType?: string | null;
+
+    publicPostUrl?: string | null;
+
+    playbackUrl?: string | null;
+    playbackStoragePath?: string | null;
+    playbackContentType?: string | null;
+
+    playbackSourceUrl?: string | null;
+    playbackSourceStoragePath?: string | null;
+
+    playbackReusedExistingCopy?: boolean | null;
+
+    playbackPreparedAt?: unknown;
+  };
+
+  targetImage?: {
+    url: string;
+    storagePath: string;
+
+    contentType?: string | null;
+  };
+
   ownership: RetailAssetOwnership;
   rights: RetailAssetRights;
   license: RetailAssetLicense;

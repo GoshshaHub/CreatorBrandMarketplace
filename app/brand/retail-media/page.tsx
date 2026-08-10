@@ -1183,6 +1183,105 @@ export default function BrandRetailMediaPage() {
     }
   }
 
+  async function handleRefreshAppPlayback() {
+  setError("");
+  setMessage("");
+
+  if (!currentUser) {
+    setError(
+      "Please log in again."
+    );
+
+    return;
+  }
+
+  const retailAssetId =
+    draft?.retailAssetId ||
+    existingAsset?.retailAssetId ||
+    selectedCampaign
+      ?.retailAssetId;
+
+  if (!retailAssetId) {
+    setError(
+      "Retail Asset could not be found."
+    );
+
+    return;
+  }
+
+  setPublishing(
+    true
+  );
+
+  try {
+    const idToken =
+      await currentUser.getIdToken(
+        true
+      );
+
+    const response =
+      await fetch(
+        "/api/brand/retail-media/publish",
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+
+            Authorization:
+              `Bearer ${idToken}`,
+          },
+
+          body:
+            JSON.stringify({
+              retailAssetId,
+            }),
+        }
+      );
+
+    const data =
+      await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.error ||
+          "Failed to refresh app playback."
+      );
+    }
+
+    setPublication(
+      data.publication
+    );
+
+    setMessage(
+      "App playback refreshed successfully. The existing license dates were preserved."
+    );
+
+    await loadApprovedCampaigns(
+      currentUser
+    );
+
+    await loadExistingRetailAsset(
+      retailAssetId
+    );
+  } catch (err: any) {
+    console.error(
+      "Refresh app playback error:",
+      err
+    );
+
+    setError(
+      err?.message ||
+        "Failed to refresh app playback."
+    );
+  } finally {
+    setPublishing(
+      false
+    );
+  }
+}
+
   const resolvedCollectionId =
     draft?.collectionId ||
     existingAsset?.collectionId ||
@@ -1731,7 +1830,7 @@ export default function BrandRetailMediaPage() {
                         </div>
                     </div>
                     )}
-                    
+
                     {!isLive ? (
                       <>
                         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-900">
@@ -1781,6 +1880,22 @@ export default function BrandRetailMediaPage() {
                         </p>
                       </div>
                     )}
+
+                    <button
+                        type="button"
+                        onClick={
+                            handleRefreshAppPlayback
+                        }
+                        disabled={
+                            publishing
+                        }
+                        className="w-full rounded-xl border border-slate-300 bg-white px-5 py-3 font-bold text-slate-950 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                        {publishing
+                            ? "Refreshing App Playback..."
+                            : "Refresh App Playback"}
+                        </button>
+
                   </div>
                 )}
               </div>
