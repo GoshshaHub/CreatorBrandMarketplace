@@ -1206,6 +1206,18 @@ export default function BrandRetailMediaPage() {
       ?.productName ||
     "";
 
+
+  const scannableTargetImageUrl =
+    existingAsset?.targetImage
+        ?.url ||
+    previewUrl ||
+    "";
+
+    const scannableTargetStoragePath =
+    existingAsset?.targetImage
+        ?.storagePath ||
+    "";
+
   const isLive =
     publication?.scanReady ===
       true ||
@@ -1653,6 +1665,73 @@ export default function BrandRetailMediaPage() {
                       </div>
                     </div>
 
+                    {scannableTargetImageUrl && (
+                        <div className="overflow-hidden rounded-2xl border border-pink-200 bg-pink-50">
+                        <div className="border-b border-pink-200 px-5 py-4">
+                        <p className="text-xs font-bold uppercase tracking-wide text-pink-600">
+                            Scannable Target Image
+                        </p>
+
+                        <h3 className="mt-1 text-lg font-black text-slate-950">
+                            Exact Product Image Used for This Activation
+                        </h3>
+
+                        <p className="mt-2 text-sm leading-6 text-slate-600">
+                            This is the target image associated with this Retail
+                            Media asset. Keep it as the visual reference for the
+                            exact packaging shoppers are expected to scan.
+                        </p>
+                        </div>
+
+                        <div className="bg-white p-5">
+                        <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+                            <img
+                            src={scannableTargetImageUrl}
+                            alt={
+                                resolvedCanonicalName
+                                ? `Scannable target image for ${resolvedCanonicalName}`
+                                : "Scannable Retail Media target image"
+                            }
+                            className="mx-auto max-h-[420px] w-full object-contain"
+                            />
+                        </div>
+
+                        <div className="mt-4 rounded-xl bg-slate-100 p-4 text-sm">
+                            <p>
+                            <strong>
+                                Product:
+                            </strong>{" "}
+                            {resolvedCanonicalName ||
+                                selectedCampaign?.productName ||
+                                "—"}
+                            </p>
+
+                            <p className="mt-2">
+                            <strong>
+                                Product Collection:
+                            </strong>{" "}
+                            {resolvedCollectionId ||
+                                "Not resolved"}
+                            </p>
+
+                            {scannableTargetStoragePath && (
+                            <details className="mt-3">
+                                <summary className="cursor-pointer font-semibold text-slate-600">
+                                Technical image reference
+                                </summary>
+
+                                <p className="mt-2 break-all text-xs text-slate-500">
+                                {
+                                    scannableTargetStoragePath
+                                }
+                                </p>
+                            </details>
+                            )}
+                        </div>
+                        </div>
+                    </div>
+                    )}
+                    
                     {!isLive ? (
                       <>
                         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-900">
