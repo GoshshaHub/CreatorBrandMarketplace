@@ -804,6 +804,79 @@ export default function BrandCampaignDetailPage() {
     }
   }
 
+  async function handleRejectSubmission() {
+    setWorking(true);
+    setError("");
+    setMessage("");
+
+    try {
+      if (!campaignId) {
+        throw new Error(
+          "Missing campaign ID."
+        );
+      }
+
+      const user =
+        auth.currentUser;
+
+      if (!user) {
+        throw new Error(
+          "Please log in again."
+        );
+      }
+
+      const idToken =
+        await user.getIdToken(
+          true
+        );
+
+      const res =
+        await fetch(
+          "/api/reject-campaign-submission",
+          {
+            method:
+              "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+
+              Authorization:
+                `Bearer ${idToken}`,
+            },
+
+            body:
+              JSON.stringify({
+                campaignId,
+              }),
+          }
+        );
+
+      const data =
+        await res.json();
+
+      if (!res.ok) {
+        throw new Error(
+          data.error ||
+            "Failed to reject submission."
+        );
+      }
+
+      setMessage(
+        "Submission rejected. The Creator has been notified and may submit a revised package."
+      );
+
+      await loadCampaign();
+    } catch (err: any) {
+      setError(
+        err?.message ||
+          "Failed to reject submission."
+      );
+    } finally {
+      setWorking(false);
+    }
+  }
+
   async function handleGenerateExternalInvite() {
     if (!campaign) {
       return;
@@ -1032,12 +1105,45 @@ export default function BrandCampaignDetailPage() {
                     </button>
                   )}
 
-                {campaign.status ===
-                  "submitted" &&
-                  campaignData
-                    ?.brandApprovalStatus !==
-                    "approved" && (
+              {campaign.status ===
+                "submitted" &&
+                campaignData
+                  ?.brandApprovalStatus !==
+                  "approved" && (
+                  <div className="flex flex-wrap gap-3">
                     <button
+                      type="button"
+                      onClick={() => {
+                        const firstConfirmed =
+                          window.confirm(
+                            "Reject this Creator submission?\n\nThe Creator will be asked to revise and resubmit the campaign deliverable. Campaign funding will remain intact and no payout will be released."
+                          );
+
+                        if (!firstConfirmed) {
+                          return;
+                        }
+
+                        const secondConfirmed =
+                          window.confirm(
+                            "Confirm rejection?\n\nThis will return the campaign to the Creator for revision. The current submitted package will remain in the campaign record for reference."
+                          );
+
+                        if (!secondConfirmed) {
+                          return;
+                        }
+
+                        handleRejectSubmission();
+                      }}
+                      disabled={working}
+                      className="rounded-lg border border-red-300 bg-white px-4 py-2 font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      {working
+                        ? "Processing..."
+                        : "Reject Submission"}
+                    </button>
+
+                    <button
+                      type="button"
                       onClick={() => {
                         if (
                           !submissionPackageComplete
@@ -1070,7 +1176,8 @@ export default function BrandCampaignDetailPage() {
                         ? "Approving..."
                         : "Approve Complete Submission"}
                     </button>
-                  )}
+                  </div>
+                )}
               </div>
 
               {!subscribed && (
@@ -1502,12 +1609,45 @@ export default function BrandCampaignDetailPage() {
                     </div>
                   )}
 
-                  {campaign.status ===
-                    "submitted" &&
-                    campaignData
-                      ?.brandApprovalStatus !==
-                      "approved" && (
+                {campaign.status ===
+                  "submitted" &&
+                  campaignData
+                    ?.brandApprovalStatus !==
+                    "approved" && (
+                    <div className="grid gap-3 sm:grid-cols-2">
                       <button
+                        type="button"
+                        onClick={() => {
+                          const firstConfirmed =
+                            window.confirm(
+                              "Reject this Creator submission?\n\nThe Creator will be asked to revise and resubmit the campaign deliverable. Campaign funding will remain intact and no payout will be released."
+                            );
+
+                          if (!firstConfirmed) {
+                            return;
+                          }
+
+                          const secondConfirmed =
+                            window.confirm(
+                              "Confirm rejection?\n\nThis will return the campaign to the Creator for revision. The current submitted package will remain in the campaign record for reference."
+                            );
+
+                          if (!secondConfirmed) {
+                            return;
+                          }
+
+                          handleRejectSubmission();
+                        }}
+                        disabled={working}
+                        className="w-full rounded-xl border border-red-300 bg-white px-5 py-3 font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        {working
+                          ? "Processing..."
+                          : "Reject Creator Submission"}
+                      </button>
+
+                      <button
+                        type="button"
                         onClick={() => {
                           if (
                             !submissionPackageComplete
@@ -1524,9 +1664,7 @@ export default function BrandCampaignDetailPage() {
                               "Approve this complete Creator submission?\n\nYou are confirming that you reviewed the published post, original media, rights certifications, 90-day retail media license, and Future Royalty Earnings acknowledgment.\n\nThis will move the Creator payout to Admin release review."
                             );
 
-                          if (
-                            !confirmed
-                          ) {
+                          if (!confirmed) {
                             return;
                           }
 
@@ -1542,7 +1680,8 @@ export default function BrandCampaignDetailPage() {
                           ? "Approving..."
                           : "Approve Complete Creator Submission"}
                       </button>
-                    )}
+                    </div>
+                  )}
                 </div>
               ) : null}
 
