@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
+import { sendEmail } from "../../../lib/postmark";
 
 import {
   adminAuth,
@@ -260,6 +261,135 @@ export async function POST(
           updatedAt:
             FieldValue.serverTimestamp(),
         });
+    }
+
+        /*
+    * -----------------------------------------------------
+    * Email Creator
+    * -----------------------------------------------------
+    *
+    * Email failure must NOT undo a successful rejection.
+    */
+
+    try {
+    if (campaign.creatorId) {
+        const [
+        userCreatorSnap,
+        legacyCreatorSnap,
+        ] = await Promise.all([
+        adminDb
+            .collection("users")
+            .doc(campaign.creatorId)
+            .get(),
+
+        adminDb
+            .collection("creators")
+            .doc(campaign.creatorId)
+            .get(),
+        ]);
+
+        const userCreator =
+        userCreatorSnap.exists
+            ? userCreatorSnap.data()
+            : null;
+
+        const legacyCreator =
+        legacyCreatorSnap.exists
+            ? legacyCreatorSnap.data()
+            : null;
+
+        const creatorEmail =
+        userCreator?.contactEmail ||
+        userCreator?.email ||
+        legacyCreator?.contactEmail ||
+        legacyCreator?.email ||
+        campaign.creatorEmail ||
+        "";
+
+        if (creatorEmail) {
+        const appUrl =
+            process.env.NEXT_PUBLIC_APP_URL ||
+            "https://irl.goshsha.com";
+
+        const creatorCampaignUrl =
+            `${appUrl}/creator/campaign/${campaignId}`;
+
+        const campaignTitle =
+            campaign.campaignTitle ||
+            "your campaign";
+
+        await sendEmail({
+            to: creatorEmail,
+
+            subject:
+            `Submission needs revision: ${campaignTitle}`,
+
+            htmlBody: `
+            <h2>Your submission needs revision</h2>
+
+            <p>
+                The Brand reviewed your submission for
+                <strong>${campaignTitle}</strong>
+                and has requested a revised submission.
+            </p>
+
+            <p>
+                Your campaign remains funded. No additional payment
+                or campaign acceptance is required.
+            </p>
+
+            <p>
+                Please return to your campaign, review your content,
+                and submit an updated deliverable package for Brand
+                approval.
+            </p>
+
+            <p>
+                <a href="${creatorCampaignUrl}">
+                Review and resubmit your campaign
+                </a>
+            </p>
+
+            <p>
+                Your previous submission remains on record for
+                campaign history.
+            </p>
+            `,
+
+            textBody: `
+    Your submission needs revision.
+
+    Campaign:
+    ${campaignTitle}
+
+    The Brand reviewed your submission and has requested a revised submission.
+
+    Your campaign remains funded. No additional payment or campaign acceptance is required.
+
+    Please return to your campaign, review your content, and submit an updated deliverable package for Brand approval.
+
+    Review and resubmit:
+    ${creatorCampaignUrl}
+
+    Your previous submission remains on record for campaign history.
+            `.trim(),
+        });
+        } else {
+        console.warn(
+            "Creator rejection email skipped: no Creator email found.",
+            {
+            campaignId,
+            creatorId:
+                campaign.creatorId,
+            }
+        );
+        }
+    }
+    } catch (emailError) {
+    console.error(
+        "Submission rejected successfully, but Creator rejection email failed:",
+        emailError
+    );
     }
 
     return NextResponse.json({
