@@ -904,6 +904,217 @@ function createIosCompatibleEntry(
   };
 }
 
+function isProduct2RetailAsset(
+  asset: Record<string, any>
+): boolean {
+  return (
+    cleanOptionalString(
+      asset
+        .commercialSource
+        ?.product
+    ) === "product_2" ||
+    cleanOptionalString(
+      asset
+        .monetization
+        ?.product
+    ) === "product_2" ||
+    cleanOptionalString(
+      asset.audit
+        ?.sourceProduct
+    ) === "product_2"
+  );
+}
+
+async function findProduct2ActivationCredit(
+  params: {
+    retailAssetId: string;
+    brandId: string;
+  }
+): Promise<{
+  creditId: string;
+  creditRef: FirebaseFirestore.DocumentReference;
+  credit: Record<string, any>;
+  commerceId: string;
+  commerceRef: FirebaseFirestore.DocumentReference;
+  commerce: Record<string, any>;
+  packPurchaseId: string | null;
+  packRef: FirebaseFirestore.DocumentReference | null;
+}> {
+  const {
+    retailAssetId,
+    brandId,
+  } = params;
+
+  /*
+   * Credits are issued only by the Stripe webhook after
+   * successful payment.
+   */
+  const creditSnapshot =
+    await adminDb
+      .collection(
+        "retailMediaActivationCredits"
+      )
+      .where(
+        "retailAssetId",
+        "==",
+        retailAssetId
+      )
+      .get();
+
+  if (
+    creditSnapshot.empty
+  ) {
+    throw new Error(
+      "PRODUCT_2_ACTIVATION_PAYMENT_REQUIRED"
+    );
+  }
+
+  /*
+   * Prefer an available credit.
+   *
+   * A consumed credit tied to this same Retail Asset is also
+   * recognized so the asset retains its entitlement after
+   * first publication.
+   */
+  const candidates =
+    creditSnapshot.docs
+      .map((document) => ({
+        document,
+        data:
+          document.data() as Record<
+            string,
+            any
+          >,
+      }))
+      .filter(
+        ({ data }) =>
+          cleanOptionalString(
+            data.brandId
+          ) === brandId
+      );
+
+  const selected =
+    candidates.find(
+      ({ data }) =>
+        data.status ===
+        "available"
+    ) ||
+    candidates.find(
+      ({ data }) =>
+        data.status ===
+          "consumed" &&
+        cleanOptionalString(
+          data.retailAssetId
+        ) === retailAssetId
+    );
+
+  if (!selected) {
+    throw new Error(
+      "PRODUCT_2_ACTIVATION_CREDIT_NOT_AVAILABLE"
+    );
+  }
+
+  const creditId =
+    selected.document.id;
+
+  const credit =
+    selected.data;
+
+  const commerceId =
+    cleanOptionalString(
+      credit.commerceId ||
+      credit.sourcePurchaseId
+    );
+
+  if (!commerceId) {
+    throw new Error(
+      "PRODUCT_2_COMMERCE_RECORD_MISSING"
+    );
+  }
+
+  const commerceRef =
+    adminDb
+      .collection(
+        "retailMediaCommerce"
+      )
+      .doc(
+        commerceId
+      );
+
+  const commerceSnap =
+    await commerceRef.get();
+
+  if (
+    !commerceSnap.exists
+  ) {
+    throw new Error(
+      "PRODUCT_2_COMMERCE_RECORD_NOT_FOUND"
+    );
+  }
+
+  const commerce =
+    commerceSnap.data() as Record<
+      string,
+      any
+    >;
+
+  if (
+    cleanOptionalString(
+      commerce.brandId
+    ) !== brandId
+  ) {
+    throw new Error(
+      "PRODUCT_2_COMMERCE_BRAND_MISMATCH"
+    );
+  }
+
+  if (
+    commerce.paymentStatus !==
+      "paid" ||
+    commerce.fulfillmentStatus !==
+      "fulfilled"
+  ) {
+    throw new Error(
+      "PRODUCT_2_PAYMENT_NOT_CONFIRMED"
+    );
+  }
+
+  const packPurchaseId =
+    cleanOptionalString(
+      credit.packPurchaseId
+    );
+
+  const packRef =
+    packPurchaseId
+      ? adminDb
+          .collection(
+            "retailMediaVolumePacks"
+          )
+          .doc(
+            packPurchaseId
+          )
+      : null;
+
+  return {
+    creditId,
+
+    creditRef:
+      selected.document.ref,
+
+    credit,
+
+    commerceId,
+
+    commerceRef,
+
+    commerce,
+
+    packPurchaseId,
+
+    packRef,
+  };
+}
+
 export async function publishRetailAsset(
   input: PublishRetailAssetInput
 ): Promise<PublishRetailAssetResult> {
@@ -960,6 +1171,52 @@ export async function publishRetailAsset(
     publishedByUserId,
     publishedByRole,
   });
+
+  /*
+ * =========================================================
+ * Product 2 billing entitlement
+ * =========================================================
+ *
+ * Product 1 continues through the existing campaign path.
+ *
+ * Product 2 has no campaign, so distribution eligibility
+ * comes from its paid Retail Media activation credit.
+ */
+
+const product2Asset =
+  isProduct2RetailAsset(
+    asset
+  );
+
+let product2Entitlement:
+  Awaited<
+    ReturnType<
+      typeof findProduct2ActivationCredit
+    >
+  > | null =
+  null;
+
+if (
+  product2Asset
+) {
+  const brandId =
+    cleanOptionalString(
+      asset.brandId
+    );
+
+  if (!brandId) {
+    throw new Error(
+      "PRODUCT_2_BRAND_ID_MISSING"
+    );
+  }
+
+  product2Entitlement =
+    await findProduct2ActivationCredit({
+      retailAssetId,
+
+      brandId,
+    });
+}
 
   const collectionId =
     cleanRequiredString(
@@ -1301,6 +1558,73 @@ export async function publishRetailAsset(
   const activeAsset: RetailAssetFields = {
     ...(asset as RetailAssetFields),
 
+    monetization:
+      product2Asset &&
+      product2Entitlement
+        ? {
+            ...(asset.monetization ||
+              {}),
+
+            product:
+              "product_2",
+
+            commerceStatus:
+              "paid",
+
+            paymentStatus:
+              "paid",
+
+            commerceId:
+              product2Entitlement
+                .commerceId,
+
+            activationCreditId:
+              product2Entitlement
+                .creditId,
+
+            includedQualifiedViews:
+              Number(
+                product2Entitlement
+                  .credit
+                  ?.entitlement
+                  ?.includedQualifiedViews ||
+                  asset
+                    .monetization
+                    ?.includedQualifiedViews ||
+                  1000
+              ),
+
+            activationDays:
+              Number(
+                product2Entitlement
+                  .credit
+                  ?.entitlement
+                  ?.activationDays ||
+                  durationDays ||
+                  90
+              ),
+
+            usageStatus:
+              "not_started",
+
+            qualifiedViewsUsed:
+              Number(
+                asset
+                  .monetization
+                  ?.qualifiedViewsUsed ||
+                  0
+              ),
+
+            overageQualifiedViews:
+              Number(
+                asset
+                  .monetization
+                  ?.overageQualifiedViews ||
+                  0
+              ),
+          }
+        : asset.monetization,
+
   media: {
     ...(asset.media || {}),
 
@@ -1482,6 +1806,176 @@ export async function publishRetailAsset(
           any
         >;
 
+      /*
+      * -------------------------------------------------------
+      * Product 2 entitlement re-validation
+      * -------------------------------------------------------
+      *
+      * The earlier check improves error handling.
+      * THIS transaction check is authoritative.
+      */
+
+      let freshProduct2Credit:
+        Record<string, any> | null =
+        null;
+
+      let freshProduct2Commerce:
+        Record<string, any> | null =
+        null;
+
+      let freshPack:
+        Record<string, any> | null =
+        null;
+
+      if (
+        product2Asset
+      ) {
+        if (
+          !product2Entitlement
+        ) {
+          throw new Error(
+            "PRODUCT_2_ACTIVATION_PAYMENT_REQUIRED"
+          );
+        }
+
+        const creditSnap =
+          await transaction.get(
+            product2Entitlement
+              .creditRef
+          );
+
+        const commerceSnap =
+          await transaction.get(
+            product2Entitlement
+              .commerceRef
+          );
+
+        if (
+          !creditSnap.exists
+        ) {
+          throw new Error(
+            "PRODUCT_2_ACTIVATION_CREDIT_NOT_FOUND"
+          );
+        }
+
+        if (
+          !commerceSnap.exists
+        ) {
+          throw new Error(
+            "PRODUCT_2_COMMERCE_RECORD_NOT_FOUND"
+          );
+        }
+
+        freshProduct2Credit =
+          creditSnap.data() as Record<
+            string,
+            any
+          >;
+
+        freshProduct2Commerce =
+          commerceSnap.data() as Record<
+            string,
+            any
+          >;
+
+        if (
+          product2Entitlement
+            .packRef
+        ) {
+          const packSnap =
+            await transaction.get(
+              product2Entitlement
+                .packRef
+            );
+
+          if (
+            packSnap.exists
+          ) {
+            freshPack =
+              packSnap.data() as Record<
+                string,
+                any
+              >;
+          }
+        }
+
+        const freshBrandId =
+          cleanOptionalString(
+            freshAsset.brandId
+          );
+
+        if (
+          cleanOptionalString(
+            freshProduct2Credit
+              .brandId
+          ) !== freshBrandId
+        ) {
+          throw new Error(
+            "PRODUCT_2_CREDIT_BRAND_MISMATCH"
+          );
+        }
+
+        if (
+          cleanOptionalString(
+            freshProduct2Commerce
+              .brandId
+          ) !== freshBrandId
+        ) {
+          throw new Error(
+            "PRODUCT_2_COMMERCE_BRAND_MISMATCH"
+          );
+        }
+
+        if (
+          freshProduct2Commerce
+            .paymentStatus !==
+            "paid" ||
+          freshProduct2Commerce
+            .fulfillmentStatus !==
+            "fulfilled"
+        ) {
+          throw new Error(
+            "PRODUCT_2_PAYMENT_NOT_CONFIRMED"
+          );
+        }
+
+        const creditStatus =
+          cleanOptionalString(
+            freshProduct2Credit
+              .status
+          );
+
+        const creditAssetId =
+          cleanOptionalString(
+            freshProduct2Credit
+              .retailAssetId
+          );
+
+        const availableForThisAsset =
+          creditStatus ===
+            "available" &&
+          (
+            !creditAssetId ||
+            creditAssetId ===
+              retailAssetId
+          );
+
+        const alreadyConsumedForThisAsset =
+          creditStatus ===
+            "consumed" &&
+          creditAssetId ===
+            retailAssetId;
+
+        if (
+          !availableForThisAsset &&
+          !alreadyConsumedForThisAsset
+        ) {
+          throw new Error(
+            "PRODUCT_2_ACTIVATION_CREDIT_NOT_AVAILABLE"
+          );
+        }
+      }  
+
       validatePublisherAuthorization({
         asset:
           freshAsset,
@@ -1509,6 +2003,107 @@ export async function publishRetailAsset(
         freshAsset
       );
 
+      /*
+      * -------------------------------------------------------
+      * Consume Product 2 activation entitlement
+      * -------------------------------------------------------
+      */
+
+      if (
+        product2Asset &&
+        product2Entitlement &&
+        freshProduct2Credit
+      ) {
+        const creditAlreadyConsumed =
+          freshProduct2Credit
+            .status ===
+            "consumed";
+
+        if (
+          !creditAlreadyConsumed
+        ) {
+          transaction.update(
+            product2Entitlement
+              .creditRef,
+            {
+              status:
+                "consumed",
+
+              retailAssetId,
+
+              consumedAt:
+                activationStartsAt,
+
+              updatedAt:
+                FieldValue.serverTimestamp(),
+            }
+          );
+
+          /*
+          * If this credit came from a Product 2 volume pack,
+          * decrement the pack only once.
+          */
+          if (
+            product2Entitlement
+              .packRef &&
+            freshPack
+          ) {
+            const remainingCredits =
+              Number(
+                freshPack
+                  .remainingCredits ||
+                  0
+              );
+
+            if (
+              remainingCredits <=
+              0
+            ) {
+              throw new Error(
+                "PRODUCT_2_VOLUME_PACK_EMPTY"
+              );
+            }
+
+            transaction.update(
+              product2Entitlement
+                .packRef,
+              {
+                remainingCredits:
+                  remainingCredits -
+                  1,
+
+                updatedAt:
+                  FieldValue.serverTimestamp(),
+              }
+            );
+          }
+        }
+
+        /*
+        * Commerce remains paid/fulfilled.
+        * We record that one of its credits has now entered
+        * an actual activation.
+        */
+        transaction.update(
+          product2Entitlement
+            .commerceRef,
+          {
+            lastActivatedRetailAssetId:
+              retailAssetId,
+
+            lastActivationCreditId:
+              product2Entitlement
+                .creditId,
+
+            lastActivatedAt:
+              activationStartsAt,
+
+            updatedAt:
+              FieldValue.serverTimestamp(),
+          }
+        );
+      }
+
       transaction.set(
         entryRef,
         entryData,
@@ -1522,6 +2117,96 @@ export async function publishRetailAsset(
         {
           status:
             "publishing",
+            
+            ...(product2Asset &&
+            product2Entitlement
+              ? {
+                  monetization: {
+                    ...(freshAsset
+                      .monetization ||
+                      {}),
+
+                    product:
+                      "product_2",
+
+                    commerceStatus:
+                      "activated",
+
+                    paymentStatus:
+                      "paid",
+
+                    commerceId:
+                      product2Entitlement
+                        .commerceId,
+
+                    activationCreditId:
+                      product2Entitlement
+                        .creditId,
+
+                    purchaseDefinitionKey:
+                      freshProduct2Commerce
+                        ?.purchaseDefinitionKey ||
+                      freshAsset
+                        .monetization
+                        ?.purchaseDefinitionKey ||
+                      "product_2_single_activation",
+
+                    activationPriceUsd:
+                      freshProduct2Commerce
+                        ?.purchaseSnapshot
+                        ?.amountUsd ??
+                      freshProduct2Commerce
+                        ?.amountUsd ??
+                      freshAsset
+                        .monetization
+                        ?.activationPriceUsd ??
+                      99,
+
+                    currency:
+                      "USD",
+
+                    includedQualifiedViews:
+                      Number(
+                        freshProduct2Credit
+                          ?.entitlement
+                          ?.includedQualifiedViews ||
+                          1000
+                      ),
+
+                    activationDays:
+                      Number(
+                        freshProduct2Credit
+                          ?.entitlement
+                          ?.activationDays ||
+                          durationDays ||
+                          90
+                      ),
+
+                    usageStatus:
+                      "included_usage",
+
+                    qualifiedViewsUsed:
+                      Number(
+                        freshAsset
+                          .monetization
+                          ?.qualifiedViewsUsed ||
+                          0
+                      ),
+
+                    overageQualifiedViews:
+                      Number(
+                        freshAsset
+                          .monetization
+                          ?.overageQualifiedViews ||
+                          0
+                      ),
+
+                    activatedAt:
+                      activationStartsAt,
+                  },
+                }
+              : {}),
+
 
           "media.playbackUrl":
             preparedPlayback

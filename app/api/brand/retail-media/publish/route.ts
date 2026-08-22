@@ -162,6 +162,12 @@ function mapKnownError(
   status: number;
   message: string;
 } | null {
+  /*
+   * -----------------------------------------------------
+   * Errors with additional details appended
+   * -----------------------------------------------------
+   */
+
   if (
     errorMessage.startsWith(
       "RETAIL_ASSET_NOT_PLAYLIST_ELIGIBLE:"
@@ -182,11 +188,23 @@ function mapKnownError(
     return {
       status: 500,
       message:
-        "The AR Entry was created, but the Goshsha master playlist could not be updated. The asset was saved for recovery and was not marked live.",
+        "The AR Entry was created, but the Goshsha Master playlist could not be updated. The asset was saved for recovery and was not marked live.",
     };
   }
 
+  /*
+   * -----------------------------------------------------
+   * Exact known errors
+   * -----------------------------------------------------
+   */
+
   switch (errorMessage) {
+    /*
+     * =====================================================
+     * Shared Retail Media errors
+     * =====================================================
+     */
+
     case "RETAIL_ASSET_NOT_FOUND":
       return {
         status: 404,
@@ -201,6 +219,12 @@ function mapKnownError(
           "You do not have permission to publish this Retail Asset.",
       };
 
+    /*
+     * =====================================================
+     * Product 1 — Campaign source validation
+     * =====================================================
+     */
+
     case "SOURCE_CAMPAIGN_NOT_FOUND":
       return {
         status: 404,
@@ -214,6 +238,12 @@ function mapKnownError(
         message:
           "The source Creator submission must be approved before Retail Media can be published.",
       };
+
+    /*
+     * =====================================================
+     * Shared publication readiness
+     * =====================================================
+     */
 
     case "RETAIL_ASSET_RIGHTS_NOT_READY":
       return {
@@ -249,6 +279,76 @@ function mapKnownError(
         message:
           "This Retail Asset is already published.",
       };
+
+    /*
+     * =====================================================
+     * Product 2 — Payment + Activation Credit enforcement
+     * =====================================================
+     */
+
+    case "PRODUCT_2_ACTIVATION_PAYMENT_REQUIRED":
+      return {
+        status: 402,
+        message:
+          "A paid Product 2 Retail Media activation is required before this asset can be published.",
+      };
+
+    case "PRODUCT_2_ACTIVATION_CREDIT_NOT_AVAILABLE":
+      return {
+        status: 409,
+        message:
+          "This Retail Media activation credit is no longer available. Purchase or apply another activation credit.",
+      };
+
+    case "PRODUCT_2_ACTIVATION_CREDIT_NOT_FOUND":
+      return {
+        status: 409,
+        message:
+          "The Retail Media activation credit could not be found. Refresh the activation status and try again.",
+      };
+
+    case "PRODUCT_2_PAYMENT_NOT_CONFIRMED":
+      return {
+        status: 409,
+        message:
+          "Your Retail Media payment has not finished processing yet. Wait a moment and refresh the activation status.",
+      };
+
+    case "PRODUCT_2_COMMERCE_RECORD_MISSING":
+    case "PRODUCT_2_COMMERCE_RECORD_NOT_FOUND":
+      return {
+        status: 409,
+        message:
+          "The Retail Media purchase record could not be verified. Please contact Goshsha support before publishing.",
+      };
+
+    case "PRODUCT_2_BRAND_ID_MISSING":
+      return {
+        status: 409,
+        message:
+          "The Brand associated with this Product 2 Retail Asset could not be verified.",
+      };
+
+    case "PRODUCT_2_CREDIT_BRAND_MISMATCH":
+    case "PRODUCT_2_COMMERCE_BRAND_MISMATCH":
+      return {
+        status: 403,
+        message:
+          "This Retail Media activation does not belong to the current Brand account.",
+      };
+
+    case "PRODUCT_2_VOLUME_PACK_EMPTY":
+      return {
+        status: 409,
+        message:
+          "This Retail Media volume pack has no remaining activation credits.",
+      };
+
+    /*
+     * =====================================================
+     * Unknown
+     * =====================================================
+     */
 
     default:
       return null;

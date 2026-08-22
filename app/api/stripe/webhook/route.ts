@@ -8,6 +8,13 @@ import {
 import { sendEmail } from "../../../../lib/postmark";
 import { stripe } from "../../../../lib/stripe";
 
+import {
+  createActivationCreditDefaults,
+  getRetailMediaPurchaseDefinition,
+  RetailMediaPurchaseDefinitionKey,
+} from "../../../../lib/retail-media/activation-commerce";
+
+
 type StripeWebhookEvent =
   ReturnType<
     typeof stripe.webhooks.constructEvent
@@ -324,6 +331,594 @@ export async function POST(
 
       return NextResponse.json({
         received: true,
+      });
+    }
+
+    /*
+    * -----------------------------------------------------
+    * Retail Media Activation Commerce
+    * -----------------------------------------------------
+    *
+    * Handles:
+    *
+    * Product 1 additional activation
+    * Product 2 single activation
+    * Product 2 volume packs
+    *
+    * IMPORTANT:
+    *
+    * Opening Checkout does NOT create activation credits.
+    * Credits are created only after Stripe confirms that
+    * the Checkout Session is paid.
+    */
+
+    const commerceType =
+      session.metadata?.commerceType;
+
+    const commerceId =
+      session.metadata?.commerceId;
+
+    if (
+      commerceType ===
+        "retail_media_activation" &&
+      commerceId
+    ) {
+      if (
+        session.mode !==
+          "payment" ||
+        session.payment_status !==
+          "paid"
+      ) {
+        throw new Error(
+          `Retail Media Checkout session is not paid. mode=${session.mode}, payment_status=${session.payment_status}`
+        );
+      }
+
+      const commerceRef =
+        adminDb
+          .collection(
+            "retailMediaCommerce"
+          )
+          .doc(commerceId);
+
+      /*
+      * -----------------------------------------------------
+      * Complete purchase transaction
+      * -----------------------------------------------------
+      *
+      * The transaction:
+      *
+      * 1. verifies the purchase
+      * 2. prevents duplicate fulfillment
+      * 3. marks payment paid
+      * 4. creates activation credits
+      */
+
+      const fulfillmentResult =
+        await adminDb.runTransaction(
+          async (transaction) => {
+            const commerceSnap =
+              await transaction.get(
+                commerceRef
+              );
+
+            if (
+              !commerceSnap.exists
+            ) {
+              throw new Error(
+                "Retail Media commerce record not found."
+              );
+            }
+
+            const commerce =
+              commerceSnap.data() as Record<
+                string,
+                any
+              >;
+
+            /*
+            * Exact purchase already fulfilled.
+            *
+            * This is additional protection beyond the
+            * webhook event idempotency layer.
+            */
+            if (
+              commerce.paymentStatus ===
+                "paid" &&
+              commerce.fulfillmentStatus ===
+                "fulfilled"
+            ) {
+              return {
+                alreadyFulfilled:
+                  true,
+
+                brandId:
+                  commerce.brandId ||
+                  "",
+
+                retailAssetId:
+                  commerce.retailAssetId ||
+                  null,
+
+                purchaseDefinitionKey:
+                  commerce.purchaseDefinitionKey ||
+                  "",
+
+                creditIds:
+                  Array.isArray(
+                    commerce.activationCreditIds
+                  )
+                    ? commerce.activationCreditIds
+                    : [],
+              };
+            }
+
+            const metadataBrandId =
+              session.metadata
+                ?.brandId ||
+              "";
+
+            if (
+              !metadataBrandId ||
+              metadataBrandId !==
+                commerce.brandId
+            ) {
+              throw new Error(
+                "Stripe Retail Media Brand does not match the commerce record."
+              );
+            }
+
+            const purchaseDefinitionKey =
+              commerce.purchaseDefinitionKey as
+                RetailMediaPurchaseDefinitionKey;
+
+            if (
+              !purchaseDefinitionKey
+            ) {
+              throw new Error(
+                "Retail Media purchase definition is missing."
+              );
+            }
+
+            const definition =
+              getRetailMediaPurchaseDefinition(
+                purchaseDefinitionKey
+              );
+
+            /*
+            * Compare Stripe metadata with the authoritative
+            * Firestore purchase.
+            */
+            if (
+              session.metadata
+                ?.purchaseDefinitionKey &&
+              session.metadata
+                .purchaseDefinitionKey !==
+                purchaseDefinitionKey
+            ) {
+              throw new Error(
+                "Stripe Retail Media purchase definition does not match the commerce record."
+              );
+            }
+
+            if (
+              definition.customPricing
+            ) {
+              throw new Error(
+                "Custom-priced Retail Media purchases cannot be fulfilled through standard Checkout."
+              );
+            }
+
+            const expectedAmountCents =
+              Math.round(
+                Number(
+                  commerce
+                    .purchaseSnapshot
+                    ?.amountUsd ??
+                    commerce.amountUsd ??
+                    definition.amountUsd ??
+                    0
+                ) * 100
+              );
+
+            if (
+              expectedAmountCents <=
+              0
+            ) {
+              throw new Error(
+                "Retail Media purchase amount is invalid."
+              );
+            }
+
+            if (
+              typeof session.amount_total ===
+                "number" &&
+              session.amount_total !==
+                expectedAmountCents
+            ) {
+              throw new Error(
+                "Stripe Retail Media payment amount does not match the commerce record."
+              );
+            }
+
+            const activationCredits =
+              Number(
+                commerce
+                  .purchaseSnapshot
+                  ?.activationCredits ??
+                  definition.activationCredits ??
+                  0
+              );
+
+            if (
+              !Number.isInteger(
+                activationCredits
+              ) ||
+              activationCredits <
+                1
+            ) {
+              throw new Error(
+                "Retail Media activation credit quantity is invalid."
+              );
+            }
+
+            const paymentIntentId =
+              typeof session.payment_intent ===
+              "string"
+                ? session.payment_intent
+                : session
+                    .payment_intent
+                    ?.id ||
+                  null;
+
+            /*
+            * Create deterministic credit IDs.
+            *
+            * Because they are based on commerceId + index,
+            * even an unexpected retry cannot generate a
+            * second set of credits.
+            */
+
+            const creditIds:
+              string[] = [];
+
+            for (
+              let index = 0;
+              index <
+              activationCredits;
+              index += 1
+            ) {
+              const creditId =
+                `${commerceId}_credit_${
+                  index + 1
+                }`;
+
+              creditIds.push(
+                creditId
+              );
+
+              const creditRef =
+                adminDb
+                  .collection(
+                    "retailMediaActivationCredits"
+                  )
+                  .doc(
+                    creditId
+                  );
+
+              const credit =
+                createActivationCreditDefaults({
+                  creditId,
+
+                  brandId:
+                    commerce.brandId,
+
+                  purchaseDefinitionKey,
+
+                  sourcePurchaseId:
+                    commerceId,
+
+                  createdAt:
+                    FieldValue.serverTimestamp(),
+
+                  updatedAt:
+                    FieldValue.serverTimestamp(),
+                });
+
+              transaction.set(
+                creditRef,
+                {
+                  ...credit,
+
+                  commerceId,
+
+                  packPurchaseId:
+                    activationCredits >
+                    1
+                      ? commerceId
+                      : null,
+
+                  creditNumber:
+                    index + 1,
+
+                  totalCreditsInPurchase:
+                    activationCredits,
+
+                  stripeCheckoutSessionId:
+                    session.id,
+
+                  stripePaymentIntentId:
+                    paymentIntentId,
+
+                  /*
+                  * If a Brand purchased a single activation
+                  * against an already-created Retail Asset,
+                  * associate that asset with the first credit.
+                  *
+                  * We do NOT consume it yet.
+                  */
+                  retailAssetId:
+                    index === 0
+                      ? commerce.retailAssetId ||
+                        null
+                      : null,
+                },
+                {
+                  merge: false,
+                }
+              );
+            }
+
+            /*
+            * -------------------------------------------------
+            * Volume pack record
+            * -------------------------------------------------
+            */
+
+            let packPurchaseId:
+              string | null =
+              null;
+
+            if (
+              activationCredits >
+              1
+            ) {
+              packPurchaseId =
+                commerceId;
+
+              const packRef =
+                adminDb
+                  .collection(
+                    "retailMediaVolumePacks"
+                  )
+                  .doc(
+                    packPurchaseId
+                  );
+
+              transaction.set(
+                packRef,
+                {
+                  packId:
+                    packPurchaseId,
+
+                  commerceId,
+
+                  brandId:
+                    commerce.brandId,
+
+                  product:
+                    definition.product,
+
+                  purchaseDefinitionKey,
+
+                  totalCredits:
+                    activationCredits,
+
+                  remainingCredits:
+                    activationCredits,
+
+                  amountUsd:
+                    commerce
+                      .purchaseSnapshot
+                      ?.amountUsd ??
+                    commerce.amountUsd ??
+                    definition.amountUsd ??
+                    null,
+
+                  currency:
+                    "USD",
+
+                  paymentStatus:
+                    "paid",
+
+                  stripeCheckoutSessionId:
+                    session.id,
+
+                  stripePaymentIntentId:
+                    paymentIntentId,
+
+                  activationCreditIds:
+                    creditIds,
+
+                  createdAt:
+                    FieldValue.serverTimestamp(),
+
+                  updatedAt:
+                    FieldValue.serverTimestamp(),
+                },
+                {
+                  merge: false,
+                }
+              );
+            }
+
+            /*
+            * -------------------------------------------------
+            * Mark commerce purchase paid + fulfilled
+            * -------------------------------------------------
+            */
+
+            transaction.update(
+              commerceRef,
+              {
+                paymentStatus:
+                  "paid",
+
+                checkoutStatus:
+                  "paid",
+
+                fulfillmentStatus:
+                  "fulfilled",
+
+                stripeCheckoutSessionId:
+                  session.id,
+
+                stripePaymentIntentId:
+                  paymentIntentId,
+
+                stripeAmountTotalCents:
+                  session.amount_total ||
+                  expectedAmountCents,
+
+                stripeCurrency:
+                  session.currency ||
+                  "usd",
+
+                activationCreditIds:
+                  creditIds,
+
+                activationCreditsIssued:
+                  activationCredits,
+
+                packPurchaseId,
+
+                paidAt:
+                  FieldValue.serverTimestamp(),
+
+                fulfilledAt:
+                  FieldValue.serverTimestamp(),
+
+                updatedAt:
+                  FieldValue.serverTimestamp(),
+              }
+            );
+
+            return {
+              alreadyFulfilled:
+                false,
+
+              brandId:
+                commerce.brandId,
+
+              retailAssetId:
+                commerce.retailAssetId ||
+                null,
+
+              purchaseDefinitionKey,
+
+              creditIds,
+            };
+          }
+        );
+
+      /*
+      * -----------------------------------------------------
+      * Brand notification
+      * -----------------------------------------------------
+      *
+      * Notification failure must never undo payment
+      * fulfillment.
+      */
+
+      if (
+        !fulfillmentResult
+          .alreadyFulfilled
+      ) {
+        try {
+          const creditCount =
+            fulfillmentResult
+              .creditIds.length;
+
+          await adminDb
+            .collection(
+              "notifications"
+            )
+            .add({
+              userId:
+                fulfillmentResult
+                  .brandId,
+
+              role:
+                "brand",
+
+              type:
+                "retail_media_activation_purchased",
+
+              title:
+                creditCount === 1
+                  ? "Retail Media activation ready"
+                  : `${creditCount} Retail Media activations ready`,
+
+              message:
+                creditCount === 1
+                  ? "Your Retail Media activation payment was successful. Your activation credit is ready to use."
+                  : `Your Retail Media payment was successful. ${creditCount} activation credits are ready to use.`,
+
+              retailAssetId:
+                fulfillmentResult
+                  .retailAssetId,
+
+              commerceId,
+
+              isRead:
+                false,
+
+              read:
+                false,
+
+              createdAt:
+                FieldValue.serverTimestamp(),
+
+              updatedAt:
+                FieldValue.serverTimestamp(),
+            });
+        } catch (
+          notificationError
+        ) {
+          console.error(
+            "Retail Media purchase fulfilled, but Brand notification failed:",
+            notificationError
+          );
+        }
+      }
+
+      /*
+      * -----------------------------------------------------
+      * Webhook complete
+      * -----------------------------------------------------
+      */
+
+      await markWebhookEvent(
+        event.id,
+        "processed"
+      );
+
+      return NextResponse.json({
+        received:
+          true,
+
+        retailMediaCommerce:
+          true,
+
+        commerceId,
+
+        alreadyFulfilled:
+          fulfillmentResult
+            .alreadyFulfilled,
+
+        activationCreditsIssued:
+          fulfillmentResult
+            .creditIds.length,
       });
     }
 
