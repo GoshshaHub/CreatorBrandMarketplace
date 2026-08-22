@@ -26,7 +26,6 @@
     "@types/react-dom": "^19.2.3",
     "eslint": "^9",
     "eslint-config-next": "16.1.7",
-    "firebase-tools": "^15.28.1",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
