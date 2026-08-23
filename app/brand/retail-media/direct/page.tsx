@@ -548,7 +548,7 @@ export default function DirectRetailMediaPage() {
         restoreError
     ) {
         console.warn(
-        "Could not restore Product 2 draft:",
+        "Could not restore IRL Retail Media draft:",
         restoreError
         );
     }
@@ -1097,7 +1097,7 @@ export default function DirectRetailMediaPage() {
       err: any
     ) {
       console.error(
-        "Product 2 draft error:",
+        "IRL Retail Media draft error:",
         err
       );
 
@@ -1174,7 +1174,7 @@ export default function DirectRetailMediaPage() {
         return result;
     } catch (err: any) {
         console.error(
-        "Product 2 activation status error:",
+        "IRL Retail Media activation status error:",
         err
         );
 
@@ -1288,12 +1288,12 @@ export default function DirectRetailMediaPage() {
             // Convenience only.
         }
       }
-      
+
         window.location.href =
         data.checkoutUrl;
     } catch (err: any) {
         console.error(
-        "Product 2 activation checkout error:",
+        "IRL Retail Media activation checkout error:",
         err
         );
 
@@ -1368,7 +1368,7 @@ export default function DirectRetailMediaPage() {
         const confirmed =
             window.confirm(
             [
-                "Publish this Product 2 Retail Media activation?",
+                "Publish this IRL Retail Media activation?",
                 "",
                 `Product Collection: ${collectionId}`,
                 `AR Entry: ${entryId}`,
@@ -1451,7 +1451,7 @@ export default function DirectRetailMediaPage() {
             );
         } catch (err: any) {
             console.error(
-            "Product 2 publish error:",
+            "IRL Retail Media publish error:",
             err
             );
 
@@ -1547,13 +1547,13 @@ export default function DirectRetailMediaPage() {
 
           <header className="flex flex-wrap items-start justify-between gap-5">
             <div>
-              <p className="text-sm font-black uppercase tracking-[0.18em] text-pink-600">
-                Product 2
-              </p>
+                <p className="text-sm font-black uppercase tracking-[0.18em] text-pink-600">
+                IRL Retail Media
+                </p>
 
-              <h1 className="mt-2 text-4xl font-black tracking-tight">
-                Retail Media Infrastructure
-              </h1>
+                <h1 className="mt-2 text-4xl font-black tracking-tight">
+                    IRL Retail Media
+                </h1>
 
               <p className="mt-3 max-w-3xl text-lg leading-8 text-slate-600">
                 Already have content?
@@ -1577,7 +1577,7 @@ export default function DirectRetailMediaPage() {
                 href="/brand/retail-media"
                 className="rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-bold text-slate-800 shadow-sm hover:bg-slate-50"
               >
-                Product 1 Retail Media
+                Activate Campaign Content
               </Link>
             </div>
           </header>
@@ -2228,7 +2228,7 @@ export default function DirectRetailMediaPage() {
                 {!draft ? (
                   <div className="mt-5 rounded-2xl bg-slate-100 p-5 text-sm leading-6 text-slate-600">
                     Complete the
-                    Product 2 form to
+                    IRL Retail Media form to
                     resolve the
                     scannable product
                     and create the
@@ -2283,7 +2283,7 @@ export default function DirectRetailMediaPage() {
                           <strong>
                             Source:
                           </strong>{" "}
-                          Product 2 —
+                          IRL Retail Media —
                           Direct Brand
                           Content
                         </p>
@@ -2338,7 +2338,7 @@ export default function DirectRetailMediaPage() {
                 </p>
 
                 <h2 className="mt-2 text-2xl font-black">
-                  Product 2 Commerce
+                IRL Retail Media Activation
                 </h2>
 
                 {!draft ? (
@@ -2620,7 +2620,7 @@ export default function DirectRetailMediaPage() {
                     <strong className="text-slate-950">
                       2. Purchase
                     </strong>{" "}
-                    — one Product 2
+                    — one IRL Retail Media
                     activation credit
                     is purchased or
                     applied.

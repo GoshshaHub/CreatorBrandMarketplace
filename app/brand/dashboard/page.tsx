@@ -367,14 +367,21 @@ export default function BrandDashboardPage() {
               href="/brand/creators"
               className="rounded-lg border px-4 py-2"
             >
-              IRL Campaign Network
+              IRL Creator Network
             </Link>
 
             <Link
               href="/brand/retail-media"
               className="rounded-lg border px-4 py-2"
             >
-              Retail Media Infrastructure
+              Activate Campaign Content
+            </Link>
+
+            <Link
+              href="/brand/retail-media/direct"
+              className="rounded-lg border px-4 py-2"
+            >
+              IRL Retail Media
             </Link>
 
             <Link

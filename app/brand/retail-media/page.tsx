@@ -1354,17 +1354,17 @@ export default function BrandRetailMediaPage() {
           <header className="flex flex-wrap items-start justify-between gap-5">
             <div>
               <p className="text-sm font-bold uppercase tracking-widest text-pink-600">
-                Product 2
+                IRL Creator Network
               </p>
 
               <h1 className="mt-2 text-4xl font-black tracking-tight">
-                Retail Media Infrastructure
+                Activate Campaign Content
               </h1>
 
               <p className="mt-3 max-w-3xl text-lg text-slate-600">
-                Turn approved Creator content into interactive,
+                Turn approved Creator campaign content into interactive,
                 measurable Retail Media that shoppers can discover
-                through the Goshsha app.
+                at the physical shelf through the Goshsha app.
               </p>
             </div>
 
@@ -1373,7 +1373,14 @@ export default function BrandRetailMediaPage() {
                 href="/brand/creators"
                 className="rounded-xl border border-slate-300 bg-white px-5 py-3 font-bold shadow-sm hover:bg-slate-50"
               >
-                Creator Network
+                IRL Creator Network
+              </Link>
+
+              <Link
+                href="/brand/retail-media/direct"
+                className="rounded-xl border border-slate-300 bg-white px-5 py-3 font-bold shadow-sm hover:bg-slate-50"
+              >
+                IRL Retail Media
               </Link>
 
               <Link
@@ -1445,7 +1452,7 @@ export default function BrandRetailMediaPage() {
             <section className="rounded-3xl border border-slate-200 bg-white p-7 shadow-xl">
               <div>
                 <p className="text-sm font-bold uppercase tracking-wide text-pink-600">
-                  Create Retail Media
+                  Activate Campaign Content
                 </p>
 
                 <h2 className="mt-2 text-2xl font-black">
