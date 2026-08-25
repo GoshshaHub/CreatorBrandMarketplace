@@ -2250,51 +2250,28 @@ export default function DirectRetailMediaPage() {
                         }
                       </h3>
 
-                      <div className="mt-4 space-y-3 text-sm">
+                        <div className="mt-4 space-y-3 text-sm">
                         <p>
-                          <strong>
-                            Product Collection:
-                          </strong>{" "}
-                          {
-                            draft.collectionId
-                          }
+                            <strong>
+                            Brand:
+                            </strong>{" "}
+                            {brandName}
                         </p>
 
                         <p>
-                          <strong>
-                            AR Entry:
-                          </strong>{" "}
-                          {
-                            draft.entryId
-                          }
+                            <strong>
+                            Product:
+                            </strong>{" "}
+                            {productName}
                         </p>
 
                         <p>
-                          <strong>
-                            Resolution:
-                          </strong>{" "}
-                          {
-                            resolution
-                              ?.resolution
-                          }
-                        </p>
-
-                        <p>
-                          <strong>
+                            <strong>
                             Source:
-                          </strong>{" "}
-                          IRL Retail Media —
-                          Direct Brand
-                          Content
+                            </strong>{" "}
+                            IRL Retail Media
                         </p>
-
-                        <p>
-                          <strong>
-                            Campaign:
-                          </strong>{" "}
-                          None
-                        </p>
-                      </div>
+                        </div>
                     </div>
 
                     {draftResponse
@@ -2457,23 +2434,10 @@ export default function DirectRetailMediaPage() {
                             </p>
 
                             <p className="mt-2 text-sm leading-6 text-emerald-800">
-                            This Retail Media asset is active in the Goshsha
-                            Product Master playlist. The activation period and
-                            qualified-view tracking are underway.
+                            This Retail Media activation is now live in the Goshsha
+                            experience. The activation period and qualified-view
+                            tracking are underway.
                             </p>
-
-                            {activationStatus
-                            ?.credit
-                            ?.creditId && (
-                            <p className="mt-3 break-all text-xs text-emerald-700">
-                                Activation Credit:{" "}
-                                {
-                                activationStatus
-                                    .credit
-                                    .creditId
-                                }
-                            </p>
-                            )}
                         </div>
                         ) : readyToPublish ? (
                         <>
