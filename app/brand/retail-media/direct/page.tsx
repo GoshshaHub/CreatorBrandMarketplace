@@ -336,6 +336,12 @@ export default function DirectRetailMediaPage() {
     useState("");
 
   const [
+    linkUrl,
+    setLinkUrl,
+    ] =
+    useState("");
+
+  const [
     rawOcr,
     setRawOcr,
   ] =
@@ -769,11 +775,13 @@ export default function DirectRetailMediaPage() {
 
   const formReady =
     brandName.trim()
-      .length > 0 &&
+        .length > 0 &&
     productName.trim()
-      .length > 0 &&
+        .length > 0 &&
+    linkUrl.trim()
+        .length > 0 &&
     rawOcr.trim()
-      .length > 0 &&
+        .length > 0 &&
     Boolean(
       originalMedia
     ) &&
@@ -882,6 +890,41 @@ export default function DirectRetailMediaPage() {
       return;
     }
 
+    const cleanedLinkUrl =
+        linkUrl.trim();
+
+        if (!cleanedLinkUrl) {
+        setError(
+            "Enter the Link URL shoppers should visit when they tap the Link button."
+        );
+
+        return;
+        }
+
+        try {
+        const parsedUrl =
+            new URL(
+            cleanedLinkUrl
+            );
+
+        if (
+            parsedUrl.protocol !==
+            "https:" &&
+            parsedUrl.protocol !==
+            "http:"
+        ) {
+            throw new Error(
+            "INVALID_LINK_URL"
+            );
+        }
+        } catch {
+        setError(
+            "Enter a valid Link URL beginning with https:// or http://."
+        );
+
+        return;
+        }
+
     if (
       !originalMedia
     ) {
@@ -968,6 +1011,11 @@ export default function DirectRetailMediaPage() {
       formData.append(
         "productName",
         productName.trim()
+        );
+
+      formData.append(
+        "linkUrl",
+        cleanedLinkUrl
       );
 
       formData.append(
@@ -1729,6 +1777,39 @@ export default function DirectRetailMediaPage() {
                       className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3"
                     />
                   </label>
+                  <label className="block sm:col-span-2">
+                    <span className="text-sm font-bold text-slate-700">
+                        Link URL
+                    </span>
+
+                    <p className="mt-1 text-sm leading-6 text-slate-500">
+                        Where should shoppers go when they tap the Link button?
+                        This can be your product page, retailer page, campaign page,
+                        social post, or another destination.
+                    </p>
+
+                    <input
+                        type="url"
+                        value={
+                        linkUrl
+                        }
+                        onChange={(
+                        event
+                        ) => {
+                        setLinkUrl(
+                            event
+                            .target
+                            .value
+                        );
+
+                        setDraftResponse(
+                            null
+                        );
+                        }}
+                        placeholder="https://www.yourbrand.com/product"
+                        className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3"
+                    />
+                    </label>
                 </div>
               </div>
 

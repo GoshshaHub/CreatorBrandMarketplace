@@ -225,6 +225,24 @@ function cleanOptionalNumber(
     : null;
 }
 
+function isValidHttpUrl(
+  value: string
+): boolean {
+  try {
+    const parsed =
+      new URL(value);
+
+    return (
+      parsed.protocol ===
+        "https:" ||
+      parsed.protocol ===
+        "http:"
+    );
+  } catch {
+    return false;
+  }
+}
+
 function parseBoolean(
   value: FormDataEntryValue | null
 ): boolean {
@@ -1305,18 +1323,42 @@ export async function POST(
     const productName =
       cleanRequiredString(
         formData.get(
-          "productName"
+        "productName"
         ),
         "Product name"
+    );
+
+    const linkUrl =
+      cleanRequiredString(
+        formData.get(
+        "linkUrl"
+        ),
+        "Link URL"
+    );
+
+    if (
+      !isValidHttpUrl(
+        linkUrl
+      )
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Link URL must be a valid HTTP or HTTPS URL.",
+        },
+        {
+          status: 400,
+        }
       );
+    }
 
     const rawOcr =
       cleanRequiredString(
         formData.get(
-          "rawOcr"
+        "rawOcr"
         ),
         "Product packaging text"
-      );
+    );
 
     const recognitionConfidence =
       cleanOptionalNumber(
@@ -1983,7 +2025,7 @@ export async function POST(
             originalMedia.size,
 
           publicPostUrl:
-            null,
+            linkUrl,
 
           uploadedBy:
             brandUserId,
