@@ -297,7 +297,7 @@ export const RETAIL_MEDIA_PURCHASE_DEFINITIONS:
       "Product 2 Single Retail Media Activation",
 
     amountUsd:
-      99,
+      1,
 
     activationCredits:
       1,
