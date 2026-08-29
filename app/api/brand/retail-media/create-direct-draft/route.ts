@@ -244,11 +244,18 @@ function isValidHttpUrl(
 }
 
 function parseBoolean(
-  value: FormDataEntryValue | null
+  value: unknown
 ): boolean {
+  if (
+    typeof value ===
+    "boolean"
+  ) {
+    return value;
+  }
+
   return (
     String(
-      value || ""
+      value ?? ""
     )
       .trim()
       .toLowerCase() ===
@@ -1183,6 +1190,192 @@ async function deleteStorageObject(
       cleanupError
     );
   }
+}
+
+async function verifyDirectUpload(
+  params: {
+    storagePath: string;
+
+    brandUserId: string;
+
+    kind:
+      | "media"
+      | "target";
+  }
+): Promise<{
+  storagePath: string;
+
+  originalName: string;
+
+  contentType: string;
+
+  sizeBytes: number;
+}> {
+  const expectedPrefix =
+    `retail-media-direct-uploads/` +
+    `${params.brandUserId}/` +
+    `${params.kind}/`;
+
+  if (
+    !params.storagePath.startsWith(
+      expectedPrefix
+    )
+  ) {
+    throw new Error(
+      "Invalid Retail Media upload path."
+    );
+  }
+
+  const bucket =
+    adminStorage.bucket();
+
+  const storageFile =
+    bucket.file(
+      params.storagePath
+    );
+
+  const [
+    exists,
+  ] =
+    await storageFile.exists();
+
+  if (!exists) {
+    throw new Error(
+      params.kind ===
+        "media"
+        ? "The uploaded video could not be found."
+        : "The uploaded product image could not be found."
+    );
+  }
+
+  const [
+    metadata,
+  ] =
+    await storageFile.getMetadata();
+
+  const sizeBytes =
+    Number(
+      metadata.size ||
+      0
+    );
+
+  if (
+    !Number.isFinite(
+      sizeBytes
+    ) ||
+    sizeBytes <=
+      0
+  ) {
+    throw new Error(
+      params.kind ===
+        "media"
+        ? "The uploaded video appears to be empty."
+        : "The uploaded product image appears to be empty."
+    );
+  }
+
+  const customMetadata =
+    metadata.metadata ||
+    {};
+
+  const originalName =
+    cleanString(
+      customMetadata
+        .originalFileName
+    );
+
+  if (!originalName) {
+    throw new Error(
+      "Uploaded file metadata is incomplete."
+    );
+  }
+
+  return {
+    storagePath:
+      params.storagePath,
+
+    originalName,
+
+    contentType:
+      cleanString(
+        metadata.contentType
+      ),
+
+    sizeBytes,
+  };
+}
+
+async function promoteDirectUpload(
+  params: {
+    sourcePath: string;
+
+    destinationPath: string;
+
+    contentType: string;
+
+    metadata:
+      Record<
+        string,
+        string
+      >;
+  }
+): Promise<{
+  url: string;
+
+  storagePath: string;
+}> {
+  const bucket =
+    adminStorage.bucket();
+
+  const sourceFile =
+    bucket.file(
+      params.sourcePath
+    );
+
+  const destinationFile =
+    bucket.file(
+      params.destinationPath
+    );
+
+  await sourceFile.move(
+    destinationFile
+  );
+
+  const downloadToken =
+    randomUUID();
+
+  await destinationFile.setMetadata(
+    {
+      contentType:
+        params.contentType,
+
+      cacheControl:
+        "public,max-age=3600",
+
+      metadata: {
+        firebaseStorageDownloadTokens:
+          downloadToken,
+
+        ...params.metadata,
+      },
+    }
+  );
+
+  return {
+    url:
+      getFirebaseDownloadUrl({
+        bucketName:
+          bucket.name,
+
+        objectName:
+          params.destinationPath,
+
+        downloadToken,
+      }),
+
+    storagePath:
+      params.destinationPath,
+  };
 }
 
 export async function POST(
