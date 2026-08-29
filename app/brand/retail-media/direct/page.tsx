@@ -378,6 +378,18 @@ export default function DirectRetailMediaPage() {
     );
 
   const [
+    mediaError,
+    setMediaError,
+  ] =
+    useState("");
+
+  const [
+    targetImageError,
+    setTargetImageError,
+  ] =
+    useState("");
+
+  const [
     contentRightsConfirmed,
     setContentRightsConfirmed,
   ] =
@@ -805,6 +817,7 @@ export default function DirectRetailMediaPage() {
   ) {
     setError("");
     setMessage("");
+    setMediaError("");
     setDraftResponse(
       null
     );
@@ -824,7 +837,7 @@ export default function DirectRetailMediaPage() {
         null
       );
 
-      setError(
+      setMediaError(
         "Please upload your video as an MP4 (.mp4 or .MP4). MOV and other video formats are not yet supported."
       );
 
@@ -841,6 +854,7 @@ export default function DirectRetailMediaPage() {
   ) {
     setError("");
     setMessage("");
+    setTargetImageError("");
     setDraftResponse(
       null
     );
@@ -859,6 +873,8 @@ export default function DirectRetailMediaPage() {
   async function handleCreateDraft() {
     setError("");
     setMessage("");
+    setMediaError("");
+    setTargetImageError("");
 
     if (
       !currentUser
@@ -928,7 +944,7 @@ export default function DirectRetailMediaPage() {
     if (
       !originalMedia
     ) {
-      setError(
+      setMediaError(
         "Upload the video you want to activate."
       );
 
@@ -940,8 +956,8 @@ export default function DirectRetailMediaPage() {
         originalMedia
       )
     ) {
-      setError(
-        "Please upload your video as an MP4 (.mp4 or .MP4)."
+      setMediaError(
+        "Please upload your video as an MP4 (.mp4 or .MP4). MOV and other video formats are not yet supported."
       );
 
       return;
@@ -950,7 +966,7 @@ export default function DirectRetailMediaPage() {
     if (
       !targetImage
     ) {
-      setError(
+      setTargetImageError(
         "Upload the exact product image shoppers will scan."
       );
 
@@ -1844,6 +1860,14 @@ export default function DirectRetailMediaPage() {
                   className="mt-5 w-full rounded-xl border border-slate-300 bg-white px-4 py-3"
                 />
 
+                {mediaError && (
+                  <div className="mt-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+                    <p className="text-sm font-bold leading-6 text-red-700">
+                      {mediaError}
+                    </p>
+                  </div>
+                )}
+
                 <p className="mt-2 text-xs text-slate-500">
                   MP4 only. Maximum
                   250 MB.
@@ -1907,6 +1931,14 @@ export default function DirectRetailMediaPage() {
                   }
                   className="mt-5 w-full rounded-xl border border-slate-300 bg-white px-4 py-3"
                 />
+
+                {targetImageError && (
+                  <div className="mt-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+                    <p className="text-sm font-bold leading-6 text-red-700">
+                      {targetImageError}
+                    </p>
+                  </div>
+                )}
 
                 {targetPreviewUrl && (
                   <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 p-4">
