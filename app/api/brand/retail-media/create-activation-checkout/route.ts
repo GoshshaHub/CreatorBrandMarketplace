@@ -611,13 +611,11 @@ export async function POST(
                     name:
                       definition.label,
 
-                    description:
-                      `${definition.activationCredits} Retail Media activation${
-                        definition.activationCredits ===
-                        1
-                          ? ""
-                          : "s"
-                      } — each includes 1 video, 1 product, 90 days, and the first 1,000 qualified views.`,
+                  description:
+                    definition.activationCredits ===
+                    1
+                      ? "Activate 1 video for 1 product for 90 days, including the first 1,000 qualified views."
+                      : `${definition.activationCredits} IRL Retail Media activations. Each activation includes 1 video, 1 product, 90 days, and the first 1,000 qualified views.`,
 
                     metadata: {
                       goshshaProduct:

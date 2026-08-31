@@ -287,134 +287,134 @@ export const RETAIL_MEDIA_PURCHASE_DEFINITIONS:
   },
 
   product_2_single_activation: {
-    product:
-      "product_2",
+  product:
+    "product_2",
 
-    purchaseType:
-      "product_2_single",
+  purchaseType:
+    "product_2_single",
 
-    label:
-      "Product 2 Single Retail Media Activation",
+  label:
+    "IRL Retail Media Activation",
 
-    amountUsd:
-      1,
+  amountUsd:
+    1,
 
-    activationCredits:
-      1,
+  activationCredits:
+    1,
 
-    entitlement:
-      STANDARD_ENTITLEMENT,
+  entitlement:
+    STANDARD_ENTITLEMENT,
 
-    requiresPayment:
-      true,
+  requiresPayment:
+    true,
 
-    customPricing:
-      false,
-  },
+  customPricing:
+    false,
+},
 
-  product_2_pack_5: {
-    product:
-      "product_2",
+product_2_pack_5: {
+  product:
+    "product_2",
 
-    purchaseType:
-      "product_2_pack",
+  purchaseType:
+    "product_2_pack",
 
-    label:
-      "Product 2 Five-Activation Pack",
+  label:
+    "5 IRL Retail Media Activations",
 
-    amountUsd:
-      449,
+  amountUsd:
+    449,
 
-    activationCredits:
-      5,
+  activationCredits:
+    5,
 
-    entitlement:
-      STANDARD_ENTITLEMENT,
+  entitlement:
+    STANDARD_ENTITLEMENT,
 
-    requiresPayment:
-      true,
+  requiresPayment:
+    true,
 
-    customPricing:
-      false,
-  },
+  customPricing:
+    false,
+},
 
-  product_2_pack_10: {
-    product:
-      "product_2",
+product_2_pack_10: {
+  product:
+    "product_2",
 
-    purchaseType:
-      "product_2_pack",
+  purchaseType:
+    "product_2_pack",
 
-    label:
-      "Product 2 Ten-Activation Pack",
+  label:
+    "10 IRL Retail Media Activations",
 
-    amountUsd:
-      799,
+  amountUsd:
+    799,
 
-    activationCredits:
-      10,
+  activationCredits:
+    10,
 
-    entitlement:
-      STANDARD_ENTITLEMENT,
+  entitlement:
+    STANDARD_ENTITLEMENT,
 
-    requiresPayment:
-      true,
+  requiresPayment:
+    true,
 
-    customPricing:
-      false,
-  },
+  customPricing:
+    false,
+},
 
-  product_2_pack_25: {
-    product:
-      "product_2",
+product_2_pack_25: {
+  product:
+    "product_2",
 
-    purchaseType:
-      "product_2_pack",
+  purchaseType:
+    "product_2_pack",
 
-    label:
-      "Product 2 Twenty-Five Activation Pack",
+  label:
+    "25 IRL Retail Media Activations",
 
-    amountUsd:
-      1699,
+  amountUsd:
+    1699,
 
-    activationCredits:
-      25,
+  activationCredits:
+    25,
 
-    entitlement:
-      STANDARD_ENTITLEMENT,
+  entitlement:
+    STANDARD_ENTITLEMENT,
 
-    requiresPayment:
-      true,
+  requiresPayment:
+    true,
 
-    customPricing:
-      false,
-  },
+  customPricing:
+    false,
+},
 
-  product_2_pack_50_plus: {
-    product:
-      "product_2",
+product_2_pack_50_plus: {
+  product:
+    "product_2",
 
-    purchaseType:
-      "product_2_pack",
+  purchaseType:
+    "product_2_pack",
 
-    label:
-      "Product 2 Enterprise Volume Pack",
+  label:
+    "IRL Retail Media — Enterprise Volume",
 
-    amountUsd:
-      null,
+  amountUsd:
+    null,
 
-    activationCredits:
-      50,
+  activationCredits:
+    50,
 
-    entitlement:
-      STANDARD_ENTITLEMENT,
+  entitlement:
+    STANDARD_ENTITLEMENT,
 
-    requiresPayment:
-      true,
+  requiresPayment:
+    true,
 
-    customPricing:
-      true,
-  },
+  customPricing:
+    true,
+},
 
   enterprise_custom: {
     product:
