@@ -1498,12 +1498,42 @@ export async function POST(
      * =====================================================
      */
 
+    const requestContentType =
+      request.headers.get(
+        "content-type"
+      ) || "";
+
+    const isJsonRequest =
+      requestContentType
+        .toLowerCase()
+        .includes(
+          "application/json"
+        );
+
+    const requestBody:
+      Record<string, any> =
+      isJsonRequest
+        ? await request.json()
+        : {};
+
     const formData =
-      await request.formData();
+      isJsonRequest
+        ? null
+        : await request.formData();
+
+    const getInput = (
+      key: string
+    ): unknown => {
+      return isJsonRequest
+        ? requestBody[key]
+        : formData?.get(
+            key
+          ) ?? null;
+    };
 
     const brandName =
       cleanRequiredString(
-        formData.get(
+        getInput(
           "brandName"
         ) ||
         brandData?.brandName ||
@@ -1515,17 +1545,17 @@ export async function POST(
 
     const productName =
       cleanRequiredString(
-        formData.get(
+      getInput(
         "productName"
-        ),
+      ),
         "Product name"
     );
 
     const linkUrl =
       cleanRequiredString(
-        formData.get(
+      getInput(
         "linkUrl"
-        ),
+      ),
         "Link URL"
     );
 
@@ -1547,24 +1577,24 @@ export async function POST(
 
     const rawOcr =
       cleanRequiredString(
-        formData.get(
+      getInput(
         "rawOcr"
-        ),
+      ),
         "Product packaging text"
     );
 
     const recognitionConfidence =
       cleanOptionalNumber(
-        formData.get(
-          "recognitionConfidence"
-        )
+      getInput(
+        "recognitionConfidence"
+      )
       );
 
     const contentOwnershipType =
       cleanString(
-        formData.get(
-          "contentOwnershipType"
-        )
+      getInput(
+        "contentOwnershipType"
+      )
       ) as ContentOwnershipType;
 
     if (
@@ -1586,9 +1616,9 @@ export async function POST(
 
     const externalCreatorName =
       cleanString(
-        formData.get(
-          "externalCreatorName"
-        )
+      getInput(
+        "externalCreatorName"
+      )
       );
 
     if (
@@ -1615,35 +1645,35 @@ export async function POST(
 
     const contentRightsConfirmed =
       parseBoolean(
-        formData.get(
+        getInput(
           "contentRightsConfirmed"
         )
       );
 
     const audioRightsConfirmed =
       parseBoolean(
-        formData.get(
+        getInput(
           "audioRightsConfirmed"
         )
       );
 
     const appearanceRightsConfirmed =
       parseBoolean(
-        formData.get(
+        getInput(
           "appearanceRightsConfirmed"
         )
       );
 
     const brandUsageApproved =
       parseBoolean(
-        formData.get(
+        getInput(
           "brandUsageApproved"
         )
       );
 
     const goshshaDistributionLicenseGranted =
       parseBoolean(
-        formData.get(
+        getInput(
           "goshshaDistributionLicenseGranted"
         )
       );
@@ -1665,6 +1695,40 @@ export async function POST(
       );
     }
 
+    let mediaFileName =
+      "";
+
+    let mediaContentType =
+      "";
+
+    let mediaSizeBytes =
+      0;
+
+    let targetFileName =
+      "";
+
+    let targetContentType =
+      "";
+
+    let targetSizeBytes =
+      0;
+
+    let stagedMediaPath:
+      string | null =
+      null;
+
+    let stagedTargetPath:
+      string | null =
+      null;
+
+    let originalMedia:
+      File | null =
+      null;
+
+    let targetImage:
+      File | null =
+      null;
+
     /*
      * Audio is intentionally separate.
      *
@@ -1674,53 +1738,89 @@ export async function POST(
      */
 
     /*
-     * =====================================================
-     * 4. Validate original media
-     * =====================================================
-     */
+    * =====================================================
+    * 4. Validate original media
+    * =====================================================
+    */
 
-    const mediaValue =
-      formData.get(
-        "originalMedia"
-      );
+    if (isJsonRequest) {
+      stagedMediaPath =
+        cleanRequiredString(
+          getInput(
+            "mediaStoragePath"
+          ),
+          "Media storage path"
+        );
 
-    if (
-      !mediaValue ||
-      typeof mediaValue ===
-        "string"
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "Upload the video you want to activate.",
-        },
-        {
-          status: 400,
-        }
-      );
+      const verifiedMedia =
+        await verifyDirectUpload({
+          storagePath:
+            stagedMediaPath,
+
+          brandUserId,
+
+          kind:
+            "media",
+        });
+
+      mediaFileName =
+        verifiedMedia
+          .originalName;
+
+      mediaContentType =
+        verifiedMedia
+          .contentType;
+
+      mediaSizeBytes =
+        verifiedMedia
+          .sizeBytes;
+    } else {
+      const mediaValue =
+        formData?.get(
+          "originalMedia"
+        );
+
+      if (
+        !mediaValue ||
+        typeof mediaValue ===
+          "string"
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Upload the video you want to activate.",
+          },
+          {
+            status: 400,
+          }
+        );
+      }
+
+      originalMedia =
+        mediaValue as File;
+
+      mediaFileName =
+        cleanRequiredString(
+          originalMedia.name,
+          "Media filename"
+        );
+
+      mediaContentType =
+        cleanString(
+          originalMedia.type
+        );
+
+      mediaSizeBytes =
+        originalMedia.size;
     }
 
-    const originalMedia =
-      mediaValue as File;
-
-    const mediaFileName =
-      cleanRequiredString(
-        originalMedia.name,
-        "Media filename"
-      );
-
-    const mediaContentType =
-      cleanString(
-        originalMedia.type
-      );
-
     /*
-     * Product 2 uses the same current playback limitation
-     * as Product 1.
-     *
-     * .mp4 and .MP4 both pass because the comparison is
-     * case-insensitive.
-     */
+    * Product 2 uses the same current playback limitation
+    * as Product 1.
+    *
+    * .mp4 and .MP4 both pass because the comparison is
+    * case-insensitive.
+    */
     if (
       !mediaFileName
         .toLowerCase()
@@ -1748,9 +1848,9 @@ export async function POST(
 
     if (
       !Number.isFinite(
-        originalMedia.size
+        mediaSizeBytes
       ) ||
-      originalMedia.size <=
+      mediaSizeBytes <=
         0
     ) {
       return NextResponse.json(
@@ -1765,7 +1865,7 @@ export async function POST(
     }
 
     if (
-      originalMedia.size >
+      mediaSizeBytes >
       MAX_MEDIA_BYTES
     ) {
       return NextResponse.json(
@@ -1780,40 +1880,85 @@ export async function POST(
     }
 
     /*
-     * =====================================================
-     * 5. Validate target product image
-     * =====================================================
-     */
+    * =====================================================
+    * 5. Validate target product image
+    * =====================================================
+    */
 
-    const targetImageValue =
-      formData.get(
-        "targetImage"
-      );
+    if (isJsonRequest) {
+      stagedTargetPath =
+        cleanRequiredString(
+          getInput(
+            "targetImageStoragePath"
+          ),
+          "Target image storage path"
+        );
 
-    if (
-      !targetImageValue ||
-      typeof targetImageValue ===
-        "string"
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "Upload the exact product image shoppers will scan.",
-        },
-        {
-          status: 400,
-        }
-      );
+      const verifiedTarget =
+        await verifyDirectUpload({
+          storagePath:
+            stagedTargetPath,
+
+          brandUserId,
+
+          kind:
+            "target",
+        });
+
+      targetFileName =
+        verifiedTarget
+          .originalName;
+
+      targetContentType =
+        cleanRequiredString(
+          verifiedTarget
+            .contentType,
+          "Target image content type"
+        );
+
+      targetSizeBytes =
+        verifiedTarget
+          .sizeBytes;
+    } else {
+      const targetImageValue =
+        formData?.get(
+          "targetImage"
+        );
+
+      if (
+        !targetImageValue ||
+        typeof targetImageValue ===
+          "string"
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Upload the exact product image shoppers will scan.",
+          },
+          {
+            status: 400,
+          }
+        );
+      }
+
+      targetImage =
+        targetImageValue as File;
+
+      targetFileName =
+        cleanRequiredString(
+          targetImage.name,
+          "Target image filename"
+        );
+
+      targetContentType =
+        cleanRequiredString(
+          targetImage.type,
+          "Target image content type"
+        );
+
+      targetSizeBytes =
+        targetImage.size;
     }
-
-    const targetImage =
-      targetImageValue as File;
-
-    const targetContentType =
-      cleanRequiredString(
-        targetImage.type,
-        "Target image content type"
-      );
 
     if (
       !ALLOWED_TARGET_IMAGE_TYPES.has(
@@ -1833,9 +1978,9 @@ export async function POST(
 
     if (
       !Number.isFinite(
-        targetImage.size
+        targetSizeBytes
       ) ||
-      targetImage.size <=
+      targetSizeBytes <=
         0
     ) {
       return NextResponse.json(
@@ -1850,7 +1995,7 @@ export async function POST(
     }
 
     if (
-      targetImage.size >
+      targetSizeBytes >
       MAX_TARGET_IMAGE_BYTES
     ) {
       return NextResponse.json(
@@ -1898,12 +2043,12 @@ export async function POST(
           mediaFileName
             .toLowerCase(),
           String(
-            originalMedia.size
+            mediaSizeBytes
           ),
-          targetImage.name
+          targetFileName
             .toLowerCase(),
           String(
-            targetImage.size
+            targetSizeBytes
           ),
         ].join("|"),
         32
@@ -1948,6 +2093,18 @@ export async function POST(
             status: 409,
           }
         );
+      }
+
+      if (isJsonRequest) {
+        await Promise.all([
+          deleteStorageObject(
+            stagedMediaPath
+          ),
+
+          deleteStorageObject(
+            stagedTargetPath
+          ),
+        ]);
       }
 
       return NextResponse.json({
@@ -2051,29 +2208,53 @@ export async function POST(
       mediaStoragePath;
 
     const uploadedMedia =
-      await uploadFile({
-        file:
-          originalMedia,
+      isJsonRequest
+        ? await promoteDirectUpload({
+            sourcePath:
+              stagedMediaPath!,
 
-        storagePath:
-          mediaStoragePath,
+            destinationPath:
+              mediaStoragePath,
 
-        contentType:
-          "video/mp4",
+            contentType:
+              "video/mp4",
 
-        metadata: {
-          retailAssetId,
+            metadata: {
+              retailAssetId,
 
-          brandId:
-            brandUserId,
+              brandId:
+                brandUserId,
 
-          sourceProduct:
-            "product_2",
+              sourceProduct:
+                "product_2",
 
-          uploadPurpose:
-            "retail_media_source",
-        },
-      });
+              uploadPurpose:
+                "retail_media_source",
+            },
+          })
+        : await uploadFile({
+            file:
+              originalMedia!,
+
+            storagePath:
+              mediaStoragePath,
+
+            contentType:
+              "video/mp4",
+
+            metadata: {
+              retailAssetId,
+
+              brandId:
+                brandUserId,
+
+              sourceProduct:
+                "product_2",
+
+              uploadPurpose:
+                "retail_media_source",
+            },
+          });
 
     const targetExtension =
       getTargetExtension(
@@ -2092,29 +2273,53 @@ export async function POST(
       targetStoragePath;
 
     const uploadedTarget =
-      await uploadFile({
-        file:
-          targetImage,
+      isJsonRequest
+        ? await promoteDirectUpload({
+            sourcePath:
+              stagedTargetPath!,
 
-        storagePath:
-          targetStoragePath,
+            destinationPath:
+              targetStoragePath,
 
-        contentType:
-          targetContentType,
+            contentType:
+              targetContentType,
 
-        metadata: {
-          retailAssetId,
+            metadata: {
+              retailAssetId,
 
-          brandId:
-            brandUserId,
+              brandId:
+                brandUserId,
 
-          sourceProduct:
-            "product_2",
+              sourceProduct:
+                "product_2",
 
-          uploadPurpose:
-            "retail_media_target",
-        },
-      });
+              uploadPurpose:
+                "retail_media_target",
+            },
+          })
+        : await uploadFile({
+            file:
+              targetImage!,
+
+            storagePath:
+              targetStoragePath,
+
+            contentType:
+              targetContentType,
+
+            metadata: {
+              retailAssetId,
+
+              brandId:
+                brandUserId,
+
+              sourceProduct:
+                "product_2",
+
+              uploadPurpose:
+                "retail_media_target",
+            },
+          });
 
     /*
      * =====================================================
@@ -2215,7 +2420,7 @@ export async function POST(
             "video/mp4",
 
           sizeBytes:
-            originalMedia.size,
+            mediaSizeBytes,
 
           publicPostUrl:
             linkUrl,
@@ -2239,14 +2444,14 @@ export async function POST(
               .storagePath,
 
           originalName:
-            targetImage.name ||
+            targetFileName ||
             null,
 
           contentType:
             targetContentType,
 
           sizeBytes:
-            targetImage.size,
+            targetSizeBytes,
 
           uploadedBy:
             brandUserId,
@@ -2863,7 +3068,7 @@ export async function POST(
             mediaFileName,
 
           sizeBytes:
-            originalMedia.size,
+            mediaSizeBytes,
         },
 
         targetImage: {
@@ -2878,11 +3083,11 @@ export async function POST(
             targetContentType,
 
           originalName:
-            targetImage.name ||
+            targetFileName ||
             null,
 
           sizeBytes:
-            targetImage.size,
+            targetSizeBytes,
         },
 
         commerce: {

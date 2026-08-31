@@ -13,10 +13,16 @@ import {
   type User,
 } from "firebase/auth";
 
+import {
+  ref,
+  uploadBytesResumable,
+} from "firebase/storage";
+
 import ProtectedRoute from "../../../../components/ProtectedRoute";
 
 import {
   auth,
+  storage,
 } from "../../../../lib/firebase";
 
 /*
@@ -296,6 +302,12 @@ function formatBytes(
   )} MB`;
 }
 
+const MAX_MEDIA_BYTES =
+  250 * 1024 * 1024;
+
+const MAX_TARGET_IMAGE_BYTES =
+  25 * 1024 * 1024;
+
 function fileIsMp4(
   file: File | null
 ): boolean {
@@ -306,6 +318,126 @@ function fileIsMp4(
   return file.name
     .toLowerCase()
     .endsWith(".mp4");
+}
+
+function safeUploadFileName(
+  fileName: string
+): string {
+  return fileName
+    .replace(
+      /[^a-zA-Z0-9._-]/g,
+      "-"
+    )
+    .replace(
+      /-+/g,
+      "-"
+    )
+    .slice(
+      0,
+      120
+    );
+}
+
+async function uploadDirectRetailMediaFile(
+  params: {
+    file: File;
+
+    userId: string;
+
+    kind:
+      | "media"
+      | "target";
+
+    onProgress?: (
+      progress: number
+    ) => void;
+  }
+): Promise<string> {
+  const safeFileName =
+    safeUploadFileName(
+      params.file.name
+    );
+
+  const storagePath =
+    `retail-media-direct-uploads/` +
+    `${params.userId}/` +
+    `${params.kind}/` +
+    `${Date.now()}-` +
+    `${Math.random()
+      .toString(36)
+      .slice(2, 10)}-` +
+    `${safeFileName}`;
+
+  const storageRef =
+    ref(
+      storage,
+      storagePath
+    );
+
+  const uploadTask =
+    uploadBytesResumable(
+      storageRef,
+      params.file,
+      {
+        contentType:
+          params.file.type ||
+          undefined,
+
+        customMetadata: {
+          originalFileName:
+            params.file.name,
+
+          uploadPurpose:
+            params.kind ===
+            "media"
+              ? "retail_media_direct_source"
+              : "retail_media_direct_target",
+        },
+      }
+    );
+
+  await new Promise<void>(
+    (
+      resolve,
+      reject
+    ) => {
+      uploadTask.on(
+        "state_changed",
+
+        (snapshot) => {
+          const totalBytes =
+            snapshot
+              .totalBytes;
+
+          const progress =
+            totalBytes > 0
+              ? (
+                  snapshot
+                    .bytesTransferred /
+                  totalBytes
+                ) *
+                100
+              : 0;
+
+          params.onProgress?.(
+            progress
+          );
+        },
+
+        (uploadError) => {
+          reject(
+            uploadError
+          );
+        },
+
+        () => {
+          resolve();
+        }
+      );
+    }
+  );
+
+  return storagePath;
 }
 
 export default function DirectRetailMediaPage() {
@@ -425,6 +557,18 @@ export default function DirectRetailMediaPage() {
   ] =
     useState(false);
 
+  const [
+  mediaUploadProgress,
+  setMediaUploadProgress,
+] =
+  useState(0);
+
+  const [
+    targetUploadProgress,
+    setTargetUploadProgress,
+  ] =
+    useState(0);
+    
   const [
     startingCheckout,
     setStartingCheckout,
@@ -844,6 +988,21 @@ export default function DirectRetailMediaPage() {
       return;
     }
 
+    if (
+      file.size >
+      MAX_MEDIA_BYTES
+    ) {
+      setOriginalMedia(
+        null
+      );
+
+      setMediaError(
+        "The video must be 250 MB or smaller."
+      );
+
+      return;
+    }
+
     setOriginalMedia(
       file
     );
@@ -858,6 +1017,29 @@ export default function DirectRetailMediaPage() {
     setDraftResponse(
       null
     );
+
+    if (!file) {
+      setTargetImage(
+        null
+      );
+
+      return;
+    }
+
+    if (
+      file.size >
+      MAX_TARGET_IMAGE_BYTES
+    ) {
+      setTargetImage(
+        null
+      );
+
+      setTargetImageError(
+        "The target image must be 25 MB or smaller."
+      );
+
+      return;
+    }
 
     setTargetImage(
       file
@@ -1016,109 +1198,146 @@ export default function DirectRetailMediaPage() {
           true
         );
 
-      const formData =
-        new FormData();
+    setMediaUploadProgress(
+      0
+    );
 
-      formData.append(
-        "brandName",
-        brandName.trim()
+    setTargetUploadProgress(
+      0
+    );
+
+    /*
+    * Upload the source video directly from the browser
+    * to Firebase Storage.
+    *
+    * The Vercel API route receives only the Storage path,
+    * not the video bytes.
+    */
+    const mediaStoragePath =
+      await uploadDirectRetailMediaFile({
+        file:
+          originalMedia,
+
+        userId:
+          currentUser.uid,
+
+        kind:
+          "media",
+
+        onProgress:
+          setMediaUploadProgress,
+      });
+
+    /*
+    * Upload the scannable target directly from the browser
+    * to Firebase Storage.
+    */
+    const targetImageStoragePath =
+      await uploadDirectRetailMediaFile({
+        file:
+          targetImage,
+
+        userId:
+          currentUser.uid,
+
+        kind:
+          "target",
+
+        onProgress:
+          setTargetUploadProgress,
+      });
+
+    /*
+    * Send metadata only to the server.
+    *
+    * The server verifies that both Firebase Storage objects:
+    *
+    * 1. exist,
+    * 2. belong to this authenticated Brand,
+    * 3. have valid authoritative metadata,
+    *
+    * before promoting them into the permanent
+    * Retail Media Storage locations.
+    */
+    const response =
+      await fetch(
+        "/api/brand/retail-media/create-direct-draft",
+        {
+          method:
+            "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+
+            Authorization:
+              `Bearer ${idToken}`,
+          },
+
+          body:
+            JSON.stringify({
+              brandName:
+                brandName.trim(),
+
+              productName:
+                productName.trim(),
+
+              linkUrl:
+                cleanedLinkUrl,
+
+              rawOcr:
+                rawOcr.trim(),
+
+              contentOwnershipType:
+                ownershipType,
+
+              externalCreatorName:
+                externalCreatorName.trim(),
+
+              contentRightsConfirmed,
+
+              appearanceRightsConfirmed,
+
+              brandUsageApproved,
+
+              goshshaDistributionLicenseGranted:
+                distributionLicenseGranted,
+
+              audioRightsConfirmed,
+
+              mediaStoragePath,
+
+              targetImageStoragePath,
+            }),
+        }
       );
 
-      formData.append(
-        "productName",
-        productName.trim()
-        );
+    /*
+    * Do not assume every infrastructure error is JSON.
+    *
+    * For example, Vercel may return plain text for an
+    * infrastructure-level error.
+    */
+    const responseText =
+      await response.text();
 
-      formData.append(
-        "linkUrl",
-        cleanedLinkUrl
+    let data: any = {};
+
+    try {
+      data =
+        responseText
+          ? JSON.parse(
+              responseText
+            )
+          : {};
+    } catch {
+      throw new Error(
+        response.ok
+          ? "The server returned an unexpected response."
+          : responseText ||
+              "Failed to create Retail Media draft."
       );
-
-      formData.append(
-        "rawOcr",
-        rawOcr.trim()
-      );
-
-      formData.append(
-        "contentOwnershipType",
-        ownershipType
-      );
-
-      formData.append(
-        "externalCreatorName",
-        externalCreatorName.trim()
-      );
-
-      formData.append(
-        "contentRightsConfirmed",
-        String(
-          contentRightsConfirmed
-        )
-      );
-
-      formData.append(
-        "appearanceRightsConfirmed",
-        String(
-          appearanceRightsConfirmed
-        )
-      );
-
-      formData.append(
-        "brandUsageApproved",
-        String(
-          brandUsageApproved
-        )
-      );
-
-      formData.append(
-        "goshshaDistributionLicenseGranted",
-        String(
-          distributionLicenseGranted
-        )
-      );
-
-      /*
-       * Audio certification is intentionally optional.
-       *
-       * When false, the asset may later be distributed
-       * muted.
-       */
-      formData.append(
-        "audioRightsConfirmed",
-        String(
-          audioRightsConfirmed
-        )
-      );
-
-      formData.append(
-        "originalMedia",
-        originalMedia
-      );
-
-      formData.append(
-        "targetImage",
-        targetImage
-      );
-
-      const response =
-        await fetch(
-          "/api/brand/retail-media/create-direct-draft",
-          {
-            method:
-              "POST",
-
-            headers: {
-              Authorization:
-                `Bearer ${idToken}`,
-            },
-
-            body:
-              formData,
-          }
-        );
-
-      const data =
-        await response.json();
+    }
 
       if (
         !response.ok
