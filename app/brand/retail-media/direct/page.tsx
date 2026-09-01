@@ -1636,35 +1636,18 @@ export default function DirectRetailMediaPage() {
             return;
         }
 
-        const collectionId =
-            draftResponse
-            ?.retailAsset
-            ?.collectionId ||
-            "Resolved Product Collection";
-
-        const entryId =
-            draftResponse
-            ?.retailAsset
-            ?.entryId ||
-            "Retail Media Entry";
-
         const confirmed =
             window.confirm(
             [
                 "Publish this IRL Retail Media activation?",
                 "",
-                `Product Collection: ${collectionId}`,
-                `AR Entry: ${entryId}`,
-                "",
                 "Publishing will:",
                 "• consume 1 paid Retail Media activation credit",
-                "• create the AR Entry consumed by the Goshsha app",
-                "• add the content to the Product Master playlist",
                 "• begin the 90-day activation period",
                 "• begin qualified-view tracking",
-                "• make this content scan-ready",
+                "• make this content scan-ready in the Goshsha app",
                 "",
-                "The 90-day clock begins now and cannot be reset by refreshing playback.",
+                "The 90-day activation period begins when you publish.",
             ].join("\n")
             );
 
