@@ -864,10 +864,12 @@ export function createRetailMediaCommerceRecordDefaults(
         .activationDays,
 
     createdAt:
-      params.createdAt,
+      params.createdAt ??
+        null,
 
     updatedAt:
-      params.updatedAt,
+      params.updatedAt ??
+        null,
   };
 }
 
@@ -931,12 +933,15 @@ export function createActivationCreditDefaults(
       null,
 
     expiresAt:
-      params.expiresAt,
+      params.expiresAt ??
+        null,
 
     createdAt:
-      params.createdAt,
+      params.createdAt ??
+        null,
 
     updatedAt:
-      params.updatedAt,
+      params.updatedAt ??
+        null,
   };
 }
