@@ -2716,25 +2716,17 @@ export default function DirectRetailMediaPage() {
                       </div>
                     </div>
 
-                    <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-5">
-                      <p className="font-black text-amber-900">
-                        Draft — not yet
-                        scan-ready
-                      </p>
+                    {!product2IsLive && (
+                      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
+                        <p className="font-black text-amber-900">
+                          Draft — not yet scan-ready
+                        </p>
 
-                      <p className="mt-2 text-sm leading-6 text-amber-800">
-                        Your Retail
-                        Asset exists,
-                        but the
-                        activation has
-                        not been
-                        purchased or
-                        published. The
-                        90-day
-                        activation has
-                        not started.
-                      </p>
-                    </div>
+                        <p className="mt-3 text-sm leading-6 text-amber-800">
+                          Your Retail Asset exists, but the activation has not been purchased or published. The 90-day activation has not started.
+                        </p>
+                      </div>
+                    )}
 
                     {loadingActivationStatus ? (
                         <div className="mt-4 rounded-2xl bg-slate-100 p-5 text-center">
