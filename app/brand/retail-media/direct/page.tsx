@@ -2731,20 +2731,52 @@ async function handleTargetImageChange(
                 }
                 className={
                   `mt-8 w-full rounded-xl px-6 py-4 text-lg font-black text-white shadow-lg disabled:cursor-not-allowed ${
-                    draft
+                    draft || paymentProcessing || readyToPublish || product2IsLive
                       ? "bg-emerald-600"
                       : "bg-pink-600 hover:bg-pink-700 disabled:opacity-50"
                   }`
                 }
               >
-                {creatingDraft
-                  ? "Creating Retail Media Draft..."
-                  : draft
-                    ? "✓ Product Resolved — Retail Media Draft Created"
-                    : "Resolve Product and Create Retail Media Draft"}
+              {creatingDraft
+                ? "Creating Retail Media Draft..."
+                : product2IsLive
+                  ? "✓ Retail Media Active and Scan-Ready"
+                  : readyToPublish
+                    ? "✓ Payment Confirmed — Ready to Publish"
+                    : paymentProcessing
+                      ? "Confirming Payment..."
+                      : draft
+                        ? "✓ Product Resolved — Retail Media Draft Created"
+                        : "Resolve Product and Create Retail Media Draft"}
               </button>
 
-              {draft && (
+              {product2IsLive ? (
+                <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-center">
+                  <p className="font-bold text-emerald-800">
+                    Success! This Retail Media activation is active and scan-ready.
+                  </p>
+
+                  <p className="mt-1 text-sm text-emerald-700">
+                    The 90-day activation period and qualified-view tracking are now underway.
+                  </p>
+                </div>
+              ) : readyToPublish ? (
+                <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-center">
+                  <p className="font-bold text-emerald-800">
+                    Payment confirmed. Your activation is ready to publish.
+                  </p>
+
+                  <p className="mt-1 text-sm text-emerald-700">
+                    Continue to the Retail Media Review section to make it scan-ready.
+                  </p>
+                </div>
+              ) : paymentProcessing ? (
+                <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-center">
+                  <p className="font-bold text-amber-800">
+                    Payment received. Confirming your activation...
+                  </p>
+                </div>
+              ) : draft ? (
                 <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-center">
                   <p className="font-bold text-emerald-800">
                     Success! Your product has been resolved and your Retail Media draft is ready.
@@ -2754,7 +2786,7 @@ async function handleTargetImageChange(
                     Continue to the Retail Media Review section to purchase and activate it.
                   </p>
                 </div>
-              )}
+              ) : null}
 
               {!formReady &&
                 !draft && (
