@@ -1548,10 +1548,58 @@ export default function DirectRetailMediaPage() {
         );
         }
 
+        if (
+          data.alreadyPurchased ===
+          true
+        ) {
+          setMessage(
+            "Payment has already been received for this Retail Media activation. Confirming your activation credit..."
+          );
+
+          await loadActivationStatus(
+            retailAssetId
+          );
+
+          setStartingCheckout(
+            false
+          );
+
+          return;
+        }
+
+        if (
+          data.existingCheckout ===
+            true &&
+          data.checkoutUrl
+        ) {
+          /*
+          * The server found an existing open Checkout
+          * for this Retail Asset. Reuse it rather than
+          * creating another payment.
+          */
+          if (draftResponse) {
+            try {
+              sessionStorage.setItem(
+                "goshsha_product_2_draft",
+                JSON.stringify(
+                  draftResponse
+                )
+              );
+            } catch {
+              // Convenience only.
+            }
+          }
+
+          window.location.href =
+            data.checkoutUrl;
+
+          return;
+        }
+
         if (!data.checkoutUrl) {
-        throw new Error(
+          throw new Error(
             "Stripe Checkout URL was not returned."
-        );
+          );
         }
 
        /*
@@ -1767,11 +1815,24 @@ export default function DirectRetailMediaPage() {
     draftResponse
       ?.commerce;
 
+  const paymentProcessing =
+    activationStatus
+      ?.state ===
+      "payment_processing" ||
+    activationStatus
+      ?.state ===
+      "payment_confirmed_waiting_for_credit";
+
   const paymentConfirmed =
     activationStatus
         ?.payment
         ?.paid ===
     true;
+
+  const purchaseLocked =
+    startingCheckout ||
+    paymentProcessing ||
+    paymentConfirmed;
 
     const creditReady =
     activationStatus
@@ -2846,13 +2907,17 @@ export default function DirectRetailMediaPage() {
                                 handlePurchaseActivation
                             }
                             disabled={
-                                startingCheckout
+                              purchaseLocked
                             }
                             className="mt-4 w-full rounded-xl bg-violet-700 px-5 py-4 font-black text-white shadow-lg hover:bg-violet-800 disabled:cursor-not-allowed disabled:opacity-50"
                             >
                             {startingCheckout
-                                ? "Opening Secure Checkout..."
-                                : "Purchase $99 Activation"}
+                              ? "Opening Secure Checkout..."
+                              : paymentProcessing
+                                ? "Confirming Payment..."
+                                : paymentConfirmed
+                                  ? "Payment Confirmed"
+                                  : "Purchase $99 Activation"}
                             </button>
 
                             <p className="mt-2 text-center text-xs leading-5 text-slate-500">
