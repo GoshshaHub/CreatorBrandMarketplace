@@ -100,6 +100,20 @@ function dollarsToCents(
   );
 }
 
+function isReusableCheckoutStatus(
+  value: unknown
+): boolean {
+  const status =
+    cleanString(value)
+      .toLowerCase();
+
+  return (
+    status === "creating" ||
+    status === "open"
+  );
+}
+
+
 export async function POST(
   req: Request
 ) {
@@ -435,6 +449,158 @@ export async function POST(
           {
             error:
               "This Retail Asset is already active.",
+          },
+          {
+            status: 409,
+          }
+        );
+      }
+    }
+
+   /*
+    * =====================================================
+    * 4A. Prevent duplicate Checkout sessions
+    * =====================================================
+    *
+    * Repeated clicks or stale browser state must not
+    * create multiple Stripe Checkout sessions for the
+    * same Retail Asset.
+    */
+
+    if (retailAssetId) {
+      const existingCommerceSnap =
+        await adminDb
+          .collection(
+            "retailMediaCommerce"
+          )
+          .where(
+            "retailAssetId",
+            "==",
+            retailAssetId
+          )
+          .get();
+
+      const existingCommerce =
+        existingCommerceSnap.docs
+          .map((doc) => {
+            const data =
+              doc.data() as
+                Record<string, any>;
+
+            const commerce:
+              Record<string, any> & {
+                id: string;
+              } = {
+                ...data,
+
+                id:
+                  doc.id,
+              };
+
+            return commerce;
+          })
+          .find(
+            (commerce) =>
+              cleanString(
+                commerce.brandId
+              ) ===
+                brandId &&
+              commerce
+                .purchaseDefinitionKey ===
+                purchaseDefinitionKey &&
+              (
+                commerce
+                  .paymentStatus ===
+                  "paid" ||
+                commerce
+                  .fulfillmentStatus ===
+                  "fulfilled" ||
+                isReusableCheckoutStatus(
+                  commerce
+                    .checkoutStatus
+                )
+              )
+          );
+
+      if (existingCommerce) {
+        const isPaid =
+          existingCommerce
+            .paymentStatus ===
+            "paid" ||
+          existingCommerce
+            .fulfillmentStatus ===
+            "fulfilled";
+
+        if (isPaid) {
+          return NextResponse.json({
+            ok: true,
+
+            alreadyPurchased:
+              true,
+
+            commerceId:
+              existingCommerce.id,
+
+            retailAssetId,
+
+            paymentStatus:
+              existingCommerce
+                .paymentStatus ||
+              "paid",
+
+            fulfillmentStatus:
+              existingCommerce
+                .fulfillmentStatus ||
+              null,
+
+            activationCreditId:
+              existingCommerce
+                .activationCreditId ||
+              null,
+
+            activationCreditIds:
+              Array.isArray(
+                existingCommerce
+                  .activationCreditIds
+              )
+                ? existingCommerce
+                    .activationCreditIds
+                : [],
+          });
+        }
+
+        const existingCheckoutUrl =
+          cleanString(
+            existingCommerce
+              .checkoutUrl
+          );
+
+        if (existingCheckoutUrl) {
+          return NextResponse.json({
+            ok: true,
+
+            existingCheckout:
+              true,
+
+            commerceId:
+              existingCommerce.id,
+
+            retailAssetId,
+
+            checkoutSessionId:
+              existingCommerce
+                .stripeCheckoutSessionId ||
+              null,
+
+            checkoutUrl:
+              existingCheckoutUrl,
+          });
+        }
+
+        return NextResponse.json(
+          {
+            error:
+              "Your Retail Media payment is already being prepared. Please wait a moment and try again.",
           },
           {
             status: 409,
