@@ -770,6 +770,38 @@ export default function DirectRetailMediaPage() {
             setDraftResponse(
             parsed
             );
+            const savedBrandName =
+              sessionStorage.getItem(
+                "goshsha_product_2_brand_name"
+              );
+
+            const savedProductName =
+              sessionStorage.getItem(
+                "goshsha_product_2_product_name"
+              );
+
+            const savedLinkUrl =
+              sessionStorage.getItem(
+                "goshsha_product_2_link_url"
+              );
+
+            if (savedBrandName) {
+              setBrandName(
+                savedBrandName
+              );
+            }
+
+            if (savedProductName) {
+              setProductName(
+                savedProductName
+              );
+            }
+
+            if (savedLinkUrl) {
+              setLinkUrl(
+                savedLinkUrl
+              );
+            }
         }
         }
     } catch (
@@ -1463,6 +1495,20 @@ async function handleTargetImageChange(
             result
             )
         );
+        sessionStorage.setItem(
+          "goshsha_product_2_brand_name",
+          brandName.trim()
+        );
+
+        sessionStorage.setItem(
+          "goshsha_product_2_product_name",
+          productName.trim()
+        );
+
+        sessionStorage.setItem(
+          "goshsha_product_2_link_url",
+          cleanedLinkUrl
+        );
         } catch {
         // Browser storage is a convenience only.
         }
@@ -1673,23 +1719,39 @@ async function handleTargetImageChange(
             true &&
           data.checkoutUrl
         ) {
-          /*
-          * The server found an existing open Checkout
-          * for this Retail Asset. Reuse it rather than
-          * creating another payment.
-          */
-          if (draftResponse) {
-            try {
-              sessionStorage.setItem(
-                "goshsha_product_2_draft",
-                JSON.stringify(
-                  draftResponse
-                )
-              );
-            } catch {
-              // Convenience only.
-            }
+        /*
+        * Preserve the current draft and Brand-entered
+        * fields across the Stripe redirect.
+        */
+        if (
+          draftResponse
+        ) {
+          try {
+            sessionStorage.setItem(
+              "goshsha_product_2_draft",
+              JSON.stringify(
+                draftResponse
+              )
+            );
+
+            sessionStorage.setItem(
+              "goshsha_product_2_brand_name",
+              brandName.trim()
+            );
+
+            sessionStorage.setItem(
+              "goshsha_product_2_product_name",
+              productName.trim()
+            );
+
+            sessionStorage.setItem(
+              "goshsha_product_2_link_url",
+              linkUrl.trim()
+            );
+          } catch {
+            // Browser storage is a convenience only.
           }
+        }
 
           window.location.href =
             data.checkoutUrl;
