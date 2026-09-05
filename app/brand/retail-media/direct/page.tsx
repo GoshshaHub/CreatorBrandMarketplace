@@ -482,7 +482,7 @@ async function uploadDirectRetailMediaFile(
                     .bytesTransferred /
                   totalBytes
                 ) *
-                100
+                9900
               : 0;
 
           params.onProgress?.(
