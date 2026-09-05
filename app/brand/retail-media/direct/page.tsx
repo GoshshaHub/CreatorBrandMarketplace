@@ -2664,14 +2664,35 @@ async function handleTargetImageChange(
                 }
                 disabled={
                   creatingDraft ||
-                  !formReady
+                  !formReady ||
+                  Boolean(draft)
                 }
-                className="mt-8 w-full rounded-xl bg-pink-600 px-6 py-4 text-lg font-black text-white shadow-lg hover:bg-pink-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className={
+                  `mt-8 w-full rounded-xl px-6 py-4 text-lg font-black text-white shadow-lg disabled:cursor-not-allowed ${
+                    draft
+                      ? "bg-emerald-600"
+                      : "bg-pink-600 hover:bg-pink-700 disabled:opacity-50"
+                  }`
+                }
               >
                 {creatingDraft
                   ? "Creating Retail Media Draft..."
-                  : "Resolve Product and Create Retail Media Draft"}
+                  : draft
+                    ? "✓ Product Resolved — Retail Media Draft Created"
+                    : "Resolve Product and Create Retail Media Draft"}
               </button>
+
+              {draft && (
+                <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-center">
+                  <p className="font-bold text-emerald-800">
+                    Success! Your product has been resolved and your Retail Media draft is ready.
+                  </p>
+
+                  <p className="mt-1 text-sm text-emerald-700">
+                    Continue to the Retail Media Review section to purchase and activate it.
+                  </p>
+                </div>
+              )}
 
               {!formReady &&
                 !draft && (
