@@ -308,6 +308,72 @@ const MAX_MEDIA_BYTES =
 const MAX_TARGET_IMAGE_BYTES =
   25 * 1024 * 1024;
 
+function fileIsHeic(
+  file: File
+): boolean {
+  const fileName =
+    file.name.toLowerCase();
+
+  const fileType =
+    file.type.toLowerCase();
+
+  return (
+    fileName.endsWith(".heic") ||
+    fileName.endsWith(".heif") ||
+    fileType === "image/heic" ||
+    fileType === "image/heif"
+  );
+}
+
+async function normalizeTargetImage(
+  file: File
+): Promise<File> {
+  if (!fileIsHeic(file)) {
+    return file;
+  }
+
+  /*
+   * heic2any is browser-only.
+   *
+   * Import it only when a Brand actually selects
+   * a HEIC/HEIF image so Next.js does not evaluate
+   * the library during server prerendering.
+   */
+  const heic2anyModule =
+    await import("heic2any");
+
+  const heic2any =
+    heic2anyModule.default;
+
+  const converted =
+    await heic2any({
+      blob: file,
+      toType: "image/jpeg",
+      quality: 0.92,
+    });
+
+  const convertedBlob =
+    Array.isArray(converted)
+      ? converted[0]
+      : converted;
+
+  const originalName =
+    file.name.replace(
+      /\.(heic|heif)$/i,
+      ""
+    );
+
+  return new File(
+    [convertedBlob],
+    `${originalName}.jpg`,
+    {
+      type: "image/jpeg",
+      lastModified:
+        file.lastModified,
+    }
+  );
+}
+
 function fileIsMp4(
   file: File | null
 ): boolean {
@@ -1008,26 +1074,47 @@ export default function DirectRetailMediaPage() {
     );
   }
 
-  function handleTargetImageChange(
-    file: File | null
-  ) {
-    setError("");
-    setMessage("");
-    setTargetImageError("");
-    setDraftResponse(
+async function handleTargetImageChange(
+  file: File | null
+) {
+  setError("");
+  setMessage("");
+  setTargetImageError("");
+  setDraftResponse(
+    null
+  );
+
+  if (!file) {
+    setTargetImage(
       null
     );
 
-    if (!file) {
-      setTargetImage(
-        null
+    return;
+  }
+
+  if (
+    file.size >
+    MAX_TARGET_IMAGE_BYTES
+  ) {
+    setTargetImage(
+      null
+    );
+
+    setTargetImageError(
+      "The target image must be 25 MB or smaller."
+    );
+
+    return;
+  }
+
+  try {
+    const normalizedFile =
+      await normalizeTargetImage(
+        file
       );
 
-      return;
-    }
-
     if (
-      file.size >
+      normalizedFile.size >
       MAX_TARGET_IMAGE_BYTES
     ) {
       setTargetImage(
@@ -1035,16 +1122,30 @@ export default function DirectRetailMediaPage() {
       );
 
       setTargetImageError(
-        "The target image must be 25 MB or smaller."
+        "The converted target image must be 25 MB or smaller."
       );
 
       return;
     }
 
     setTargetImage(
-      file
+      normalizedFile
+    );
+  } catch (conversionError) {
+    console.error(
+      "HEIC target image conversion error:",
+      conversionError
+    );
+
+    setTargetImage(
+      null
+    );
+
+    setTargetImageError(
+      "We couldn't process this HEIC/HEIF image. Please try another image."
     );
   }
+}
 
   /*
    * -------------------------------------------------------
@@ -2181,7 +2282,7 @@ export default function DirectRetailMediaPage() {
 
                 <input
                   type="file"
-                  accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                  accept=".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif"
                   onChange={(
                     event
                   ) =>
