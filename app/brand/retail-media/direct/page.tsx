@@ -716,243 +716,399 @@ export default function DirectRetailMediaPage() {
 
   useEffect(() => {
     if (
-        authLoading ||
-        !currentUser
+      authLoading ||
+      !currentUser
     ) {
-        return;
+      return;
     }
 
     const params =
-        new URLSearchParams(
+      new URLSearchParams(
         window.location.search
-        );
-
-    const checkout =
-        params.get(
-        "checkout"
-        );
-
-    const returnedRetailAssetId =
-        params.get(
-        "retail_asset_id"
-        );
-
-    /*
-    * Restore the draft UI Stripe navigated away from.
-    */
-
-    const isStripeReturn =
-      Boolean(returnedRetailAssetId) &&
-      (
-        checkout === "success" ||
-        checkout === "cancelled"
       );
 
-    if (isStripeReturn) {
-      try {
-        const savedDraft =
-        sessionStorage.getItem(
-            "goshsha_product_2_draft"
-        );
+    const checkout =
+      params.get(
+        "checkout"
+      );
 
-        if (
-        savedDraft
-        ) {
-        const parsed =
-            JSON.parse(
-            savedDraft
-            ) as DirectDraftResponse;
-
-        const savedAssetId =
-            parsed
-            ?.retailAsset
-            ?.retailAssetId;
-
-        if (
-            savedAssetId &&
-            (
-            !returnedRetailAssetId ||
-            savedAssetId ===
-                returnedRetailAssetId
-            )
-        ) {
-            setDraftResponse(
-            parsed
-            );
-            const savedBrandName =
-              sessionStorage.getItem(
-                "goshsha_product_2_brand_name"
-              );
-
-            const savedProductName =
-              sessionStorage.getItem(
-                "goshsha_product_2_product_name"
-              );
-
-            const savedLinkUrl =
-              sessionStorage.getItem(
-                "goshsha_product_2_link_url"
-              );
-
-            if (savedBrandName) {
-              setBrandName(
-                savedBrandName
-              );
-            }
-
-            if (savedProductName) {
-              setProductName(
-                savedProductName
-              );
-            }
-
-            if (savedLinkUrl) {
-              setLinkUrl(
-                savedLinkUrl
-              );
-            }
-        }
-        }
-    } catch (
-        restoreError
-    ) {
-        console.warn(
-        "Could not restore IRL Retail Media draft:",
-        restoreError
-        );
-    } 
-   }
-
-    if (
-        !returnedRetailAssetId
-    ) {
-        return;
-    }
+    const returnedRetailAssetId =
+      params.get(
+        "retail_asset_id"
+      );
 
     /*
-    * Stripe may redirect before the webhook has finished
-    * writing the activation credit.
+    * Normal Create New visit:
     *
-    * Poll briefly until the authoritative state becomes
-    * ready_to_publish.
+    * /brand/retail-media/direct
+    *
+    * No Retail Asset should be restored.
     */
+    if (
+      !returnedRetailAssetId
+    ) {
+      return;
+    }
+
     let cancelled =
-        false;
+      false;
 
-    async function verifyCheckoutReturn() {
+    async function loadExistingRetailMedia() {
+      try {
+        setError("");
+
+        /*
+        * ===================================================
+        * 1. Load the permanent Retail Asset from Firestore
+        * ===================================================
+        */
+
+        const idToken =
+          await currentUser.getIdToken(
+            true
+          );
+
+        const response =
+          await fetch(
+            `/api/brand/retail-media/load-direct?retailAssetId=${encodeURIComponent(
+              returnedRetailAssetId
+            )}`,
+            {
+              headers: {
+                Authorization:
+                  `Bearer ${idToken}`,
+              },
+
+              cache:
+                "no-store",
+            }
+          );
+
+        const text =
+          await response.text();
+
+        let loaded:
+          any = null;
+
+        try {
+          loaded =
+            text
+              ? JSON.parse(
+                  text
+                )
+              : null;
+        } catch {
+          loaded =
+            null;
+        }
+
         if (
-        checkout ===
-        "cancelled"
+          !response.ok
         ) {
-        setMessage(
+          throw new Error(
+            loaded?.error ||
+              text ||
+              "Failed to load this Retail Media item."
+          );
+        }
+
+        if (cancelled) {
+          return;
+        }
+
+        /*
+        * ===================================================
+        * 2. Reconstruct the existing Direct draft
+        * ===================================================
+        */
+
+        setDraftResponse({
+          ok: true,
+
+          reusedExistingDraft:
+            true,
+
+          retailAsset:
+            loaded.retailAsset,
+
+          media:
+            loaded.media,
+
+          targetImage:
+            loaded.targetImage,
+
+          commerce:
+            loaded.commerce,
+
+          publication:
+            loaded.publication,
+        });
+
+        /*
+        * ===================================================
+        * 3. Restore customer-facing form information
+        * ===================================================
+        */
+
+        if (
+          loaded.form
+        ) {
+          setBrandName(
+            loaded.form
+              .brandName ||
+            ""
+          );
+
+          setProductName(
+            loaded.form
+              .productName ||
+            ""
+          );
+
+          setLinkUrl(
+            loaded.form
+              .linkUrl ||
+            ""
+          );
+
+          setRawOcr(
+            loaded.form
+              .rawOcr ||
+            ""
+          );
+
+          setOwnershipType(
+            loaded.form
+              .contentOwnershipType ===
+              "external_creator"
+              ? "external_creator"
+              : "brand_owned"
+          );
+
+          setExternalCreatorName(
+            loaded.form
+              .externalCreatorName ||
+            ""
+          );
+
+          setContentRightsConfirmed(
+            loaded.form
+              .rights
+              ?.contentRightsConfirmed ===
+            true
+          );
+
+          setAudioRightsConfirmed(
+            loaded.form
+              .rights
+              ?.audioRightsConfirmed ===
+            true
+          );
+
+          setAppearanceRightsConfirmed(
+            loaded.form
+              .rights
+              ?.appearanceRightsConfirmed ===
+            true
+          );
+
+          setBrandUsageApproved(
+            loaded.form
+              .rights
+              ?.brandUsageApproved ===
+            true
+          );
+
+          setDistributionLicenseGranted(
+            loaded.form
+              .rights
+              ?.goshshaDistributionLicenseGranted ===
+            true
+          );
+        }
+
+        /*
+        * The publication object returned by load-direct is
+        * intentionally only used as draft display context.
+        *
+        * activation-status below remains authoritative for
+        * current payment / activation state.
+        */
+
+        /*
+        * ===================================================
+        * 4. Stripe cancelled
+        * ===================================================
+        */
+
+        if (
+          checkout ===
+          "cancelled"
+        ) {
+          setMessage(
             "Checkout was cancelled. Your Retail Media draft is still saved and the 90-day activation has not started."
-        );
+          );
 
-        await loadActivationStatus(
+          await loadActivationStatus(
             returnedRetailAssetId
-        );
+          );
 
-        return;
+          return;
         }
+
+        /*
+        * ===================================================
+        * 5. Normal Library / refresh visit
+        * ===================================================
+        *
+        * Example:
+        *
+        * /direct?retail_asset_id=...
+        *
+        * Load the authoritative state once.
+        */
 
         if (
-        checkout !==
-        "success"
+          checkout !==
+          "success"
         ) {
-        await loadActivationStatus(
-            returnedRetailAssetId
-        );
+          const status =
+            await loadActivationStatus(
+              returnedRetailAssetId
+            );
 
-        return;
+          if (
+            status?.state ===
+            "active"
+          ) {
+            setMessage(
+              "This Retail Media activation is active and scan-ready."
+            );
+          } else if (
+            status?.state ===
+            "ready_to_publish"
+          ) {
+            setMessage(
+              "Payment confirmed. This Retail Media activation is ready to publish."
+            );
+          }
+
+          return;
         }
 
+        /*
+        * ===================================================
+        * 6. Stripe success
+        * ===================================================
+        *
+        * Stripe may return before the webhook has finished
+        * issuing the activation credit.
+        */
+
         setMessage(
-        "Payment received. Confirming your activation credit..."
+          "Payment received. Confirming your activation credit..."
         );
 
         for (
-        let attempt = 0;
-        attempt < 10;
-        attempt += 1
+          let attempt = 0;
+          attempt < 10;
+          attempt += 1
         ) {
-        if (cancelled) {
+          if (cancelled) {
             return;
-        }
+          }
 
-        const status =
+          const status =
             await loadActivationStatus(
-            returnedRetailAssetId,
-            {
+              returnedRetailAssetId,
+              {
                 silent:
-                attempt > 0,
-            }
+                  attempt > 0,
+              }
             );
 
-        if (
-            !status
-        ) {
+          if (!status) {
             break;
-        }
+          }
 
-        if (
+          if (
             status.state ===
             "ready_to_publish"
-        ) {
+          ) {
             setMessage(
-            "Payment confirmed. Your activation credit is ready. Review the product and publish when you're ready."
+              "Payment confirmed. Your activation credit is ready. Review the product and publish when you're ready."
             );
 
             return;
-        }
+          }
 
-        if (
+          if (
             status.state ===
             "active"
-        ) {
+          ) {
             setMessage(
-            "This Retail Media activation is already active and scan-ready."
+              "This Retail Media activation is already active and scan-ready."
             );
 
             return;
+          }
+
+          if (
+            status.state ===
+            "payment_failed"
+          ) {
+            setError(
+              "The Retail Media payment could not be confirmed."
+            );
+
+            return;
+          }
+
+          await new Promise(
+            (resolve) =>
+              window.setTimeout(
+                resolve,
+                1500
+              )
+          );
         }
 
         if (
-            status.state ===
-            "payment_failed"
+          !cancelled
         ) {
-            setError(
-            "The Retail Media payment could not be confirmed."
-            );
-
-            return;
-        }
-
-        await new Promise(
-            (resolve) =>
-            window.setTimeout(
-                resolve,
-                1500
-            )
-        );
-        }
-
-        if (!cancelled) {
-        setMessage(
+          setMessage(
             "Your payment was received and is still being confirmed. Refresh this page in a moment if the activation credit does not appear."
-        );
+          );
         }
+      } catch (
+        loadError: any
+      ) {
+        console.error(
+          "Could not load existing IRL Retail Media:",
+          loadError
+        );
+
+        if (
+          !cancelled
+        ) {
+          setError(
+            loadError?.message ||
+              "Failed to load this Retail Media item."
+          );
+        }
+      }
     }
 
-    verifyCheckoutReturn();
+    loadExistingRetailMedia();
 
     return () => {
-        cancelled =
+      cancelled =
         true;
     };
-    }, [
+  }, [
     currentUser?.uid,
     authLoading,
-    ]);
+  ]);
 
   /*
    * -------------------------------------------------------
