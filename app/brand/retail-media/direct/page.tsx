@@ -740,7 +740,16 @@ export default function DirectRetailMediaPage() {
     /*
     * Restore the draft UI Stripe navigated away from.
     */
-    try {
+
+    const isStripeReturn =
+      Boolean(returnedRetailAssetId) &&
+      (
+        checkout === "success" ||
+        checkout === "cancelled"
+      );
+
+    if (isStripeReturn) {
+      try {
         const savedDraft =
         sessionStorage.getItem(
             "goshsha_product_2_draft"
@@ -811,7 +820,8 @@ export default function DirectRetailMediaPage() {
         "Could not restore IRL Retail Media draft:",
         restoreError
         );
-    }
+    } 
+   }
 
     if (
         !returnedRetailAssetId
@@ -1184,6 +1194,71 @@ async function handleTargetImageChange(
    * Create Product 2 Retail Asset
    * -------------------------------------------------------
    */
+
+    function handleCreateAnother() {
+    setBrandName("");
+    setProductName("");
+    setLinkUrl("");
+    setRawOcr("");
+
+    setOwnershipType("brand_owned");
+    setExternalCreatorName("");
+
+    setOriginalMedia(null);
+    setTargetImage(null);
+
+    setMediaError("");
+    setTargetImageError("");
+
+    setContentRightsConfirmed(false);
+    setAppearanceRightsConfirmed(false);
+    setBrandUsageApproved(false);
+    setDistributionLicenseGranted(false);
+    setAudioRightsConfirmed(false);
+
+    setCreatingDraft(false);
+    setMediaUploadProgress(0);
+    setTargetUploadProgress(0);
+    setStartingCheckout(false);
+
+    setActivationStatus(null);
+    setPublication(null);
+
+    setError("");
+    setMessage("");
+    setDraftResponse(null);
+
+    try {
+      sessionStorage.removeItem(
+        "goshsha_product_2_draft"
+      );
+
+      sessionStorage.removeItem(
+        "goshsha_product_2_brand_name"
+      );
+
+      sessionStorage.removeItem(
+        "goshsha_product_2_product_name"
+      );
+
+      sessionStorage.removeItem(
+        "goshsha_product_2_link_url"
+      );
+    } catch {
+      // Browser storage is a convenience only.
+    }
+
+    window.history.replaceState(
+      {},
+      "",
+      window.location.pathname
+    );
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  }
 
   async function handleCreateDraft() {
     setError("");
@@ -3017,13 +3092,21 @@ async function handleTargetImageChange(
                             ✓ Active and Scan-Ready
                             </p>
 
-                            <p className="mt-2 text-sm leading-6 text-emerald-800">
+                          <p className="mt-2 text-sm leading-6 text-emerald-800">
                             This Retail Media activation is now live in the Goshsha
                             experience. The activation period and qualified-view
                             tracking are underway.
-                            </p>
-                        </div>
-                        ) : readyToPublish ? (
+                          </p>
+
+                          <button
+                            type="button"
+                            onClick={handleCreateAnother}
+                            className="mt-5 w-full rounded-xl bg-emerald-700 px-5 py-3 font-black text-white shadow-sm hover:bg-emerald-800"
+                          >
+                            Create Another Retail Media Activation
+                          </button>
+                          </div>
+                          ) : readyToPublish ? (
                         <>
                             <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
 
