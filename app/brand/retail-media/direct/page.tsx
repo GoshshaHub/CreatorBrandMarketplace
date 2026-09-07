@@ -2295,6 +2295,13 @@ async function handleTargetImageChange(
               </Link>
 
               <Link
+                href="/brand/retail-media/library"
+                className="rounded-xl border border-slate-300 bg-white px-5 py-3 font-bold text-slate-800 shadow-sm hover:bg-slate-50"
+              >
+                My Retail Media
+              </Link>
+              
+              <Link
                 href="/brand/retail-media"
                 className="rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-bold text-slate-800 shadow-sm hover:bg-slate-50"
               >
