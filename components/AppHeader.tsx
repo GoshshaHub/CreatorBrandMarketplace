@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { onAuthStateChanged, signOut } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { auth, db } from "../lib/firebase";
@@ -35,59 +35,74 @@ export default function AppHeader() {
   const [user, setUser] = useState<HeaderUser | null>(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    let unsubscribeProfiles: (() => void)[] = [];
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      unsubscribeProfiles.forEach((stop) => stop());
+      unsubscribeProfiles = [];
+
       if (!firebaseUser) {
         setUser(null);
         setLoading(false);
         return;
       }
 
-      try {
-    const [userSnap, creatorSnap, brandSnap] = await Promise.all([
-      getDoc(doc(db, "users", firebaseUser.uid)),
-      getDoc(doc(db, "creators", firebaseUser.uid)),
-      getDoc(doc(db, "brands", firebaseUser.uid)),
-    ]);
-
-    const userData: any = userSnap.exists() ? userSnap.data() : {};
-    const creatorData: any = creatorSnap.exists() ? creatorSnap.data() : {};
-    const brandData: any = brandSnap.exists() ? brandSnap.data() : {};
-
-    const roles = Array.isArray(userData.roles)
-      ? userData.roles
-      : creatorSnap.exists()
-      ? ["creator"]
-      : brandSnap.exists()
-      ? ["brand"]
-      : [];
-
-    setUser({
-      uid: firebaseUser.uid,
-      email: firebaseUser.email || userData.email || creatorData.email || brandData.email || "",
-      displayName:
-        userData.displayName ||
-        creatorData.displayName ||
-        brandData.displayName ||
-        brandData.brandName ||
-        firebaseUser.displayName ||
-        "",
-      roles,
-      isAdmin: userData.isAdmin === true,
-    });
-      } catch {
+      const profileState: Record<string, { exists: boolean; data: any } | null> = {
+        user: null,
+        creator: null,
+        brand: null,
+      };
+      const updateHeader = () => {
+        if (Object.values(profileState).some((value) => value === null)) return;
+        const userProfile = profileState.user!;
+        const creatorProfile = profileState.creator!;
+        const brandProfile = profileState.brand!;
+        const userData = userProfile.data || {};
+        const creatorData = creatorProfile.data || {};
+        const brandData = brandProfile.data || {};
+        const roles = Array.isArray(userData.roles)
+          ? userData.roles
+          : creatorProfile.exists
+          ? ["creator"]
+          : brandProfile.exists
+          ? ["brand"]
+          : [];
         setUser({
           uid: firebaseUser.uid,
-          email: firebaseUser.email || "",
-          displayName: firebaseUser.displayName || "",
-          roles: [],
-          isAdmin: false,
+          email: firebaseUser.email || userData.email || creatorData.email || brandData.email || "",
+          displayName:
+            userData.displayName || creatorData.displayName || brandData.displayName ||
+            brandData.brandName || firebaseUser.displayName || "",
+          roles,
+          isAdmin: userData.isAdmin === true,
         });
-      } finally {
         setLoading(false);
-      }
+      };
+
+      (["users", "creators", "brands"] as const).forEach((collectionName) => {
+        const key = collectionName === "users" ? "user" : collectionName.slice(0, -1);
+        unsubscribeProfiles.push(
+          onSnapshot(
+            doc(db, collectionName, firebaseUser.uid),
+            (snapshot) => {
+              profileState[key] = {
+                exists: snapshot.exists(),
+                data: snapshot.exists() ? snapshot.data() : {},
+              };
+              updateHeader();
+            },
+            () => {
+              profileState[key] = { exists: false, data: {} };
+              updateHeader();
+            }
+          )
+        );
+      });
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      unsubscribeProfiles.forEach((stop) => stop());
+    };
   }, []);
 
   async function handleLogout() {

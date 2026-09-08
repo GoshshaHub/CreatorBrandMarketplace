@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import ProtectedRoute from "../../../../../components/ProtectedRoute";
 import { Campaign, getCampaignById } from "../../../../../lib/campaigns";
+import { auth } from "../../../../../lib/firebase";
 
 export default function BrandCampaignLivePage() {
   const params = useParams<{ id: string }>();
@@ -13,12 +14,26 @@ export default function BrandCampaignLivePage() {
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [verifiedScanReady, setVerifiedScanReady] = useState(false);
+  const [publicationStatus, setPublicationStatus] = useState("preparing");
 
   useEffect(() => {
     async function load() {
       try {
         const data = await getCampaignById(campaignId);
         setCampaign(data);
+        await auth.authStateReady();
+        const user = auth.currentUser;
+        if (!user) throw new Error("Please log in again.");
+        const token = await user.getIdToken();
+        const response = await fetch(
+          `/api/brand/launch-first-campaign?campaignId=${encodeURIComponent(campaignId)}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        const status = await response.json();
+        if (!response.ok) throw new Error(status.error || "Unable to verify publication.");
+        setVerifiedScanReady(status.scanReady === true);
+        setPublicationStatus(String(status.status || "preparing"));
       } catch (err: any) {
         setError(err?.message || "Failed to load campaign.");
       } finally {
@@ -29,24 +44,27 @@ export default function BrandCampaignLivePage() {
     if (campaignId) load();
   }, [campaignId]);
 
-  const isArLive = useMemo(() => {
-    return (
-      (campaign as any)?.status === "ar_live" ||
-      (campaign as any)?.arStatus === "live"
-    );
-  }, [campaign]);
+  const isArLive = useMemo(() => verifiedScanReady, [verifiedScanReady]);
+  const needsAssistance = publicationStatus === "publish_failed" ||
+    publicationStatus === "recovery_required";
 
   const eyebrow = isArLive
     ? "Your IRL Campaign Is Scan-Ready"
-    : "Your IRL Campaign Preview Is Ready";
+    : needsAssistance
+    ? "Your IRL Campaign Needs Assistance"
+    : "Your IRL Campaign Is Being Prepared";
 
   const headline = isArLive
     ? "Your product is now scan-ready in Goshsha."
-    : "Your product now has an IRL campaign preview.";
+    : needsAssistance
+    ? "We saved your campaign and are resolving a publication issue."
+    : "Your product’s digital experience is being published.";
 
   const body = isArLive
     ? "Shoppers can now scan your product in Goshsha and unlock your campaign content."
-    : "We received your product image and campaign content. Our team is preparing the scan-ready AR activation now. This typically will be completed within 30 minutes.";
+    : needsAssistance
+    ? "Your campaign and uploads are safe. The Goshsha team has been notified and can retry publication without creating a duplicate activation."
+    : "We received your product image and original video. Scan readiness will appear only after canonical publication is verified.";
 
   const previewTitle = isArLive ? "Scan-Ready Target" : "Preview Target";
 
@@ -60,7 +78,9 @@ export default function BrandCampaignLivePage() {
 
   const statusBody = isArLive
     ? "Try scanning your product in the Goshsha app to see the campaign experience in action."
-    : "Our team has been notified to create the AR layer. You’ll receive an update when your product is ready to scan in Goshsha.";
+    : needsAssistance
+    ? "No action is required from you right now. Your saved campaign is available for Admin recovery."
+    : "Goshsha is resolving the product, creating the Retail Asset, and updating the scan playlist.";
 
   return (
     <ProtectedRoute allowedRole="brand">

@@ -3,7 +3,12 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { doc, serverTimestamp, setDoc } from "firebase/firestore";
+import {
+  doc,
+  getDocFromServer,
+  serverTimestamp,
+  setDoc,
+} from "firebase/firestore";
 import { signupUser } from "../../lib/auth";
 import { db } from "../../lib/firebase";
 
@@ -244,6 +249,24 @@ export default function SignupPage() {
         },
         { merge: true }
       );
+
+      const [confirmedUser, confirmedBrand] = await Promise.all([
+        getDocFromServer(doc(db, "users", uid)),
+        getDocFromServer(doc(db, "brands", uid)),
+      ]);
+      const confirmedRoles = confirmedUser.exists()
+        ? confirmedUser.data().roles
+        : [];
+      if (
+        !confirmedUser.exists() ||
+        !confirmedBrand.exists() ||
+        !Array.isArray(confirmedRoles) ||
+        !confirmedRoles.includes("brand")
+      ) {
+        throw new Error(
+          "Your Brand profile is still being initialized. Please try again."
+        );
+      }
 
       if (inviteCreatorId) {
         router.push(`/brand/new-campaign?creatorId=${inviteCreatorId}`);

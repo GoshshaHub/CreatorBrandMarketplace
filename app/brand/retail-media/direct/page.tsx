@@ -13,17 +13,14 @@ import {
   type User,
 } from "firebase/auth";
 
-import {
-  ref,
-  uploadBytesResumable,
-} from "firebase/storage";
-
 import ProtectedRoute from "../../../../components/ProtectedRoute";
 
+import { auth } from "../../../../lib/firebase";
 import {
-  auth,
-  storage,
-} from "../../../../lib/firebase";
+  isMp4File,
+  normalizeRetailMediaTargetImage,
+  uploadRetailMediaFile,
+} from "../../../../lib/retail-media/browser-upload";
 
 /*
  * =========================================================
@@ -307,204 +304,6 @@ const MAX_MEDIA_BYTES =
 
 const MAX_TARGET_IMAGE_BYTES =
   25 * 1024 * 1024;
-
-function fileIsHeic(
-  file: File
-): boolean {
-  const fileName =
-    file.name.toLowerCase();
-
-  const fileType =
-    file.type.toLowerCase();
-
-  return (
-    fileName.endsWith(".heic") ||
-    fileName.endsWith(".heif") ||
-    fileType === "image/heic" ||
-    fileType === "image/heif"
-  );
-}
-
-async function normalizeTargetImage(
-  file: File
-): Promise<File> {
-  if (!fileIsHeic(file)) {
-    return file;
-  }
-
-  /*
-   * heic2any is browser-only.
-   *
-   * Import it only when a Brand actually selects
-   * a HEIC/HEIF image so Next.js does not evaluate
-   * the library during server prerendering.
-   */
-  const heic2anyModule =
-    await import("heic2any");
-
-  const heic2any =
-    heic2anyModule.default;
-
-  const converted =
-    await heic2any({
-      blob: file,
-      toType: "image/jpeg",
-      quality: 0.92,
-    });
-
-  const convertedBlob =
-    Array.isArray(converted)
-      ? converted[0]
-      : converted;
-
-  const originalName =
-    file.name.replace(
-      /\.(heic|heif)$/i,
-      ""
-    );
-
-  return new File(
-    [convertedBlob],
-    `${originalName}.jpg`,
-    {
-      type: "image/jpeg",
-      lastModified:
-        file.lastModified,
-    }
-  );
-}
-
-function fileIsMp4(
-  file: File | null
-): boolean {
-  if (!file) {
-    return false;
-  }
-
-  return file.name
-    .toLowerCase()
-    .endsWith(".mp4");
-}
-
-function safeUploadFileName(
-  fileName: string
-): string {
-  return fileName
-    .replace(
-      /[^a-zA-Z0-9._-]/g,
-      "-"
-    )
-    .replace(
-      /-+/g,
-      "-"
-    )
-    .slice(
-      0,
-      120
-    );
-}
-
-async function uploadDirectRetailMediaFile(
-  params: {
-    file: File;
-
-    userId: string;
-
-    kind:
-      | "media"
-      | "target";
-
-    onProgress?: (
-      progress: number
-    ) => void;
-  }
-): Promise<string> {
-  const safeFileName =
-    safeUploadFileName(
-      params.file.name
-    );
-
-  const storagePath =
-    `retail-media-direct-uploads/` +
-    `${params.userId}/` +
-    `${params.kind}/` +
-    `${Date.now()}-` +
-    `${Math.random()
-      .toString(36)
-      .slice(2, 10)}-` +
-    `${safeFileName}`;
-
-  const storageRef =
-    ref(
-      storage,
-      storagePath
-    );
-
-  const uploadTask =
-    uploadBytesResumable(
-      storageRef,
-      params.file,
-      {
-        contentType:
-          params.file.type ||
-          undefined,
-
-        customMetadata: {
-          originalFileName:
-            params.file.name,
-
-          uploadPurpose:
-            params.kind ===
-            "media"
-              ? "retail_media_direct_source"
-              : "retail_media_direct_target",
-        },
-      }
-    );
-
-  await new Promise<void>(
-    (
-      resolve,
-      reject
-    ) => {
-      uploadTask.on(
-        "state_changed",
-
-        (snapshot) => {
-          const totalBytes =
-            snapshot
-              .totalBytes;
-
-          const progress =
-            totalBytes > 0
-              ? (
-                  snapshot
-                    .bytesTransferred /
-                  totalBytes
-                ) *
-                9900
-              : 0;
-
-          params.onProgress?.(
-            progress
-          );
-        },
-
-        (uploadError) => {
-          reject(
-            uploadError
-          );
-        },
-
-        () => {
-          resolve();
-        }
-      );
-    }
-  );
-
-  return storagePath;
-}
 
 export default function DirectRetailMediaPage() {
   const [
@@ -1205,7 +1004,7 @@ export default function DirectRetailMediaPage() {
     Boolean(
       originalMedia
     ) &&
-    fileIsMp4(
+    isMp4File(
       originalMedia
     ) &&
     Boolean(
@@ -1239,7 +1038,7 @@ export default function DirectRetailMediaPage() {
     }
 
     if (
-      !fileIsMp4(file)
+      !isMp4File(file)
     ) {
       setOriginalMedia(
         null
@@ -1307,7 +1106,7 @@ async function handleTargetImageChange(
 
   try {
     const normalizedFile =
-      await normalizeTargetImage(
+      await normalizeRetailMediaTargetImage(
         file
       );
 
@@ -1498,7 +1297,7 @@ async function handleTargetImageChange(
     }
 
     if (
-      !fileIsMp4(
+      !isMp4File(
         originalMedia
       )
     ) {
@@ -1578,7 +1377,7 @@ async function handleTargetImageChange(
     * not the video bytes.
     */
     const mediaStoragePath =
-      await uploadDirectRetailMediaFile({
+      await uploadRetailMediaFile({
         file:
           originalMedia,
 
@@ -1597,7 +1396,7 @@ async function handleTargetImageChange(
     * to Firebase Storage.
     */
     const targetImageStoragePath =
-      await uploadDirectRetailMediaFile({
+      await uploadRetailMediaFile({
         file:
           targetImage,
 

@@ -772,12 +772,6 @@ export default function AdminReviewPage() {
           "campaignType",
           "==",
           "brand_first_irl_preview"
-        ),
-
-        where(
-          "arStatus",
-          "==",
-          "needs_admin_creation"
         )
       );
 
@@ -791,6 +785,10 @@ export default function AdminReviewPage() {
         id: campaignDoc.id,
         ...campaignDoc.data(),
       })
+    ).filter((campaign: any) =>
+      campaign.arStatus === "needs_admin_creation" ||
+      campaign.arStatus === "publish_failed" ||
+      campaign.recoveryRequired === true
     ) as Campaign[];
   }
 
@@ -1165,7 +1163,7 @@ export default function AdminReviewPage() {
                           {workingCampaignId ===
                           campaign.id
                             ? "Marking..."
-                            : "Mark AR Live"}
+                            : "Retry Canonical Publication"}
                         </button>
                       </div>
                     </div>

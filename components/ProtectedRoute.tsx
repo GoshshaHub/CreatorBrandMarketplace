@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { auth, db } from "../lib/firebase";
@@ -18,16 +18,15 @@ type AccessState = "loading" | "allowed" | "unauthenticated" | "forbidden" | "er
 
 export default function ProtectedRoute({ allowedRole, children }: Props) {
   const router = useRouter();
-  const hasHandledRef = useRef(false);
-
   const [accessState, setAccessState] = useState<AccessState>("loading");
   const [message, setMessage] = useState("");
   const [fallbackPath, setFallbackPath] = useState("/login");
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (hasHandledRef.current) return;
-      hasHandledRef.current = true;
+    let unsubscribeProfile: (() => void) | null = null;
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      unsubscribeProfile?.();
+      unsubscribeProfile = null;
 
       if (!user) {
         setAccessState("unauthenticated");
@@ -35,14 +34,13 @@ export default function ProtectedRoute({ allowedRole, children }: Props) {
         return;
       }
 
-      try {
-        const userRef = doc(db, "users", user.uid);
-        const userSnap = await getDoc(userRef);
-
+      setAccessState("loading");
+      unsubscribeProfile = onSnapshot(
+        doc(db, "users", user.uid),
+        (userSnap) => {
         if (!userSnap.exists()) {
-          setAccessState("error");
-          setMessage("Your user profile could not be found.");
-          setFallbackPath("/login");
+          setAccessState("loading");
+          setMessage("Your profile is being initialized...");
           return;
         }
 
@@ -80,13 +78,18 @@ export default function ProtectedRoute({ allowedRole, children }: Props) {
 
         setAccessState("forbidden");
         setMessage(`This page is not available for your account role.`);
-      } catch (err: any) {
-        setAccessState("error");
-        setMessage(err.message || "We couldn’t verify your access.");
-      }
+        },
+        (err) => {
+          setAccessState("error");
+          setMessage(err.message || "We couldn’t verify your access.");
+        }
+      );
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      unsubscribeProfile?.();
+    };
   }, [allowedRole, router]);
 
   if (accessState === "loading") {

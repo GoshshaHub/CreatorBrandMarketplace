@@ -8,6 +8,13 @@ import StatusPill from "../../../components/StatusPill";
 import { auth } from "../../../lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import {
+  isMp4File,
+  MAX_RETAIL_MEDIA_TARGET_BYTES,
+  MAX_RETAIL_MEDIA_VIDEO_BYTES,
+  normalizeRetailMediaTargetImage,
+  uploadRetailMediaFile,
+} from "../../../lib/retail-media/browser-upload";
+import {
   getBrandCampaigns,
   getUserNotifications,
   markNotificationRead,
@@ -30,6 +37,9 @@ type Campaign = {
   agreedPrice?: number;
   campaignType?: string;
   isFirstFreeIRLLaunch?: boolean;
+  arStatus?: string;
+  recoveryRequired?: boolean;
+  canonicalScanReady?: boolean;
   createdAt?: any;
   updatedAt?: any;
 };
@@ -60,13 +70,14 @@ function getCampaignDisplayStatus(campaign: Campaign) {
   campaign.campaignType === "brand_first_irl_preview" ||
   campaign.isFirstFreeIRLLaunch
 ) {
-  if (campaign.status === "ar_live" || (campaign as any).arStatus === "live") {
+  if (campaign.canonicalScanReady === true) {
     return "live";
   }
 
   if (
-    campaign.status === "preview_ready" ||
-    (campaign as any).arStatus === "needs_admin_creation"
+    campaign.status === "preparing" ||
+    campaign.status === "publishing" ||
+    campaign.recoveryRequired
   ) {
     return "preview";
   }
@@ -89,11 +100,10 @@ function getFundingDisplay(campaign: Campaign) {
     campaign.campaignType === "brand_first_irl_preview" ||
     campaign.isFirstFreeIRLLaunch
   ) {
-    if (campaign.status === "ar_live" || (campaign as any).arStatus === "live") {
+    if (campaign.canonicalScanReady === true) {
       return "Scan-ready";
     }
-
-    return "AR being prepared";
+    return campaign.recoveryRequired ? "Needs assistance" : "AR being prepared";
   }
 
   if (
@@ -110,58 +120,6 @@ function getFundingDisplay(campaign: Campaign) {
   return "Not funded";
 }
 
-async function compressImage(file: File): Promise<File> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const reader = new FileReader();
-
-    reader.onload = () => {
-      img.src = reader.result as string;
-    };
-
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-
-      const maxWidth = 1200;
-      const scale = Math.min(1, maxWidth / img.width);
-
-      canvas.width = img.width * scale;
-      canvas.height = img.height * scale;
-
-      const ctx = canvas.getContext("2d");
-
-      if (!ctx) {
-        reject(new Error("Could not process image."));
-        return;
-      }
-
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-      canvas.toBlob(
-        (blob) => {
-          if (!blob) {
-            reject(new Error("Image compression failed."));
-            return;
-          }
-
-          resolve(
-            new File([blob], "target-image.jpg", {
-              type: "image/jpeg",
-            })
-          );
-        },
-        "image/jpeg",
-        0.82
-      );
-    };
-
-    img.onerror = () => reject(new Error("Invalid image file."));
-    reader.onerror = () => reject(new Error("Could not read image file."));
-
-    reader.readAsDataURL(file);
-  });
-}
-
 export default function BrandDashboardPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -170,10 +128,18 @@ export default function BrandDashboardPage() {
   const [launching, setLaunching] = useState(false);
   const [error, setError] = useState("");
 
-  const [campaignContentUrl, setCampaignContentUrl] = useState("");
+  const [brandName, setBrandName] = useState("");
+  const [destinationUrl, setDestinationUrl] = useState("");
+  const [originalVideo, setOriginalVideo] = useState<File | null>(null);
   const [targetImage, setTargetImage] = useState<File | null>(null);
   const [firstCampaignTitle, setFirstCampaignTitle] = useState("My First IRL Campaign");
   const [firstProductName, setFirstProductName] = useState("");
+  const [rightsBasis, setRightsBasis] = useState<"brand_owned" | "brand_licensed">("brand_owned");
+  const [contentRightsConfirmed, setContentRightsConfirmed] = useState(false);
+  const [audioRightsConfirmed, setAudioRightsConfirmed] = useState(false);
+  const [appearanceRightsConfirmed, setAppearanceRightsConfirmed] = useState(false);
+  const [mediaUploadProgress, setMediaUploadProgress] = useState(0);
+  const [targetUploadProgress, setTargetUploadProgress] = useState(0);
 
   async function loadDashboard() {
     setLoading(true);
@@ -186,6 +152,8 @@ export default function BrandDashboardPage() {
         setLoading(false);
         return;
       }
+
+      setBrandName((current) => current || user.displayName || "");
 
       const [campaignData, notificationData] = await Promise.all([
         getBrandCampaigns(user.uid),
@@ -286,8 +254,16 @@ export default function BrandDashboardPage() {
       return;
     }
 
-    if (!campaignContentUrl.trim() || !targetImage) {
-      alert("Please add your campaign content URL and upload a target image.");
+    if (!brandName.trim() || !firstProductName.trim() || !originalVideo || !targetImage) {
+      alert("Add your Brand name, product name, original MP4 video, and product image.");
+      return;
+    }
+    if (!isMp4File(originalVideo) || originalVideo.size > MAX_RETAIL_MEDIA_VIDEO_BYTES) {
+      alert("Please upload an MP4 video no larger than 250 MB.");
+      return;
+    }
+    if (!contentRightsConfirmed || !audioRightsConfirmed || !appearanceRightsConfirmed) {
+      alert("Complete all three rights certifications before publishing.");
       return;
     }
 
@@ -295,19 +271,44 @@ export default function BrandDashboardPage() {
     setError("");
 
     try {
-      const formData = new FormData();
-
-      formData.append("brandId", user.uid);
-      formData.append("brandName", user.displayName || "Brand");
-      formData.append("campaignTitle", firstCampaignTitle || "My First IRL Campaign");
-      formData.append("productName", firstProductName || "My Product");
-      formData.append("campaignContentUrl", campaignContentUrl.trim());
-      const compressedTargetImage = await compressImage(targetImage);
-      formData.append("targetImage", compressedTargetImage);
+      const normalizedTarget = await normalizeRetailMediaTargetImage(targetImage);
+      if (normalizedTarget.size > MAX_RETAIL_MEDIA_TARGET_BYTES) {
+        throw new Error("The product image must be 25 MB or smaller after conversion.");
+      }
+      const idToken = await user.getIdToken(true);
+      const [mediaStoragePath, targetImageStoragePath] = await Promise.all([
+        uploadRetailMediaFile({
+          file: originalVideo,
+          userId: user.uid,
+          kind: "media",
+          onProgress: setMediaUploadProgress,
+        }),
+        uploadRetailMediaFile({
+          file: normalizedTarget,
+          userId: user.uid,
+          kind: "target",
+          onProgress: setTargetUploadProgress,
+        }),
+      ]);
 
       const res = await fetch("/api/brand/launch-first-campaign", {
         method: "POST",
-        body: formData,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          brandName: brandName.trim(),
+          campaignTitle: firstCampaignTitle.trim(),
+          productName: firstProductName.trim(),
+          destinationUrl: destinationUrl.trim(),
+          mediaStoragePath,
+          targetImageStoragePath,
+          rightsBasis,
+          contentRightsConfirmed,
+          audioRightsConfirmed,
+          appearanceRightsConfirmed,
+        }),
       });
 
       const text = await res.text();
@@ -323,7 +324,9 @@ export default function BrandDashboardPage() {
         throw new Error(data.error || "Failed to launch first IRL campaign.");
       }
 
-      window.location.href = `/brand/campaign/${data.campaignId}/live`;
+      const campaignId = data.campaignId;
+      if (!campaignId) throw new Error("Publication succeeded without a campaign identifier.");
+      window.location.href = `/brand/campaign/${campaignId}/live`;
     } catch (err: any) {
       setError(err?.message || "Failed to launch first IRL campaign.");
     } finally {
@@ -411,16 +414,15 @@ export default function BrandDashboardPage() {
                 </h2>
 
                 <p className="mt-3 max-w-3xl text-gray-600">
-                  Turn your existing campaign content into an IRL shelf experience.
-                  Paste your social content URL, upload the product image shoppers
-                  should scan, and launch your first AR-powered campaign preview.
+                  Publish one Brand-owned or properly licensed video on one product
+                  for 30 days, including the first 250 qualified views.
                 </p>
 
                 <div className="mt-6 grid gap-4 md:grid-cols-2">
                   <input
-                    value={firstCampaignTitle}
-                    onChange={(e) => setFirstCampaignTitle(e.target.value)}
-                    placeholder="Campaign title"
+                    value={brandName}
+                    onChange={(e) => setBrandName(e.target.value)}
+                    placeholder="Brand name"
                     className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-950 placeholder:text-slate-500"
                   />
 
@@ -432,18 +434,73 @@ export default function BrandDashboardPage() {
                   />
 
                   <input
-                    value={campaignContentUrl}
-                    onChange={(e) => setCampaignContentUrl(e.target.value)}
-                    placeholder="TikTok, Instagram Reel, YouTube Shorts, campaign page, or video URL"
+                    value={firstCampaignTitle}
+                    onChange={(e) => setFirstCampaignTitle(e.target.value)}
+                    placeholder="Campaign title"
                     className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-950 placeholder:text-slate-500 md:col-span-2"
                   />
 
+                  <label className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-700 md:col-span-2">
+                    Original campaign video (MP4, up to 250 MB)
+                    <input
+                      type="file"
+                      accept=".mp4,video/mp4"
+                      onChange={(e) => setOriginalVideo(e.target.files?.[0] || null)}
+                      className="mt-2 block w-full file:font-semibold"
+                    />
+                    {mediaUploadProgress > 0 && mediaUploadProgress < 100 && (
+                      <span>Uploading video: {Math.round(mediaUploadProgress)}%</span>
+                    )}
+                  </label>
+
+                  <label className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-700 md:col-span-2">
+                    Exact product image shoppers will scan
                   <input
                     type="file"
-                    accept="image/*"
+                    accept=".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif"
                     onChange={(e) => setTargetImage(e.target.files?.[0] || null)}
-                    className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-950 file:text-slate-950 file:font-semibold md:col-span-2"
+                    className="mt-2 block w-full file:font-semibold"
                   />
+                    {targetUploadProgress > 0 && targetUploadProgress < 100 && (
+                      <span>Uploading image: {Math.round(targetUploadProgress)}%</span>
+                    )}
+                  </label>
+
+                  <input
+                    value={destinationUrl}
+                    onChange={(e) => setDestinationUrl(e.target.value)}
+                    placeholder="Optional shopper destination URL"
+                    type="url"
+                    className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-950 placeholder:text-slate-500 md:col-span-2"
+                  />
+
+                  <label className="md:col-span-2 text-sm font-semibold text-slate-800">
+                    Content rights basis
+                    <select
+                      value={rightsBasis}
+                      onChange={(e) => setRightsBasis(e.target.value as "brand_owned" | "brand_licensed")}
+                      className="mt-2 block w-full rounded-xl border border-slate-300 bg-white px-4 py-3"
+                    >
+                      <option value="brand_owned">Brand-owned content</option>
+                      <option value="brand_licensed">Content licensed to the Brand</option>
+                    </select>
+                  </label>
+
+                  <label className="flex gap-3 text-sm text-slate-700 md:col-span-2">
+                    <input type="checkbox" checked={contentRightsConfirmed}
+                      onChange={(e) => setContentRightsConfirmed(e.target.checked)} />
+                    <span>I confirm the Brand owns or has sufficient rights to use and publish this content.</span>
+                  </label>
+                  <label className="flex gap-3 text-sm text-slate-700 md:col-span-2">
+                    <input type="checkbox" checked={audioRightsConfirmed}
+                      onChange={(e) => setAudioRightsConfirmed(e.target.checked)} />
+                    <span>I confirm the Brand has sufficient rights to the audio in this video.</span>
+                  </label>
+                  <label className="flex gap-3 text-sm text-slate-700 md:col-span-2">
+                    <input type="checkbox" checked={appearanceRightsConfirmed}
+                      onChange={(e) => setAppearanceRightsConfirmed(e.target.checked)} />
+                    <span>I confirm appearance rights for every person shown in this video.</span>
+                  </label>
                 </div>
 
                 <button
@@ -451,7 +508,7 @@ export default function BrandDashboardPage() {
                   disabled={launching}
                   className="mt-6 rounded-xl bg-slate-950 px-6 py-3 font-bold text-white hover:bg-slate-800 disabled:opacity-60"
                 >
-                  {launching ? "Launching..." : "Launch My Free IRL Campaign"}
+                  {launching ? "Uploading and publishing..." : "Publish My Free IRL Campaign"}
                 </button>
               </section>
             )}

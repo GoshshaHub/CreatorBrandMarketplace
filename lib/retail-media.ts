@@ -80,6 +80,9 @@ export type RetailAssetRights = {
   appearanceRightsConfirmed: boolean;
   brandUsageApproved: boolean;
 
+  goshshaDistributionLicenseGranted?: boolean;
+  rightsBasis?: "brand_owned" | "brand_licensed" | null;
+
   certificationVersion: string;
 
   certifiedByUserId?: string | null;
@@ -230,6 +233,14 @@ export type RetailAssetMonetization = {
   currency: string;
 
   payoutSchedule?: string | null;
+
+  product?: "product_2" | "first_free_irl" | string;
+  activationPriceUsd?: number | null;
+  includedQualifiedViews?: number | null;
+  qualifiedViewsUsed?: number | null;
+  overageQualifiedViews?: number | null;
+  activationDays?: number | null;
+  usageStatus?: string | null;
 };
 
 export type RetailAssetAudit = {
@@ -260,6 +271,12 @@ export type RetailAssetFields = {
   retailAssetId: string;
 
   sourceProduct: RetailAssetSourceProduct;
+
+  commercialSource?: {
+    product: "product_2" | "first_free_irl" | string;
+    acquisitionType?: string | null;
+    purchaseDefinitionKey?: string | null;
+  };
 
   campaignId?: string | null;
   creatorId?: string | null;
