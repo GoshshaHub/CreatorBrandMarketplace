@@ -297,7 +297,7 @@ export const RETAIL_MEDIA_PURCHASE_DEFINITIONS:
     "IRL Retail Media Activation",
 
   amountUsd:
-    1,
+    99,
 
   activationCredits:
     1,

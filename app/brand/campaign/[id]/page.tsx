@@ -598,7 +598,7 @@ export default function BrandCampaignDetailPage() {
       !user.email
     ) {
       alert(
-        "Please log in again before starting your trial."
+        "Please log in again before subscribing."
       );
 
       return;
@@ -645,7 +645,7 @@ export default function BrandCampaignDetailPage() {
     } catch (err: any) {
       alert(
         err?.message ||
-          "Unable to start trial."
+          "Unable to start subscription."
       );
     } finally {
       setPaywallLoading(false);
@@ -1082,7 +1082,7 @@ export default function BrandCampaignDetailPage() {
                   className="rounded-lg bg-pink-600 px-4 py-2 font-semibold text-white hover:bg-pink-700 disabled:opacity-60"
                 >
                   {paywallLoading
-                    ? "Starting trial..."
+                    ? "Opening checkout..."
                     : "Invite My Own Creator"}
                 </button>
 
@@ -1187,7 +1187,7 @@ export default function BrandCampaignDetailPage() {
                   </p>
 
                   <p className="mt-1 text-sm text-slate-600">
-                    Start your 14-day free trial to invite Creators and scale this campaign.
+                    Subscribe for $75/month to invite Creators and scale this campaign. Billing begins immediately. No free trial.
                   </p>
 
                   <button
@@ -1200,8 +1200,8 @@ export default function BrandCampaignDetailPage() {
                     className="mt-4 rounded-xl bg-slate-950 px-4 py-3 font-semibold text-white disabled:opacity-60"
                   >
                     {paywallLoading
-                      ? "Starting trial..."
-                      : "Start 14-Day Free Trial"}
+                      ? "Opening checkout..."
+                      : "Subscribe for $75/Month"}
                   </button>
                 </div>
               )}

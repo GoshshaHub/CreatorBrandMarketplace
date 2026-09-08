@@ -101,7 +101,7 @@ function NewCampaignPageContent() {
     const user = auth.currentUser;
 
     if (!user || !user.email) {
-      alert("Please log in again before starting your trial.");
+      alert("Please log in again before subscribing.");
       return;
     }
 
@@ -128,7 +128,7 @@ function NewCampaignPageContent() {
 
       window.location.href = data.checkoutUrl;
     } catch (err: any) {
-      alert(err?.message || "Unable to start trial.");
+      alert(err?.message || "Unable to start subscription.");
     } finally {
       setPaywallLoading(false);
     }
@@ -148,7 +148,7 @@ function NewCampaignPageContent() {
       }
 
       if (!isSubscribed(subscriptionStatus)) {
-        throw new Error("Start your 14-day free trial to invite creators.");
+        throw new Error("Subscribe for $75/month to invite Creators.");
       }
 
       if (!creator) {
@@ -223,12 +223,12 @@ function NewCampaignPageContent() {
             </p>
 
             <h1 className="mt-3 text-4xl font-black">
-              Start your 14-day free trial to invite creators.
+              Subscribe for $75/month to invite Creators.
             </h1>
 
             <p className="mt-4 text-lg text-slate-600">
-              Your first IRL campaign preview is free. Creator invitations and
-              campaign scaling require an active trial.
+              Creator invitations and campaign scaling require an active
+              subscription. Billing begins immediately. No free trial.
             </p>
 
             <button
@@ -236,11 +236,11 @@ function NewCampaignPageContent() {
               disabled={paywallLoading}
               className="mt-8 rounded-2xl bg-slate-950 px-8 py-4 text-lg font-bold text-white hover:bg-slate-800 disabled:opacity-60"
             >
-              {paywallLoading ? "Starting trial..." : "Start 14-Day Free Trial"}
+              {paywallLoading ? "Opening checkout..." : "Subscribe for $75/Month"}
             </button>
 
             <p className="mt-3 text-sm text-slate-500">
-              $75/month after trial. Cancel anytime.
+              $75/month. No free trial. Cancel anytime.
             </p>
 
             <Link

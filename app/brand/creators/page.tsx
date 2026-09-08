@@ -207,7 +207,7 @@ export default function BrandCreatorsPage() {
 
   async function startStripeCheckout() {
     if (!brandUid || !brandEmail) {
-      alert("Please log in again before starting your trial.");
+      alert("Please log in again before subscribing.");
       return;
     }
 
@@ -234,7 +234,7 @@ export default function BrandCreatorsPage() {
 
       window.location.href = data.checkoutUrl;
     } catch (err: any) {
-      alert(err?.message || "Unable to start trial.");
+      alert(err?.message || "Unable to start subscription.");
     } finally {
       setPaywallLoading(false);
     }
@@ -261,9 +261,9 @@ export default function BrandCreatorsPage() {
           </h1>
 
           <p className="mt-4 text-lg text-slate-600">
-            Your first IRL campaign preview is free. Start your 14-day free trial
-            to invite creators, access the creator network, and scale your
-            campaign.
+            Subscribe for $75/month to invite creators, access the IRL Creator
+            Network, and scale your campaign. Billing begins immediately. No
+            free trial.
           </p>
 
           <button
@@ -271,11 +271,11 @@ export default function BrandCreatorsPage() {
             disabled={paywallLoading}
             className="mt-8 rounded-2xl bg-slate-950 px-8 py-4 text-lg font-bold text-white hover:bg-slate-800 disabled:opacity-60"
           >
-            {paywallLoading ? "Starting trial..." : "Start 14-Day Free Trial"}
+            {paywallLoading ? "Opening checkout..." : "Subscribe for $75/Month"}
           </button>
 
           <p className="mt-3 text-sm text-slate-500">
-            $75/month after trial. Cancel anytime.
+            $75/month. No free trial. Cancel anytime.
           </p>
 
           <Link
