@@ -178,7 +178,7 @@ export default function PublicCreatorsPage() {
 
           <p className="mt-4 max-w-3xl text-lg text-slate-600">
             Browse publicly listed creators available for brand discovery.
-            Subscribe for $75/month to invite creators into your IRL campaigns.
+            Start a trial to invite creators into your IRL campaigns.
           </p>
         </div>
 

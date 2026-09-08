@@ -152,7 +152,7 @@ export default function BrandCreatorProfilePage() {
     const user = auth.currentUser;
 
     if (!user || !user.email) {
-      alert("Please log in again before subscribing.");
+      alert("Please log in again before starting your trial.");
       return;
     }
 
@@ -179,7 +179,7 @@ export default function BrandCreatorProfilePage() {
 
       window.location.href = data.checkoutUrl;
     } catch (err: any) {
-      alert(err?.message || "Unable to start subscription.");
+      alert(err?.message || "Unable to start trial.");
     } finally {
       setPaywallLoading(false);
     }
@@ -230,12 +230,12 @@ export default function BrandCreatorProfilePage() {
           </p>
 
           <h1 className="mt-3 text-4xl font-black">
-            Subscribe for $75/month to view Creator profiles.
+            Start your 14-day free trial to view creator profiles.
           </h1>
 
           <p className="mt-4 text-lg text-slate-600">
-            Creator profiles, Creator invitations, and campaign scaling require
-            an active subscription. Billing begins immediately. No free trial.
+            Your first IRL campaign preview is free. Creator profiles, creator
+            invitations, and campaign scaling require an active trial.
           </p>
 
           <button
@@ -243,11 +243,11 @@ export default function BrandCreatorProfilePage() {
             disabled={paywallLoading}
             className="mt-8 rounded-2xl bg-slate-950 px-8 py-4 text-lg font-bold text-white hover:bg-slate-800 disabled:opacity-60"
           >
-            {paywallLoading ? "Opening checkout..." : "Subscribe for $75/Month"}
+            {paywallLoading ? "Starting trial..." : "Start 14-Day Free Trial"}
           </button>
 
           <p className="mt-3 text-sm text-slate-500">
-            $75/month. No free trial. Cancel anytime.
+            $75/month after trial. Cancel anytime.
           </p>
 
           <Link

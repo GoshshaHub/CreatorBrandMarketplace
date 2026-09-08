@@ -37,13 +37,14 @@ export async function POST(req: Request) {
             },
             product_data: {
               name: "Goshsha IRL Campaign Network",
-              description: "Brand access for $75/month.",
+              description: "Brand access with a 14-day free trial.",
             },
           },
           quantity: 1,
         },
       ],
       subscription_data: {
+        trial_period_days: 14,
         metadata: {
           uid,
           role: "brand",

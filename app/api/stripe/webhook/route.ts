@@ -272,7 +272,7 @@ export async function POST(
                 true,
 
               subscriptionStatus:
-                "active",
+                "trialing",
 
               stripeCustomerId:
                 session.customer ||
@@ -302,7 +302,7 @@ export async function POST(
                 true,
 
               subscriptionStatus:
-                "active",
+                "trialing",
 
               stripeCustomerId:
                 session.customer ||
