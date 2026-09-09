@@ -330,6 +330,8 @@ export async function createAndPublishFirstFreeActivation(params: {
       createdBy: params.brandId,
       createdByRole: "brand",
       createdFrom: "web",
+      activationStartsAt: null,
+      activationEndsAt: null,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     });
