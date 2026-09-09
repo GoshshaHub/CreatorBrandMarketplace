@@ -15,7 +15,13 @@ export default function BrandCampaignLivePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [verifiedScanReady, setVerifiedScanReady] = useState(false);
-  const [publicationStatus, setPublicationStatus] = useState("preparing");
+  const [publicationStatus, setPublicationStatus] = useState("loading");
+  const [targetImageUrl, setTargetImageUrl] = useState("");
+  const [retrying, setRetrying] = useState(false);
+  const [rightsBasis, setRightsBasis] = useState<"brand_owned" | "brand_licensed">("brand_owned");
+  const [contentRightsConfirmed, setContentRightsConfirmed] = useState(false);
+  const [audioRightsConfirmed, setAudioRightsConfirmed] = useState(false);
+  const [appearanceRightsConfirmed, setAppearanceRightsConfirmed] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -43,6 +49,70 @@ export default function BrandCampaignLivePage() {
 
     if (campaignId) load();
   }, [campaignId]);
+
+  useEffect(() => {
+    let objectUrl = "";
+    async function loadTarget() {
+      if (!campaign || loading) return;
+      try {
+        await auth.authStateReady();
+        const user = auth.currentUser;
+        if (!user) return;
+        const token = await user.getIdToken();
+        const response = await fetch(`/api/brand/target-image/${campaignId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!response.ok) return;
+        objectUrl = URL.createObjectURL(await response.blob());
+        setTargetImageUrl(objectUrl);
+      } catch {
+        setTargetImageUrl("");
+      }
+    }
+    loadTarget();
+    return () => {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [campaign, campaignId, loading]);
+
+  async function retryPublication() {
+    if (!contentRightsConfirmed || !audioRightsConfirmed || !appearanceRightsConfirmed) return;
+    setRetrying(true);
+    setError("");
+    setPublicationStatus("publishing");
+    try {
+      await auth.authStateReady();
+      const user = auth.currentUser;
+      if (!user) throw new Error("Please log in again.");
+      const token = await user.getIdToken(true);
+      const response = await fetch("/api/brand/launch-first-campaign", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          action: "retry",
+          campaignId,
+          rightsBasis,
+          contentRightsConfirmed,
+          audioRightsConfirmed,
+          appearanceRightsConfirmed,
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Unable to retry publication.");
+      setVerifiedScanReady(result.scanReady === true);
+      setPublicationStatus(String(result.status || "active"));
+      const refreshed = await getCampaignById(campaignId);
+      setCampaign(refreshed);
+    } catch (err: any) {
+      setError(err?.message || "Unable to retry publication.");
+      setPublicationStatus("recovery_required");
+    } finally {
+      setRetrying(false);
+    }
+  }
 
   const isArLive = useMemo(() => verifiedScanReady, [verifiedScanReady]);
   const needsAssistance = publicationStatus === "publish_failed" ||
@@ -86,10 +156,10 @@ export default function BrandCampaignLivePage() {
     <ProtectedRoute allowedRole="brand">
       <main className="min-h-screen bg-gradient-to-br from-white via-pink-50 to-blue-50 px-6 py-10 text-slate-950">
         <div className="mx-auto max-w-5xl">
-          {loading && <p>Loading your campaign preview...</p>}
+          {loading && <p>Checking your campaign&apos;s publication status…</p>}
           {error && <p className="text-red-600">{error}</p>}
 
-          {campaign && (
+          {!loading && campaign && (
             <div className="grid gap-8 md:grid-cols-[1fr_0.85fr]">
               <section className="rounded-3xl border border-pink-100 bg-white/90 p-8 shadow-xl">
                 <p className="text-sm font-bold uppercase tracking-wide text-pink-600">
@@ -162,7 +232,9 @@ export default function BrandCampaignLivePage() {
                         WebkitTextFillColor: "#ffffff",
                       }}
                     >
-                      Generating AR
+                      {retrying || publicationStatus === "publishing"
+                        ? "Publishing AR"
+                        : "Publication Paused"}
                     </span>
                   )}
 
@@ -183,10 +255,9 @@ export default function BrandCampaignLivePage() {
                 </p>
 
                 <div className="mt-6 overflow-hidden rounded-2xl border bg-slate-100">
-                  {(campaign as any).arTargetImageUrl ||
-                  (campaign as any).arTargetImagePath ? (
+                  {targetImageUrl ? (
                     <img
-                      src={`/api/brand/target-image/${campaignId}`}
+                      src={targetImageUrl}
                       alt="AR target product"
                       className="h-96 w-full object-contain"
                     />
@@ -202,6 +273,50 @@ export default function BrandCampaignLivePage() {
 
                   <p className="mt-2 text-sm text-slate-600">{statusBody}</p>
                 </div>
+
+                {needsAssistance && (
+                  <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+                    <h4 className="font-bold text-slate-950">Resume the preserved publication</h4>
+                    <p className="mt-2 text-sm text-slate-700">
+                      Your campaign, video, and product image were safely preserved. Reaffirm the
+                      content rights below before retrying the same activation.
+                    </p>
+                    <label className="mt-4 block text-sm font-semibold text-slate-800">
+                      Content rights basis
+                      <select
+                        value={rightsBasis}
+                        onChange={(event) => setRightsBasis(event.target.value as "brand_owned" | "brand_licensed")}
+                        className="mt-2 block w-full rounded-xl border border-slate-300 bg-white px-4 py-3"
+                      >
+                        <option value="brand_owned">Brand-owned content</option>
+                        <option value="brand_licensed">Content licensed to the Brand</option>
+                      </select>
+                    </label>
+                    <label className="mt-4 flex gap-3 text-sm text-slate-700">
+                      <input type="checkbox" checked={contentRightsConfirmed}
+                        onChange={(event) => setContentRightsConfirmed(event.target.checked)} />
+                      <span>I confirm the Brand owns or has sufficient rights to use and publish this content.</span>
+                    </label>
+                    <label className="mt-3 flex gap-3 text-sm text-slate-700">
+                      <input type="checkbox" checked={audioRightsConfirmed}
+                        onChange={(event) => setAudioRightsConfirmed(event.target.checked)} />
+                      <span>I confirm the Brand has sufficient rights to the audio in this video.</span>
+                    </label>
+                    <label className="mt-3 flex gap-3 text-sm text-slate-700">
+                      <input type="checkbox" checked={appearanceRightsConfirmed}
+                        onChange={(event) => setAppearanceRightsConfirmed(event.target.checked)} />
+                      <span>I confirm appearance rights for every person shown in this video.</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={retryPublication}
+                      disabled={retrying || !contentRightsConfirmed || !audioRightsConfirmed || !appearanceRightsConfirmed}
+                      className="mt-5 w-full rounded-xl bg-slate-950 px-5 py-3 font-bold text-white disabled:opacity-50"
+                    >
+                      {retrying ? "Retrying Publication…" : "Retry Publication"}
+                    </button>
+                  </div>
+                )}
               </section>
             </div>
           )}

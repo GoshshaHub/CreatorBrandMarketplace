@@ -1,8 +1,16 @@
 import { NextResponse } from "next/server";
-import { adminDb, adminStorage } from "../../../../../lib/firebase-admin";
+import { adminAuth, adminDb, adminStorage } from "../../../../../lib/firebase-admin";
+import { firstFreeIds } from "../../../../../lib/retail-media/create-first-free-activation";
+
+function bearerToken(request: Request): string {
+  const authorization = request.headers.get("authorization") || "";
+  return authorization.startsWith("Bearer ")
+    ? authorization.slice("Bearer ".length).trim()
+    : "";
+}
 
 export async function GET(
-  _req: Request,
+  request: Request,
   context: { params: Promise<{ campaignId: string }> }
 ) {
   try {
@@ -12,6 +20,11 @@ export async function GET(
       return NextResponse.json({ error: "Missing campaignId." }, { status: 400 });
     }
 
+    const token = bearerToken(request);
+    if (!token) {
+      return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+    }
+    const decoded = await adminAuth.verifyIdToken(token);
     const campaignSnap = await adminDb.collection("campaigns").doc(campaignId).get();
 
     if (!campaignSnap.exists) {
@@ -19,16 +32,42 @@ export async function GET(
     }
 
     const campaign = campaignSnap.data() as any;
-    const arTargetImagePath = campaign.arTargetImagePath;
+    if (String(campaign.brandId || "").trim() !== decoded.uid) {
+      return NextResponse.json({ error: "Brand authorization required." }, { status: 403 });
+    }
+    let arTargetImagePath = String(campaign.arTargetImagePath || "").trim();
+    const bucket = adminStorage.bucket();
 
     if (!arTargetImagePath) {
-      return NextResponse.json(
-        { error: "No target image path found for this campaign." },
-        { status: 404 }
+      const ids = firstFreeIds(decoded.uid);
+      const eligibleRecovery =
+        campaignId === ids.campaignId &&
+        campaign.campaignType === "brand_first_irl_preview" &&
+        campaign.recoveryRequired === true &&
+        String(campaign.retailAssetId || "").trim() === ids.retailAssetId;
+      if (!eligibleRecovery) {
+        return NextResponse.json(
+          { error: "No target image path found for this campaign." },
+          { status: 404 }
+        );
+      }
+      const candidates = await Promise.all(
+        ["jpg", "png", "webp", "heic", "heif"].map(async (extension) => {
+          const path = `retail-media-targets/${decoded.uid}/${ids.retailAssetId}/target.${extension}`;
+          const [exists] = await bucket.file(path).exists();
+          return exists ? path : "";
+        })
       );
+      const existing = candidates.filter(Boolean);
+      if (existing.length !== 1) {
+        return NextResponse.json(
+          { error: "The preserved target image could not be resolved safely." },
+          { status: 404 }
+        );
+      }
+      arTargetImagePath = existing[0];
     }
 
-    const bucket = adminStorage.bucket();
     const file = bucket.file(arTargetImagePath);
 
     const [exists] = await file.exists();
@@ -37,12 +76,15 @@ export async function GET(
       return NextResponse.json({ error: "Target image file not found." }, { status: 404 });
     }
 
-  const [buffer] = await file.download();
+  const [[buffer], [metadata]] = await Promise.all([
+    file.download(),
+    file.getMetadata(),
+  ]);
 
   return new NextResponse(new Uint8Array(buffer), {
     status: 200,
     headers: {
-      "Content-Type": "image/jpeg",
+      "Content-Type": metadata.contentType || "application/octet-stream",
       "Cache-Control": "public, max-age=3600",
     },
   });

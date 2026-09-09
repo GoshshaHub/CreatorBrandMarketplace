@@ -643,7 +643,9 @@ export default function BrandDashboardPage() {
                         >
                           {campaign.campaignType === "brand_first_irl_preview" ||
                           campaign.isFirstFreeIRLLaunch
-                            ? "View IRL Experience"
+                            ? campaign.recoveryRequired
+                              ? "Resume Publication"
+                              : "View IRL Experience"
                             : "View Campaign Details"}
                         </Link>
 

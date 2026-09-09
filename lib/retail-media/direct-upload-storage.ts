@@ -99,3 +99,30 @@ export async function promoteRetailMediaStagedUpload(params: {
     storagePath: params.destinationPath,
   };
 }
+
+export async function readRetailMediaStoredUpload(params: {
+  storagePath: string;
+}): Promise<VerifiedRetailMediaUpload & { url: string }> {
+  const bucket = adminStorage.bucket();
+  const file = bucket.file(params.storagePath);
+  const [exists] = await file.exists();
+  if (!exists) {
+    throw new Error("The preserved Retail Media upload could not be found.");
+  }
+
+  const [metadata] = await file.getMetadata();
+  const token = clean(metadata.metadata?.firebaseStorageDownloadTokens);
+  const originalName = clean(metadata.metadata?.originalFileName);
+  const sizeBytes = Number(metadata.size || 0);
+  if (!token || !originalName || !Number.isFinite(sizeBytes) || sizeBytes <= 0) {
+    throw new Error("The preserved Retail Media upload metadata is incomplete.");
+  }
+
+  return {
+    storagePath: params.storagePath,
+    originalName,
+    contentType: clean(metadata.contentType),
+    sizeBytes,
+    url: downloadUrl(bucket.name, params.storagePath, token),
+  };
+}

@@ -4,6 +4,7 @@ import { adminAuth, adminDb } from "../../../../lib/firebase-admin";
 import {
   createAndPublishFirstFreeActivation,
   firstFreeIds,
+  resumeFirstFreeActivation,
   verifyFirstFreeScanReady,
 } from "../../../../lib/retail-media/create-first-free-activation";
 
@@ -74,6 +75,18 @@ export async function POST(request: Request) {
   try {
     const identity = await authenticatedBrand(request);
     const body = await request.json();
+    if (body.action === "retry") {
+      const campaignId = String(body.campaignId || "");
+      const result = await resumeFirstFreeActivation({
+        brandId: identity.uid,
+        campaignId,
+        rightsBasis: body.rightsBasis,
+        contentRightsConfirmed: body.contentRightsConfirmed === true,
+        audioRightsConfirmed: body.audioRightsConfirmed === true,
+        appearanceRightsConfirmed: body.appearanceRightsConfirmed === true,
+      });
+      return NextResponse.json({ ok: true, campaignId, ...result });
+    }
     const result = await createAndPublishFirstFreeActivation({
       brandId: identity.uid,
       brandName: String(body.brandName || identity.brand.brandName || identity.user.displayName || ""),
