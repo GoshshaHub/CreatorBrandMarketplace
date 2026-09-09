@@ -14,6 +14,17 @@ import {
   adminDb,
   adminStorage,
 } from "../../../../../lib/firebase-admin";
+import {
+  identityTokensV5,
+  ProductIdentityAmbiguousError,
+  resolveProductIdentityV5,
+  writeProductIdentityV5,
+  type ProductIdentityV5Resolution,
+} from "../../../../../lib/retail-media/product-identity-v5";
+import {
+  extractTargetImageOcr,
+  MAX_VISION_IMAGE_BYTES,
+} from "../../../../../lib/retail-media/target-image-ocr";
 
 /*
  * =========================================================
@@ -65,97 +76,19 @@ const ALLOWED_TARGET_IMAGE_TYPES =
     "image/heif",
   ]);
 
-const PRODUCT_IDENTITY_VERSION =
-  5;
+const VISION_TARGET_IMAGE_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+]);
 
 const PRODUCT_2_SCHEMA_VERSION =
   1;
-
-const STOPWORDS =
-  new Set([
-    "the",
-    "and",
-    "for",
-    "with",
-    "a",
-    "an",
-    "or",
-    "of",
-    "to",
-    "in",
-    "on",
-    "at",
-    "by",
-    "is",
-    "it",
-    "new",
-    "reviews",
-    "review",
-    "net",
-    "no",
-    "number",
-    "ml",
-    "oz",
-    "fl",
-    "floz",
-    "g",
-    "kg",
-    "lb",
-    "lbs",
-  ]);
-
-const OCR_FIXES:
-  Record<string, string> = {
-  shampoc:
-    "shampoo",
-
-  shamp00:
-    "shampoo",
-
-  shamppo:
-    "shampoo",
-
-  conditoner:
-    "conditioner",
-
-  condtioner:
-    "conditioner",
-
-  frize:
-    "frizz",
-};
 
 type ContentOwnershipType =
   | "brand_owned"
   | "external_creator";
 
-type ProductResolutionResult = {
-  collectionId: string;
-
-  masterId: string;
-
-  canonicalName: string;
-  canonicalSlug: string;
-
-  aliasId: string;
-
-  rawOcr: string;
-  normalizedOcr: string;
-
-  tokens: string[];
-
-  brandTokens: string[];
-
-  resolution:
-    | "exact_alias"
-    | "existing_collection"
-    | "created_collection";
-
-  collectionExisted: boolean;
-  aliasExisted: boolean;
-
-  matcherVersion: string;
-};
 
 function getBearerToken(
   request: Request
@@ -188,6 +121,16 @@ function cleanString(
     : "";
 }
 
+function shortHash(
+  value: string,
+  length = 12
+): string {
+  return createHash("sha256")
+    .update(value)
+    .digest("hex")
+    .slice(0, length);
+}
+
 function cleanRequiredString(
   value: unknown,
   fieldName: string
@@ -202,27 +145,6 @@ function cleanRequiredString(
   }
 
   return cleaned;
-}
-
-function cleanOptionalNumber(
-  value: unknown
-): number | null {
-  if (
-    value === null ||
-    value === undefined ||
-    value === ""
-  ) {
-    return null;
-  }
-
-  const parsed =
-    Number(value);
-
-  return Number.isFinite(
-    parsed
-  )
-    ? parsed
-    : null;
 }
 
 function isValidHttpUrl(
@@ -261,786 +183,6 @@ function parseBoolean(
       .toLowerCase() ===
     "true"
   );
-}
-
-function normalizeIdentityText(
-  raw: string
-): string {
-  const cleaned =
-    raw
-      .normalize("NFD")
-      .replace(
-        /[\u0300-\u036f]/g,
-        ""
-      )
-      .toLowerCase()
-      .replace(
-        /[^a-z0-9 ]/g,
-        " "
-      )
-      .replace(
-        /\s+/g,
-        " "
-      )
-      .trim();
-
-  const seen =
-    new Set<string>();
-
-  return cleaned
-    .split(" ")
-    .map(
-      (token) =>
-        OCR_FIXES[token] ||
-        token
-    )
-    .filter(
-      (token) =>
-        token.length >= 2
-    )
-    .filter(
-      (token) =>
-        !STOPWORDS.has(
-          token
-        )
-    )
-    .filter((token) => {
-      if (
-        seen.has(token)
-      ) {
-        return false;
-      }
-
-      seen.add(token);
-
-      return true;
-    })
-    .join(" ");
-}
-
-function identityTokens(
-  raw: string,
-  limit = 32
-): string[] {
-  return normalizeIdentityText(
-    raw
-  )
-    .split(" ")
-    .filter(Boolean)
-    .slice(
-      0,
-      limit
-    );
-}
-
-function canonicalTokens(
-  raw: string
-): string[] {
-  return Array.from(
-    new Set(
-      identityTokens(raw)
-    )
-  ).sort();
-}
-
-function shortHash(
-  value: string,
-  length = 12
-): string {
-  return createHash(
-    "sha256"
-  )
-    .update(value)
-    .digest("hex")
-    .slice(
-      0,
-      length
-    );
-}
-
-function createAliasId(
-  raw: string
-): string {
-  const normalized =
-    normalizeIdentityText(
-      raw
-    );
-
-  const readable =
-    normalized
-      .split(" ")
-      .slice(
-        0,
-        12
-      )
-      .join("-")
-      .slice(
-        0,
-        72
-      )
-      .replace(
-        /^-+|-+$/g,
-        ""
-      );
-
-  const digest =
-    shortHash(
-      normalized,
-      12
-    );
-
-  return readable
-    ? `${readable}-${digest}`
-    : `alias-${digest}`;
-}
-
-function legacyMasterId(
-  storageCollection: string
-): string {
-  return (
-    "prd_legacy_" +
-    shortHash(
-      storageCollection
-        .toLowerCase(),
-      24
-    )
-  );
-}
-
-function newMasterId(): string {
-  return (
-    "prd_" +
-    randomUUID()
-      .replace(
-        /-/g,
-        ""
-      )
-      .toLowerCase()
-  );
-}
-
-function getBrandTokens(
-  brandName: string
-): string[] {
-  return identityTokens(
-    brandName,
-    8
-  );
-}
-
-function getLegacyAliasTokens(
-  aliasId: string
-): string[] {
-  return aliasId
-    .replace(
-      /-[a-f0-9]{12}$/i,
-      ""
-    )
-    .split("-")
-    .map(
-      (token) =>
-        token.trim()
-    )
-    .filter(
-      (token) =>
-        token.length >= 2
-    );
-}
-
-function calculateMatch(
-  scanTokens: string[],
-  aliasTokens: string[]
-): {
-  score: number;
-  matches: number;
-  coverage: number;
-  matched: string[];
-} {
-  const usedAliasIndexes =
-    new Set<number>();
-
-  const matched:
-    string[] = [];
-
-  let score = 0;
-  let matches = 0;
-
-  for (
-    const scanToken of
-    scanTokens
-  ) {
-    let bestIndex =
-      -1;
-
-    let bestValue =
-      0;
-
-    for (
-      let index = 0;
-      index <
-      aliasTokens.length;
-      index += 1
-    ) {
-      if (
-        usedAliasIndexes.has(
-          index
-        )
-      ) {
-        continue;
-      }
-
-      const aliasToken =
-        aliasTokens[index];
-
-      let value = 0;
-
-      if (
-        scanToken ===
-        aliasToken
-      ) {
-        value = 1;
-      } else if (
-        scanToken.length >= 5 &&
-        aliasToken.length >= 5 &&
-        (
-          scanToken.startsWith(
-            aliasToken
-          ) ||
-          aliasToken.startsWith(
-            scanToken
-          )
-        )
-      ) {
-        value = 0.65;
-      }
-
-      if (
-        value >
-        bestValue
-      ) {
-        bestValue =
-          value;
-
-        bestIndex =
-          index;
-      }
-    }
-
-    if (
-      bestIndex >= 0 &&
-      bestValue > 0
-    ) {
-      usedAliasIndexes.add(
-        bestIndex
-      );
-
-      score +=
-        bestValue;
-
-      matches +=
-        1;
-
-      matched.push(
-        scanToken
-      );
-    }
-  }
-
-  const coverage =
-    matches /
-    Math.max(
-      1,
-      new Set(
-        aliasTokens
-      ).size
-    );
-
-  return {
-    score,
-    matches,
-    coverage,
-    matched,
-  };
-}
-
-async function resolveProduct(
-  params: {
-    rawOcr: string;
-    brandName: string;
-    productName: string;
-  }
-): Promise<ProductResolutionResult> {
-  const {
-    rawOcr,
-    brandName,
-    productName,
-  } = params;
-
-  const normalizedOcr =
-    normalizeIdentityText(
-      rawOcr
-    );
-
-  const tokens =
-    identityTokens(
-      rawOcr
-    );
-
-  if (
-    tokens.length < 2
-  ) {
-    throw new Error(
-      "Enter at least two meaningful words visible on the product packaging."
-    );
-  }
-
-  const brandTokens =
-    getBrandTokens(
-      brandName
-    );
-
-  const scanSet =
-    new Set(
-      tokens
-    );
-
-  const brandSet =
-    new Set(
-      brandTokens
-    );
-
-  const aliasId =
-    createAliasId(
-      rawOcr
-    );
-
-  const aliasRef =
-    adminDb
-      .collection(
-        "aliases"
-      )
-      .doc(
-        aliasId
-      );
-
-  /*
-   * Exact alias fast path.
-   */
-  const exactAlias =
-    await aliasRef.get();
-
-  if (
-    exactAlias.exists
-  ) {
-    const alias =
-      exactAlias.data() as Record<
-        string,
-        any
-      >;
-
-    const collectionId =
-      cleanString(
-        alias.storage_collection ||
-        alias.canonical_collection
-      );
-
-    if (
-      collectionId
-    ) {
-      const masterId =
-        cleanString(
-          alias.master_id
-        ) ||
-        legacyMasterId(
-          collectionId
-        );
-
-      return {
-        collectionId,
-
-        masterId,
-
-        canonicalName:
-          productName ||
-          cleanString(
-            alias.canonical_name
-          ) ||
-          rawOcr,
-
-        canonicalSlug:
-          collectionId,
-
-        aliasId,
-
-        rawOcr,
-        normalizedOcr,
-
-        tokens,
-
-        brandTokens,
-
-        resolution:
-          "exact_alias",
-
-        collectionExisted:
-          true,
-
-        aliasExisted:
-          true,
-
-        matcherVersion:
-          `web-product-identity-v${PRODUCT_IDENTITY_VERSION}`,
-      };
-    }
-  }
-
-  /*
-   * Conservative existing-product resolution.
-   *
-   * Product 2 MUST NOT weaken the matching safeguards
-   * already used by the app.
-   */
-  const aliasesSnapshot =
-    await adminDb
-      .collection(
-        "aliases"
-      )
-      .get();
-
-  type Candidate = {
-    masterId: string;
-    collectionId: string;
-
-    score: number;
-    matches: number;
-    coverage: number;
-
-    distinguishingMatches:
-      number;
-  };
-
-  const bestByMaster =
-    new Map<
-      string,
-      Candidate
-    >();
-
-  for (
-    const aliasDocument of
-    aliasesSnapshot.docs
-  ) {
-    const alias =
-      aliasDocument.data() as Record<
-        string,
-        any
-      >;
-
-    const collectionId =
-      cleanString(
-        alias.storage_collection ||
-        alias.canonical_collection
-      );
-
-    if (
-      !collectionId
-    ) {
-      continue;
-    }
-
-    const masterId =
-      cleanString(
-        alias.master_id
-      ) ||
-      legacyMasterId(
-        collectionId
-      );
-
-    const storedTokens =
-      Array.isArray(
-        alias.identity_tokens
-      ) &&
-      alias.identity_tokens
-        .length > 0
-        ? alias.identity_tokens
-            .map(cleanString)
-            .filter(Boolean)
-        : getLegacyAliasTokens(
-            aliasDocument.id
-          );
-
-    if (
-      storedTokens.length <
-      3
-    ) {
-      continue;
-    }
-
-    const storedBrandTokens =
-      Array.isArray(
-        alias.brand_tokens
-      )
-        ? alias.brand_tokens
-            .map(cleanString)
-            .filter(Boolean)
-        : [];
-
-    const storedBrandSet =
-      new Set(
-        storedBrandTokens
-      );
-
-    /*
-     * When both records have explicit Brand evidence,
-     * the Brand must agree.
-     */
-    if (
-      brandSet.size > 0 &&
-      storedBrandSet.size >
-        0 &&
-      !Array.from(
-        brandSet
-      ).some(
-        (token) =>
-          storedBrandSet.has(
-            token
-          )
-      )
-    ) {
-      continue;
-    }
-
-    /*
-     * Existing Brand metadata must also be visible in
-     * the current OCR.
-     */
-    if (
-      storedBrandSet.size >
-        0 &&
-      !Array.from(
-        storedBrandSet
-      ).some(
-        (token) =>
-          scanSet.has(
-            token
-          )
-      )
-    ) {
-      continue;
-    }
-
-    const match =
-      calculateMatch(
-        tokens,
-        storedTokens
-      );
-
-    if (
-      match.matches <= 0
-    ) {
-      continue;
-    }
-
-    const brandEvidence =
-      storedBrandSet.size >
-      0
-        ? storedBrandSet
-        : brandSet;
-
-    const distinguishingMatches =
-      new Set(
-        match.matched.filter(
-          (token) =>
-            !brandEvidence.has(
-              token
-            )
-        )
-      ).size;
-
-    const finalScore =
-      match.score +
-      match.coverage *
-        2 +
-      distinguishingMatches *
-        0.15;
-
-    const candidate: Candidate =
-      {
-        masterId,
-        collectionId,
-
-        score:
-          finalScore,
-
-        matches:
-          match.matches,
-
-        coverage:
-          match.coverage,
-
-        distinguishingMatches,
-      };
-
-    const currentBest =
-      bestByMaster.get(
-        masterId
-      );
-
-    if (
-      !currentBest ||
-      candidate.score >
-        currentBest.score
-    ) {
-      bestByMaster.set(
-        masterId,
-        candidate
-      );
-    }
-  }
-
-  const ranked =
-    Array.from(
-      bestByMaster.values()
-    ).sort(
-      (
-        first,
-        second
-      ) => {
-        if (
-          Math.abs(
-            second.score -
-              first.score
-          ) >
-          0.001
-        ) {
-          return (
-            second.score -
-            first.score
-          );
-        }
-
-        if (
-          first.matches !==
-          second.matches
-        ) {
-          return (
-            second.matches -
-            first.matches
-          );
-        }
-
-        return (
-          second.coverage -
-          first.coverage
-        );
-      }
-    );
-
-  const best =
-    ranked[0];
-
-  const runnerUp =
-    ranked[1];
-
-  if (best) {
-    const margin =
-      runnerUp
-        ? best.score -
-          runnerUp.score
-        : Number
-            .POSITIVE_INFINITY;
-
-    const accepted =
-      best.matches >= 5 &&
-      best.coverage >=
-        0.6 &&
-      best
-        .distinguishingMatches >=
-        3 &&
-      margin >=
-        1.25;
-
-    if (accepted) {
-      return {
-        collectionId:
-          best.collectionId,
-
-        masterId:
-          best.masterId,
-
-        canonicalName:
-          productName ||
-          rawOcr,
-
-        canonicalSlug:
-          best.collectionId,
-
-        aliasId,
-
-        rawOcr,
-        normalizedOcr,
-
-        tokens,
-
-        brandTokens,
-
-        resolution:
-          "existing_collection",
-
-        collectionExisted:
-          true,
-
-        aliasExisted:
-          false,
-
-        matcherVersion:
-          `web-product-identity-v${PRODUCT_IDENTITY_VERSION}`,
-      };
-    }
-  }
-
-  /*
-   * New product.
-   *
-   * The permanent product ID is intentionally independent
-   * of OCR wording.
-   */
-  const masterId =
-    newMasterId();
-
-  return {
-    collectionId:
-      masterId,
-
-    masterId,
-
-    canonicalName:
-      productName ||
-      rawOcr,
-
-    canonicalSlug:
-      masterId,
-
-    aliasId,
-
-    rawOcr,
-    normalizedOcr,
-
-    tokens,
-
-    brandTokens,
-
-    resolution:
-      "created_collection",
-
-    collectionExisted:
-      false,
-
-    aliasExisted:
-      false,
-
-    matcherVersion:
-      `web-product-identity-v${PRODUCT_IDENTITY_VERSION}`,
-  };
 }
 
 function getTargetExtension(
@@ -1575,19 +717,18 @@ export async function POST(
       );
     }
 
-    const rawOcr =
-      cleanRequiredString(
-      getInput(
-        "rawOcr"
-      ),
-        "Product packaging text"
-    );
+    const submittedCorrection =
+      cleanString(
+        getInput(
+          "rawOcr"
+        )
+      );
 
-    const recognitionConfidence =
-      cleanOptionalNumber(
-      getInput(
-        "recognitionConfidence"
-      )
+    const ocrCorrectionConfirmed =
+      parseBoolean(
+        getInput(
+          "ocrCorrectionConfirmed"
+        )
       );
 
     const contentOwnershipType =
@@ -1996,15 +1137,42 @@ export async function POST(
 
     if (
       targetSizeBytes >
-      MAX_TARGET_IMAGE_BYTES
+      MAX_VISION_IMAGE_BYTES
     ) {
       return NextResponse.json(
         {
           error:
-            "The target image must be 25 MB or smaller.",
+            "The product image must be 20 MB or smaller for packaging recognition.",
         },
         {
           status: 400,
+        }
+      );
+    }
+
+    if (!VISION_TARGET_IMAGE_TYPES.has(targetContentType)) {
+      return NextResponse.json({
+        error: "Convert HEIC/HEIF targets through Goshsha's supported image pipeline before packaging recognition.",
+      }, { status: 400 });
+    }
+
+    let temporaryOcrTargetPath = "";
+    if (!isJsonRequest && targetImage) {
+      temporaryOcrTargetPath =
+        `retail-media-direct-uploads/${brandUserId}/target/ocr-${randomUUID()}-${targetFileName.replace(/[^a-zA-Z0-9._-]/g, "-")}`;
+      stagedTargetPath = temporaryOcrTargetPath;
+      await adminStorage.bucket().file(temporaryOcrTargetPath).save(
+        Buffer.from(await targetImage.arrayBuffer()),
+        {
+          resumable: false,
+          validation: "crc32c",
+          metadata: {
+            contentType: targetContentType,
+            metadata: {
+              originalFileName: targetFileName,
+              uploadPurpose: "retail_media_direct_target_ocr",
+            },
+          },
         }
       );
     }
@@ -2015,12 +1183,95 @@ export async function POST(
      * =====================================================
      */
 
-    const productResolution =
-      await resolveProduct({
+    if (!stagedTargetPath) {
+      throw new Error(
+        "Automatic packaging recognition requires the authenticated staged-upload flow."
+      );
+    }
+
+    let targetOcr: Awaited<ReturnType<typeof extractTargetImageOcr>> | null = null;
+    let ocrError = "";
+    try {
+      targetOcr = await extractTargetImageOcr({
+        storagePath: stagedTargetPath,
+        brandUserId,
+      });
+    } catch (error: any) {
+      ocrError = cleanString(error?.message) || "Packaging recognition failed.";
+    }
+    if (temporaryOcrTargetPath) {
+      await deleteStorageObject(temporaryOcrTargetPath);
+    }
+
+    const automaticText = cleanString(targetOcr?.originalText);
+    const automaticTokens = identityTokensV5(automaticText);
+    const lowConfidence = targetOcr?.confidence !== null &&
+      targetOcr?.confidence !== undefined &&
+      targetOcr.confidence < 0.5;
+    const correctionRequired = Boolean(
+      ocrError ||
+      automaticTokens.length < 2 ||
+      lowConfidence
+    );
+
+    if (correctionRequired && (!ocrCorrectionConfirmed || !submittedCorrection)) {
+      return NextResponse.json({
+        error: ocrError ||
+          "We could not confidently identify enough packaging text. Review the extracted text and correct it before continuing.",
+        code: "OCR_CORRECTION_REQUIRED",
+        extractedText: automaticText,
+        confidence: targetOcr?.confidence ?? null,
+      }, { status: 422 });
+    }
+
+    const useConfirmedCorrection = ocrCorrectionConfirmed && Boolean(submittedCorrection);
+    const rawOcr = useConfirmedCorrection ? submittedCorrection : automaticText;
+    let productResolution: ProductIdentityV5Resolution;
+    try {
+      productResolution = await resolveProductIdentityV5({
         rawOcr,
         brandName,
         productName,
+        requireUnambiguousMatch: true,
       });
+    } catch (error) {
+      if (error instanceof ProductIdentityAmbiguousError) {
+        return NextResponse.json({
+          error: error.message,
+          code: "OCR_CORRECTION_REQUIRED",
+          extractedText: rawOcr,
+          confidence: targetOcr?.confidence ?? null,
+        }, { status: 422 });
+      }
+      throw error;
+    }
+
+    const ocrProvenance = {
+      source: "target_image_ocr",
+      extraction: {
+        originalText: automaticText,
+        provider: targetOcr?.provider || "google_cloud_vision",
+        version: targetOcr?.version || "document-text-detection-v1",
+        confidence: targetOcr?.confidence ?? null,
+        targetSha256: targetOcr?.targetSha256 || null,
+        extractedAt: targetOcr?.extractedAt || null,
+        error: ocrError || null,
+      },
+      correction: useConfirmedCorrection
+        ? {
+            correctedText: submittedCorrection,
+            confirmedByUserId: brandUserId,
+            confirmedAt: FieldValue.serverTimestamp(),
+            reason: !correctionRequired
+              ? "identity_ambiguity_or_confirmed_correction"
+              : ocrError
+              ? "ocr_failure"
+              : lowConfidence
+              ? "low_confidence"
+              : "insufficient_tokens",
+          }
+        : null,
+    };
 
     /*
      * =====================================================
@@ -2702,7 +1953,7 @@ export async function POST(
           productName,
 
           confidence:
-            recognitionConfidence,
+            targetOcr?.confidence ?? null,
 
           resolution:
             productResolution
@@ -2719,6 +1970,8 @@ export async function POST(
           matcherVersion:
             productResolution
               .matcherVersion,
+
+          ocrProvenance,
         },
 
         metrics: {
@@ -2825,185 +2078,11 @@ export async function POST(
       async (
         transaction
       ) => {
-        const productRef =
-          adminDb
-            .collection(
-              "products"
-            )
-            .doc(
-              productResolution
-                .masterId
-            );
-
-        const aliasRef =
-          adminDb
-            .collection(
-              "aliases"
-            )
-            .doc(
-              productResolution
-                .aliasId
-            );
-
-        const collectionMetaRef =
-          adminDb
-            .collection(
-              productResolution
-                .collectionId
-            )
-            .doc(
-              "_meta"
-            );
-
-        transaction.set(
-          productRef,
-          {
-            master_id:
-              productResolution
-                .masterId,
-
-            storage_collection:
-              productResolution
-                .collectionId,
-
-            canonical_name:
-              productResolution
-                .canonicalName,
-
-            normalized_ocr:
-              productResolution
-                .normalizedOcr,
-
-            identity_tokens:
-              productResolution
-                .tokens,
-
-            canonical_tokens:
-              canonicalTokens(
-                rawOcr
-              ),
-
-            canonical_fingerprint:
-              canonicalTokens(
-                rawOcr
-              ).join("|"),
-
-            brand_tokens:
-              productResolution
-                .brandTokens,
-
-            identity_version:
-              PRODUCT_IDENTITY_VERSION,
-
-            status:
-              "active",
-
-            updated_at:
-              FieldValue.serverTimestamp(),
-
-            created_at:
-              FieldValue.serverTimestamp(),
-          },
-          {
-            merge:
-              true,
-          }
-        );
-
-        /*
-         * Preserve canonical_collection because existing
-         * iOS readers still use this field.
-         */
-        transaction.set(
-          aliasRef,
-          {
-            master_id:
-              productResolution
-                .masterId,
-
-            canonical_collection:
-              productResolution
-                .collectionId,
-
-            storage_collection:
-              productResolution
-                .collectionId,
-
-            canonical_name:
-              productResolution
-                .canonicalName,
-
-            normalized_ocr:
-              productResolution
-                .normalizedOcr,
-
-            identity_tokens:
-              productResolution
-                .tokens,
-
-            canonical_tokens:
-              canonicalTokens(
-                rawOcr
-              ),
-
-            canonical_fingerprint:
-              canonicalTokens(
-                rawOcr
-              ).join("|"),
-
-            brand_tokens:
-              productResolution
-                .brandTokens,
-
-            token_count:
-              productResolution
-                .tokens.length,
-
-            identity_version:
-              PRODUCT_IDENTITY_VERSION,
-
-            updated_at:
-              FieldValue.serverTimestamp(),
-          },
-          {
-            merge:
-              true,
-          }
-        );
-
-        transaction.set(
-          collectionMetaRef,
-          {
-            master_id:
-              productResolution
-                .masterId,
-
-            storage_collection:
-              productResolution
-                .collectionId,
-
-            canonical_name:
-              productResolution
-                .canonicalName,
-
-            normalized_ocr:
-              productResolution
-                .normalizedOcr,
-
-            source:
-              "product_2_web",
-
-            updated_at:
-              FieldValue.serverTimestamp(),
-
-            created_at:
-              FieldValue.serverTimestamp(),
-          },
-          {
-            merge:
-              true,
-          }
-        );
+        writeProductIdentityV5({
+          transaction,
+          resolution: productResolution,
+          source: "product_2_web",
+        });
 
         transaction.create(
           retailAssetRef,

@@ -4,6 +4,8 @@ import { adminAuth, adminDb } from "../../../../lib/firebase-admin";
 import {
   createAndPublishFirstFreeActivation,
   firstFreeIds,
+  OcrCorrectionRequiredError,
+  repairFirstFreeProductIdentity,
   resumeFirstFreeActivation,
   verifyFirstFreeScanReady,
 } from "../../../../lib/retail-media/create-first-free-activation";
@@ -32,8 +34,34 @@ async function authenticatedBrand(request: Request) {
   return { uid: decoded.uid, brand: brandSnap.data() || {}, user: userSnap.data() || {} };
 }
 
+async function authenticatedActor(request: Request) {
+  const token = bearerToken(request);
+  if (!token) throw new Error("AUTHENTICATION_REQUIRED");
+  const decoded = await adminAuth.verifyIdToken(token);
+  const userSnap = await adminDb.collection("users").doc(decoded.uid).get();
+  const user = userSnap.exists ? userSnap.data() || {} : {};
+  const roles = Array.isArray(user.roles)
+    ? user.roles as string[]
+    : [];
+  const isAdmin = user.isAdmin === true || user.role === "admin" ||
+    roles.includes("admin") || decoded.admin === true || decoded.role === "admin";
+  const isBrand = user.role === "brand" || roles.includes("brand");
+  if (!isBrand && !isAdmin) {
+    throw new Error("BRAND_AUTHORIZATION_REQUIRED");
+  }
+  return { uid: decoded.uid, isAdmin };
+}
+
 function errorResponse(error: any) {
   const message = String(error?.message || "Unable to process the free IRL campaign.");
+  if (error instanceof OcrCorrectionRequiredError || error?.code === "OCR_CORRECTION_REQUIRED") {
+    return NextResponse.json({
+      error: message,
+      code: "OCR_CORRECTION_REQUIRED",
+      extractedText: String(error?.extractedText || ""),
+      confidence: Number.isFinite(error?.confidence) ? Number(error.confidence) : null,
+    }, { status: 422 });
+  }
   if (message === "AUTHENTICATION_REQUIRED") {
     return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   }
@@ -73,8 +101,24 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const identity = await authenticatedBrand(request);
     const body = await request.json();
+    if (body.action === "repair_product_identity") {
+      const actor = await authenticatedActor(request);
+      const isAdmin = actor.isAdmin;
+      const brandId = isAdmin ? String(body.brandId || "") : actor.uid;
+      if (!brandId) throw new Error("Brand authorization required.");
+      const campaignId = String(body.campaignId || "");
+      const result = await repairFirstFreeProductIdentity({
+        brandId,
+        campaignId,
+        requestedByUserId: actor.uid,
+        requestedByRole: isAdmin ? "admin" : "brand",
+        correctedOcrText: String(body.correctedOcrText || ""),
+        ocrCorrectionConfirmed: body.ocrCorrectionConfirmed === true,
+      });
+      return NextResponse.json({ ok: true, campaignId, ...result });
+    }
+    const identity = await authenticatedBrand(request);
     if (body.action === "retry") {
       const campaignId = String(body.campaignId || "");
       const result = await resumeFirstFreeActivation({
@@ -84,6 +128,8 @@ export async function POST(request: Request) {
         contentRightsConfirmed: body.contentRightsConfirmed === true,
         audioRightsConfirmed: body.audioRightsConfirmed === true,
         appearanceRightsConfirmed: body.appearanceRightsConfirmed === true,
+        correctedOcrText: String(body.correctedOcrText || ""),
+        ocrCorrectionConfirmed: body.ocrCorrectionConfirmed === true,
       });
       return NextResponse.json({ ok: true, campaignId, ...result });
     }
@@ -99,6 +145,8 @@ export async function POST(request: Request) {
       contentRightsConfirmed: body.contentRightsConfirmed === true,
       audioRightsConfirmed: body.audioRightsConfirmed === true,
       appearanceRightsConfirmed: body.appearanceRightsConfirmed === true,
+      correctedOcrText: String(body.correctedOcrText || ""),
+      ocrCorrectionConfirmed: body.ocrCorrectionConfirmed === true,
     });
     return NextResponse.json({
       ok: true,

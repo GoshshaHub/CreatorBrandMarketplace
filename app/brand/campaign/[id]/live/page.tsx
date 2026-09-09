@@ -22,6 +22,10 @@ export default function BrandCampaignLivePage() {
   const [contentRightsConfirmed, setContentRightsConfirmed] = useState(false);
   const [audioRightsConfirmed, setAudioRightsConfirmed] = useState(false);
   const [appearanceRightsConfirmed, setAppearanceRightsConfirmed] = useState(false);
+  const [identityRepairRequired, setIdentityRepairRequired] = useState(false);
+  const [repairingIdentity, setRepairingIdentity] = useState(false);
+  const [ocrCorrectionRequired, setOcrCorrectionRequired] = useState(false);
+  const [correctedOcrText, setCorrectedOcrText] = useState("");
 
   useEffect(() => {
     async function load() {
@@ -40,6 +44,7 @@ export default function BrandCampaignLivePage() {
         if (!response.ok) throw new Error(status.error || "Unable to verify publication.");
         setVerifiedScanReady(status.scanReady === true);
         setPublicationStatus(String(status.status || "preparing"));
+        setIdentityRepairRequired(status.productIdentityRepairRequired === true);
       } catch (err: any) {
         setError(err?.message || "Failed to load campaign.");
       } finally {
@@ -114,6 +119,46 @@ export default function BrandCampaignLivePage() {
     }
   }
 
+  async function repairProductIdentity() {
+    if (ocrCorrectionRequired && !correctedOcrText.trim()) return;
+    setRepairingIdentity(true);
+    setError("");
+    try {
+      await auth.authStateReady();
+      const user = auth.currentUser;
+      if (!user) throw new Error("Please log in again.");
+      const token = await user.getIdToken(true);
+      const response = await fetch("/api/brand/launch-first-campaign", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          action: "repair_product_identity",
+          campaignId,
+          correctedOcrText: correctedOcrText.trim(),
+          ocrCorrectionConfirmed: ocrCorrectionRequired,
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        if (result.code === "OCR_CORRECTION_REQUIRED") {
+          setCorrectedOcrText(String(result.extractedText || ""));
+          setOcrCorrectionRequired(true);
+        }
+        throw new Error(result.error || "Unable to repair product recognition.");
+      }
+      setIdentityRepairRequired(false);
+      setOcrCorrectionRequired(false);
+      setVerifiedScanReady(result.scanReady === true);
+    } catch (err: any) {
+      setError(err?.message || "Unable to repair product recognition.");
+    } finally {
+      setRepairingIdentity(false);
+    }
+  }
+
   const isArLive = useMemo(() => verifiedScanReady, [verifiedScanReady]);
   const needsAssistance = publicationStatus === "publish_failed" ||
     publicationStatus === "recovery_required";
@@ -171,6 +216,33 @@ export default function BrandCampaignLivePage() {
                 </h1>
 
                 <p className="mt-4 text-lg text-slate-600">{body}</p>
+
+                {isArLive && identityRepairRequired && (
+                  <div className="mt-6 rounded-2xl border border-amber-300 bg-amber-50 p-5">
+                    <h2 className="font-bold">Product recognition update available</h2>
+                    <p className="mt-2 text-sm text-slate-700">
+                      Goshsha can read this existing target image and connect it to the current product-identity system without restarting the activation.
+                    </p>
+                    {ocrCorrectionRequired && (
+                      <label className="mt-4 block text-sm font-semibold">
+                        Review product packaging text
+                        <textarea
+                          value={correctedOcrText}
+                          onChange={(event) => setCorrectedOcrText(event.target.value)}
+                          className="mt-2 min-h-28 w-full rounded-xl border border-slate-300 bg-white px-4 py-3"
+                        />
+                      </label>
+                    )}
+                    <button
+                      type="button"
+                      onClick={repairProductIdentity}
+                      disabled={repairingIdentity || (ocrCorrectionRequired && !correctedOcrText.trim())}
+                      className="mt-4 rounded-xl bg-slate-950 px-5 py-3 font-bold text-white disabled:opacity-60"
+                    >
+                      {repairingIdentity ? "Reading product packaging..." : "Update Product Recognition"}
+                    </button>
+                  </div>
+                )}
 
                 <div className="mt-8 rounded-2xl bg-slate-950 p-5 text-white">
                   <p className="text-sm uppercase tracking-wide text-pink-300">

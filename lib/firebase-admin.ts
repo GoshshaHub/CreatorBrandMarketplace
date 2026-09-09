@@ -108,6 +108,20 @@ function getFirebaseAdminApp() {
 const adminApp =
   getFirebaseAdminApp();
 
+export async function getGoogleCloudAccessToken(): Promise<string> {
+  const credential = adminApp.options.credential;
+  if (!credential) {
+    throw new Error("Google Cloud credentials are unavailable.");
+  }
+
+  const token = await credential.getAccessToken();
+  if (!token.access_token) {
+    throw new Error("Unable to authenticate with Google Cloud.");
+  }
+
+  return token.access_token;
+}
+
 export const adminDb =
   getFirestore(adminApp);
 

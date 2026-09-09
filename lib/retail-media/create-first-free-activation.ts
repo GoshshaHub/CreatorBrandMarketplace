@@ -9,19 +9,38 @@ import {
   type VerifiedRetailMediaUpload,
 } from "./direct-upload-storage";
 import { publishRetailAsset } from "./publish-retail-asset";
-import { resolveProductCollection } from "./product-resolution";
+import {
+  bindExistingProductIdentityV5,
+  resolveProductIdentityV5,
+  writeProductIdentityV5,
+  type ProductIdentityV5Resolution,
+} from "./product-identity-v5";
+import {
+  extractTargetImageOcr,
+  MAX_VISION_IMAGE_BYTES,
+  type TargetImageOcrResult,
+} from "./target-image-ocr";
 
 export const FIRST_FREE_ACTIVATION_DAYS = 30;
 export const FIRST_FREE_INCLUDED_QUALIFIED_VIEWS = 250;
 const MAX_MEDIA_BYTES = 250 * 1024 * 1024;
-const MAX_TARGET_BYTES = 25 * 1024 * 1024;
 const TARGET_TYPES = new Set([
   "image/jpeg",
   "image/png",
   "image/webp",
-  "image/heic",
-  "image/heif",
 ]);
+
+export class OcrCorrectionRequiredError extends Error {
+  code = "OCR_CORRECTION_REQUIRED";
+  extractedText: string;
+  confidence: number | null;
+
+  constructor(message: string, extractedText = "", confidence: number | null = null) {
+    super(message);
+    this.extractedText = extractedText;
+    this.confidence = confidence;
+  }
+}
 
 export type FirstFreeRightsBasis = "brand_owned" | "brand_licensed";
 
@@ -54,6 +73,107 @@ function targetExtension(contentType: string): string {
   if (contentType === "image/heic") return "heic";
   if (contentType === "image/heif") return "heif";
   return "bin";
+}
+
+async function authoritativeFirstFreeIdentity(params: {
+  brandId: string;
+  brandName: string;
+  productName: string;
+  targetStoragePath: string;
+  allowPermanentTarget?: boolean;
+  correctedText?: string;
+  correctionConfirmed?: boolean;
+  correctionConfirmedByUserId?: string;
+}) {
+  let extraction: TargetImageOcrResult | null = null;
+  let extractionError = "";
+  try {
+    extraction = await extractTargetImageOcr({
+      storagePath: params.targetStoragePath,
+      brandUserId: params.brandId,
+      allowPermanentFirstFreeTarget: params.allowPermanentTarget,
+    });
+  } catch (error: any) {
+    extractionError = clean(error?.message) || "Packaging recognition failed.";
+  }
+
+  const originalText = clean(extraction?.originalText);
+  const lowConfidence = extraction?.confidence !== null &&
+    extraction?.confidence !== undefined &&
+    extraction.confidence < 0.5;
+  let automaticUsable = !extractionError && !lowConfidence;
+  if (automaticUsable) {
+    try {
+      if (originalText.split(/\s+/).filter(Boolean).length < 2) automaticUsable = false;
+    } catch {
+      automaticUsable = false;
+    }
+  }
+
+  const correctedText = clean(params.correctedText);
+  if (!automaticUsable && (!params.correctionConfirmed || !correctedText)) {
+    throw new OcrCorrectionRequiredError(
+      extractionError || "We could not confidently identify enough packaging text. Review and correct the extracted text before continuing.",
+      originalText,
+      extraction?.confidence ?? null
+    );
+  }
+
+  const useConfirmedCorrection = params.correctionConfirmed === true && Boolean(correctedText);
+  const effectiveText = useConfirmedCorrection ? correctedText : originalText;
+  let resolution: ProductIdentityV5Resolution;
+  try {
+    resolution = await resolveProductIdentityV5({
+      rawOcr: effectiveText,
+      brandName: params.brandName,
+      productName: params.productName,
+      requireUnambiguousMatch: true,
+    });
+  } catch (error: any) {
+    if (
+      clean(error?.message).includes("two meaningful words") ||
+      error?.code === "PRODUCT_IDENTITY_AMBIGUOUS"
+    ) {
+      throw new OcrCorrectionRequiredError(
+        error?.code === "PRODUCT_IDENTITY_AMBIGUOUS"
+          ? "Packaging text matched more than one possible product identity. Review and correct it before continuing."
+          : "We could not identify enough meaningful packaging text. Review and correct it before continuing.",
+        effectiveText,
+        extraction?.confidence ?? null
+      );
+    }
+    throw error;
+  }
+
+  return {
+    resolution,
+    ocrProvenance: {
+      source: "target_image_ocr",
+      extraction: {
+        originalText,
+        provider: extraction?.provider || "google_cloud_vision",
+        version: extraction?.version || "document-text-detection-v1",
+        confidence: extraction?.confidence ?? null,
+        targetSha256: extraction?.targetSha256 || null,
+        extractedAt: extraction?.extractedAt || null,
+        error: extractionError || null,
+      },
+      correction: useConfirmedCorrection
+        ? {
+            correctedText,
+            confirmedByUserId: params.correctionConfirmedByUserId || params.brandId,
+            confirmedAt: FieldValue.serverTimestamp(),
+            reason: automaticUsable
+              ? "identity_ambiguity_or_confirmed_correction"
+              : extractionError
+              ? "ocr_failure"
+              : lowConfidence
+              ? "low_confidence"
+              : "insufficient_tokens",
+          }
+        : null,
+    },
+  };
 }
 
 export async function verifyFirstFreeScanReady(params: {
@@ -119,6 +239,10 @@ export async function verifyFirstFreeScanReady(params: {
     activationEndsAt: asset?.activation?.endsAt || null,
     includedQualifiedViews:
       Number(asset?.monetization?.includedQualifiedViews || 0) || null,
+    productIdentityMatcherVersion: clean(asset?.recognition?.matcherVersion) || null,
+    productIdentityRepairRequired: Boolean(
+      asset && clean(asset?.recognition?.matcherVersion) !== "web-product-identity-v5"
+    ),
   };
 }
 
@@ -131,13 +255,8 @@ type FirstFreePublicationInput = {
   rightsBasis: FirstFreeRightsBasis;
   media: VerifiedRetailMediaUpload & { url: string };
   target: VerifiedRetailMediaUpload & { url: string };
-  collectionId: string;
-  rawOcr: string;
-  normalizedOcr: string;
-  canonicalName: string;
-  canonicalSlug: string;
-  tokens: string[];
-  matcherVersion: string;
+  productResolution: ProductIdentityV5Resolution;
+  ocrProvenance: Record<string, any>;
 };
 
 async function completeFirstFreePublication(input: FirstFreePublicationInput) {
@@ -145,23 +264,24 @@ async function completeFirstFreePublication(input: FirstFreePublicationInput) {
   const brandRef = adminDb.collection("brands").doc(input.brandId);
   const campaignRef = adminDb.collection("campaigns").doc(ids.campaignId);
   const assetRef = adminDb.collection("retailAssets").doc(ids.retailAssetId);
+  const resolution = input.productResolution;
   const base = createCampaignRetailAssetDefaults({
     retailAssetId: ids.retailAssetId,
-    collectionId: input.collectionId,
+    collectionId: resolution.collectionId,
     entryId: ids.entryId,
     campaignId: ids.campaignId,
     creatorId: input.brandId,
     brandId: input.brandId,
     sourceProduct: "retail_media",
-    rawOcr: input.rawOcr,
-    normalizedOcr: input.normalizedOcr,
-    canonicalName: input.canonicalName,
-    canonicalSlug: input.canonicalSlug,
+    rawOcr: resolution.rawOcr,
+    normalizedOcr: resolution.normalizedOcr,
+    canonicalName: resolution.canonicalName,
+    canonicalSlug: resolution.canonicalSlug,
     detectedBrand: input.brandName,
     detectedProductNoun: input.productName,
-    recognitionTokens: input.tokens,
-    recognitionSource: "manual",
-    matcherVersion: input.matcherVersion,
+    recognitionTokens: resolution.tokens,
+    recognitionSource: "web_ocr",
+    matcherVersion: resolution.matcherVersion,
     createdBy: input.brandId,
     createdByRole: "brand",
     createdFrom: "web",
@@ -250,6 +370,16 @@ async function completeFirstFreePublication(input: FirstFreePublicationInput) {
       ...base.audit,
       sourceProduct: "first_free_irl",
     },
+    recognition: {
+      ...base.recognition,
+      masterId: resolution.masterId,
+      aliasId: resolution.aliasId,
+      brandTokens: resolution.brandTokens,
+      resolution: resolution.resolution,
+      collectionExisted: resolution.collectionExisted,
+      aliasExisted: resolution.aliasExisted,
+      ocrProvenance: input.ocrProvenance,
+    },
   };
 
   await adminDb.runTransaction(async (transaction) => {
@@ -259,11 +389,18 @@ async function completeFirstFreePublication(input: FirstFreePublicationInput) {
         throw new Error("RETAIL_ASSET_OWNERSHIP_CONFLICT");
       }
     } else {
+      writeProductIdentityV5({
+        transaction,
+        resolution,
+        source: "first_free_irl_web",
+      });
       transaction.create(assetRef, asset);
     }
     transaction.set(campaignRef, {
       retailAssetId: ids.retailAssetId,
-      productCollectionId: input.collectionId,
+      productCollectionId: resolution.collectionId,
+      productMasterId: resolution.masterId,
+      productIdentityAliasId: resolution.aliasId,
       arEntryId: ids.entryId,
       arTargetImageUrl: input.target.url,
       arTargetImagePath: input.target.storagePath,
@@ -324,6 +461,8 @@ export async function createAndPublishFirstFreeActivation(params: {
   contentRightsConfirmed: boolean;
   audioRightsConfirmed: boolean;
   appearanceRightsConfirmed: boolean;
+  correctedOcrText?: string;
+  ocrCorrectionConfirmed?: boolean;
 }) {
   const brandName = clean(params.brandName);
   const productName = clean(params.productName);
@@ -358,9 +497,18 @@ export async function createAndPublishFirstFreeActivation(params: {
   ) {
     throw new Error("The free IRL campaign requires one MP4 video no larger than 250 MB.");
   }
-  if (!TARGET_TYPES.has(targetUpload.contentType) || targetUpload.sizeBytes > MAX_TARGET_BYTES) {
-    throw new Error("The product image must be JPEG, PNG, WebP, HEIC, or HEIF and no larger than 25 MB.");
+  if (!TARGET_TYPES.has(targetUpload.contentType) || targetUpload.sizeBytes > MAX_VISION_IMAGE_BYTES) {
+    throw new Error("The product image must be JPEG, PNG, or WebP and no larger than 20 MB after HEIC/HEIF conversion.");
   }
+
+  const identity = await authoritativeFirstFreeIdentity({
+    brandId: params.brandId,
+    brandName,
+    productName,
+    targetStoragePath: params.targetImageStoragePath,
+    correctedText: params.correctedOcrText,
+    correctionConfirmed: params.ocrCorrectionConfirmed,
+  });
 
   const ids = firstFreeIds(params.brandId);
   const brandRef = adminDb.collection("brands").doc(params.brandId);
@@ -432,6 +580,8 @@ export async function createAndPublishFirstFreeActivation(params: {
           videoLimit: 1,
         },
         retailAssetId: ids.retailAssetId,
+        rawOcr: identity.resolution.rawOcr,
+        ocrProvenance: identity.ocrProvenance,
         createdAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
       });
@@ -471,14 +621,6 @@ export async function createAndPublishFirstFreeActivation(params: {
       updatedAt: FieldValue.serverTimestamp(),
     }, { merge: true });
 
-    const resolution = await resolveProductCollection({
-      rawOcr: `${brandName} ${productName}`,
-      brandName,
-      productName,
-      source: "manual",
-      createdBy: params.brandId,
-      createIfMissing: true,
-    });
     const mediaPath = `retail-media-source/${params.brandId}/${ids.retailAssetId}/source.mp4`;
     const targetPath =
       `retail-media-targets/${params.brandId}/${ids.retailAssetId}/target.` +
@@ -519,13 +661,8 @@ export async function createAndPublishFirstFreeActivation(params: {
       rightsBasis: params.rightsBasis,
       media: { ...mediaUpload, ...media },
       target: { ...targetUpload, ...target },
-      collectionId: resolution.collectionId,
-      rawOcr: resolution.rawOcr,
-      normalizedOcr: resolution.normalizedOcr,
-      canonicalName: resolution.canonicalName,
-      canonicalSlug: resolution.canonicalSlug,
-      tokens: resolution.tokens,
-      matcherVersion: resolution.matcherVersion,
+      productResolution: identity.resolution,
+      ocrProvenance: identity.ocrProvenance,
     });
   } catch (error: any) {
     const message = clean(error?.message) || "Automatic publication failed.";
@@ -574,6 +711,8 @@ export async function resumeFirstFreeActivation(params: {
   contentRightsConfirmed: boolean;
   audioRightsConfirmed: boolean;
   appearanceRightsConfirmed: boolean;
+  correctedOcrText?: string;
+  ocrCorrectionConfirmed?: boolean;
 }) {
   if (!params.contentRightsConfirmed || !params.audioRightsConfirmed || !params.appearanceRightsConfirmed) {
     throw new Error("Complete all required rights certifications before retrying publication.");
@@ -639,14 +778,6 @@ export async function resumeFirstFreeActivation(params: {
   try {
     if (!brandName || !productName) throw new Error("The saved campaign is missing Brand or product details.");
     if (!validUrl(destinationUrl)) throw new Error("The saved shopper destination is invalid.");
-    const resolution = await resolveProductCollection({
-      rawOcr: `${brandName} ${productName}`,
-      brandName,
-      productName,
-      source: "manual",
-      createdBy: params.brandId,
-      createIfMissing: true,
-    });
     const media = await readRetailMediaStoredUpload({
       storagePath: `retail-media-source/${params.brandId}/${ids.retailAssetId}/source.mp4`,
     });
@@ -669,6 +800,15 @@ export async function resumeFirstFreeActivation(params: {
     if (targets.length !== 1 || !TARGET_TYPES.has(targets[0].contentType)) {
       throw new Error("The preserved first-free target image could not be resolved safely.");
     }
+    const identity = await authoritativeFirstFreeIdentity({
+      brandId: params.brandId,
+      brandName,
+      productName,
+      targetStoragePath: targets[0].storagePath,
+      allowPermanentTarget: true,
+      correctedText: params.correctedOcrText,
+      correctionConfirmed: params.ocrCorrectionConfirmed,
+    });
 
     return await completeFirstFreePublication({
       brandId: params.brandId,
@@ -679,13 +819,8 @@ export async function resumeFirstFreeActivation(params: {
       rightsBasis: params.rightsBasis,
       media,
       target: targets[0],
-      collectionId: resolution.collectionId,
-      rawOcr: resolution.rawOcr,
-      normalizedOcr: resolution.normalizedOcr,
-      canonicalName: resolution.canonicalName,
-      canonicalSlug: resolution.canonicalSlug,
-      tokens: resolution.tokens,
-      matcherVersion: resolution.matcherVersion,
+      productResolution: identity.resolution,
+      ocrProvenance: identity.ocrProvenance,
     });
   } catch (error: any) {
     const message = clean(error?.message) || "Automatic recovery failed.";
@@ -719,4 +854,144 @@ export async function resumeFirstFreeActivation(params: {
     ]);
     throw error;
   }
+}
+
+export async function repairFirstFreeProductIdentity(params: {
+  brandId: string;
+  campaignId: string;
+  requestedByUserId: string;
+  requestedByRole: "brand" | "admin";
+  correctedOcrText?: string;
+  ocrCorrectionConfirmed?: boolean;
+}) {
+  if (params.requestedByRole === "brand" && params.requestedByUserId !== params.brandId) {
+    throw new Error("NOT_AUTHORIZED");
+  }
+  if (params.requestedByRole !== "brand" && params.requestedByRole !== "admin") {
+    throw new Error("NOT_AUTHORIZED");
+  }
+  const ids = firstFreeIds(params.brandId);
+  if (params.campaignId !== ids.campaignId) throw new Error("NOT_AUTHORIZED");
+  const campaignRef = adminDb.collection("campaigns").doc(ids.campaignId);
+  const assetRef = adminDb.collection("retailAssets").doc(ids.retailAssetId);
+  const [campaignSnap, assetSnap] = await Promise.all([
+    campaignRef.get(),
+    assetRef.get(),
+  ]);
+  if (!campaignSnap.exists || !assetSnap.exists) throw new Error("FIRST_FREE_IDENTITY_REPAIR_NOT_AVAILABLE");
+  const campaign = campaignSnap.data() as Record<string, any>;
+  const asset = assetSnap.data() as Record<string, any>;
+  if (
+    clean(campaign.brandId) !== params.brandId ||
+    campaign.campaignType !== "brand_first_irl_preview" ||
+    clean(campaign.retailAssetId) !== ids.retailAssetId ||
+    clean(asset.brandId) !== params.brandId ||
+    clean(asset.campaignId) !== ids.campaignId ||
+    clean(asset.entryId) !== ids.entryId
+  ) throw new Error("NOT_AUTHORIZED");
+
+  const collectionId = clean(asset.collectionId);
+  const targetStoragePath = clean(asset.targetImage?.storagePath);
+  const brandName = clean(campaign.brandName);
+  const productName = clean(campaign.productName);
+  if (!collectionId || !targetStoragePath || !brandName || !productName) {
+    throw new Error("The existing Free First activation is missing canonical identity information.");
+  }
+
+  const extracted = await authoritativeFirstFreeIdentity({
+    brandId: params.brandId,
+    brandName,
+    productName,
+    targetStoragePath,
+    allowPermanentTarget: true,
+    correctedText: params.correctedOcrText,
+    correctionConfirmed: params.ocrCorrectionConfirmed,
+    correctionConfirmedByUserId: params.requestedByUserId,
+  });
+  const masterId = clean(asset.recognition?.masterId) ||
+    clean(campaign.productMasterId) ||
+    collectionId;
+  const resolution = bindExistingProductIdentityV5({
+    rawOcr: extracted.resolution.rawOcr,
+    brandName,
+    productName,
+    collectionId,
+    masterId,
+  });
+  const aliasRef = adminDb.collection("aliases").doc(resolution.aliasId);
+
+  await adminDb.runTransaction(async (transaction) => {
+    const [freshCampaign, freshAsset, aliasSnap] = await Promise.all([
+      transaction.get(campaignRef),
+      transaction.get(assetRef),
+      transaction.get(aliasRef),
+    ]);
+    if (!freshCampaign.exists || !freshAsset.exists) throw new Error("FIRST_FREE_IDENTITY_REPAIR_NOT_AVAILABLE");
+    const currentAsset = freshAsset.data() as Record<string, any>;
+    if (
+      clean(freshCampaign.data()?.brandId) !== params.brandId ||
+      clean(currentAsset.brandId) !== params.brandId ||
+      clean(currentAsset.collectionId) !== collectionId ||
+      clean(currentAsset.entryId) !== ids.entryId
+    ) throw new Error("NOT_AUTHORIZED");
+    if (aliasSnap.exists) {
+      const alias = aliasSnap.data() as Record<string, any>;
+      const aliasCollection = clean(alias.storage_collection || alias.canonical_collection);
+      const aliasMaster = clean(alias.master_id);
+      if (aliasCollection && aliasCollection !== collectionId) throw new Error("PRODUCT_IDENTITY_ALIAS_CONFLICT");
+      if (aliasMaster && aliasMaster !== masterId) throw new Error("PRODUCT_IDENTITY_ALIAS_CONFLICT");
+    }
+    writeProductIdentityV5({
+      transaction,
+      resolution,
+      source: "first_free_irl_identity_repair",
+    });
+    transaction.set(assetRef, {
+      recognition: {
+        ...(currentAsset.recognition || {}),
+        collectionId,
+        masterId,
+        canonicalName: resolution.canonicalName,
+        canonicalSlug: resolution.canonicalSlug,
+        aliasId: resolution.aliasId,
+        rawOcr: resolution.rawOcr,
+        normalizedOcr: resolution.normalizedOcr,
+        tokens: resolution.tokens,
+        brandTokens: resolution.brandTokens,
+        source: "web_ocr",
+        matcherVersion: resolution.matcherVersion,
+        resolution: resolution.resolution,
+        collectionExisted: true,
+        aliasExisted: aliasSnap.exists,
+        ocrProvenance: extracted.ocrProvenance,
+      },
+      updatedAt: FieldValue.serverTimestamp(),
+    }, { merge: true });
+    transaction.set(campaignRef, {
+      productCollectionId: collectionId,
+      productMasterId: masterId,
+      productIdentityAliasId: resolution.aliasId,
+      rawOcr: resolution.rawOcr,
+      ocrProvenance: extracted.ocrProvenance,
+      updatedAt: FieldValue.serverTimestamp(),
+    }, { merge: true });
+  });
+
+  await publishRetailAsset({
+    retailAssetId: ids.retailAssetId,
+    publishedByUserId: params.requestedByUserId,
+    publishedByRole: params.requestedByRole,
+    distributionScope: "global",
+  });
+  const verified = await verifyFirstFreeScanReady({
+    brandId: params.brandId,
+    campaignId: ids.campaignId,
+  });
+  if (!verified.scanReady) throw new Error("CANONICAL_PUBLICATION_VERIFICATION_FAILED");
+  return {
+    ...verified,
+    productIdentityRepaired: true,
+    matcherVersion: resolution.matcherVersion,
+    aliasId: resolution.aliasId,
+  };
 }

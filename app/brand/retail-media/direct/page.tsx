@@ -345,6 +345,11 @@ export default function DirectRetailMediaPage() {
     useState("");
 
   const [
+    ocrCorrectionRequired,
+    setOcrCorrectionRequired,
+  ] = useState(false);
+
+  const [
     ownershipType,
     setOwnershipType,
   ] =
@@ -999,8 +1004,6 @@ export default function DirectRetailMediaPage() {
         .length > 0 &&
     linkUrl.trim()
         .length > 0 &&
-    rawOcr.trim()
-        .length > 0 &&
     Boolean(
       originalMedia
     ) &&
@@ -1080,6 +1083,8 @@ async function handleTargetImageChange(
   setDraftResponse(
     null
   );
+  setOcrCorrectionRequired(false);
+  setRawOcr("");
 
   if (!file) {
     setTargetImage(
@@ -1155,6 +1160,7 @@ async function handleTargetImageChange(
     setProductName("");
     setLinkUrl("");
     setRawOcr("");
+    setOcrCorrectionRequired(false);
 
     setOwnershipType("brand_owned");
     setExternalCreatorName("");
@@ -1318,11 +1324,9 @@ async function handleTargetImageChange(
       return;
     }
 
-    if (
-      !rawOcr.trim()
-    ) {
+    if (ocrCorrectionRequired && !rawOcr.trim()) {
       setError(
-        "Enter the important Brand and product words visible on the package."
+        "Review and correct the packaging text before continuing."
       );
 
       return;
@@ -1451,6 +1455,9 @@ async function handleTargetImageChange(
               rawOcr:
                 rawOcr.trim(),
 
+              ocrCorrectionConfirmed:
+                ocrCorrectionRequired,
+
               contentOwnershipType:
                 ownershipType,
 
@@ -1505,6 +1512,10 @@ async function handleTargetImageChange(
       if (
         !response.ok
       ) {
+        if (data.code === "OCR_CORRECTION_REQUIRED") {
+          setRawOcr(String(data.extractedText || ""));
+          setOcrCorrectionRequired(true);
+        }
         throw new Error(
           data.error ||
             "Failed to create Retail Media draft."
@@ -2418,21 +2429,14 @@ async function handleTargetImageChange(
 
               {/* STEP 4 */}
 
+              {ocrCorrectionRequired && (
               <div className="mt-8 border-t border-slate-200 pt-7">
                 <h3 className="text-2xl font-black">
-                  4. Verify Product Packaging Text
+                  Review Product Packaging Text
                 </h3>
 
                 <p className="mt-2 text-sm leading-6 text-slate-600">
-                  Enter the important
-                  Brand and product
-                  words visible on the
-                  package. Goshsha
-                  uses this to resolve
-                  the Product
-                  Collection
-                  recognized by the
-                  app.
+                  Automatic packaging recognition needs your help. Correct the extracted text so it matches the words visible on the uploaded package.
                 </p>
 
                 <textarea
@@ -2456,6 +2460,7 @@ async function handleTargetImageChange(
                   className="mt-5 min-h-32 w-full rounded-xl border border-slate-300 px-4 py-3"
                 />
               </div>
+              )}
 
               {/* STEP 5 */}
 
@@ -2775,7 +2780,7 @@ async function handleTargetImageChange(
                 }
               >
               {creatingDraft
-                ? "Creating Retail Media Draft..."
+                ? "Reading product packaging..."
                 : product2IsLive
                   ? "✓ Retail Media Active and Scan-Ready"
                   : readyToPublish

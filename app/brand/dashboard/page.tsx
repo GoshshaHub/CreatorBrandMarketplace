@@ -138,6 +138,8 @@ export default function BrandDashboardPage() {
   const [contentRightsConfirmed, setContentRightsConfirmed] = useState(false);
   const [audioRightsConfirmed, setAudioRightsConfirmed] = useState(false);
   const [appearanceRightsConfirmed, setAppearanceRightsConfirmed] = useState(false);
+  const [ocrCorrectionRequired, setOcrCorrectionRequired] = useState(false);
+  const [correctedOcrText, setCorrectedOcrText] = useState("");
   const [mediaUploadProgress, setMediaUploadProgress] = useState(0);
   const [targetUploadProgress, setTargetUploadProgress] = useState(0);
 
@@ -308,6 +310,8 @@ export default function BrandDashboardPage() {
           contentRightsConfirmed,
           audioRightsConfirmed,
           appearanceRightsConfirmed,
+          correctedOcrText: correctedOcrText.trim(),
+          ocrCorrectionConfirmed: ocrCorrectionRequired,
         }),
       });
 
@@ -321,6 +325,10 @@ export default function BrandDashboardPage() {
       }
 
       if (!res.ok) {
+        if (data.code === "OCR_CORRECTION_REQUIRED") {
+          setCorrectedOcrText(String(data.extractedText || ""));
+          setOcrCorrectionRequired(true);
+        }
         throw new Error(data.error || "Failed to launch first IRL campaign.");
       }
 
@@ -453,12 +461,30 @@ export default function BrandDashboardPage() {
                     )}
                   </label>
 
+                  {ocrCorrectionRequired && (
+                    <label className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-slate-800 md:col-span-2">
+                      Review product packaging text
+                      <span className="mt-1 block text-slate-600">
+                        Automatic packaging recognition needs your help. Correct this text to match the words visible on the uploaded package.
+                      </span>
+                      <textarea
+                        value={correctedOcrText}
+                        onChange={(e) => setCorrectedOcrText(e.target.value)}
+                        className="mt-3 min-h-28 w-full rounded-xl border border-slate-300 bg-white px-4 py-3"
+                      />
+                    </label>
+                  )}
+
                   <label className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-700 md:col-span-2">
                     Exact product image shoppers will scan
                   <input
                     type="file"
                     accept=".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif"
-                    onChange={(e) => setTargetImage(e.target.files?.[0] || null)}
+                      onChange={(e) => {
+                        setTargetImage(e.target.files?.[0] || null);
+                        setOcrCorrectionRequired(false);
+                        setCorrectedOcrText("");
+                      }}
                     className="mt-2 block w-full file:font-semibold"
                   />
                     {targetUploadProgress > 0 && targetUploadProgress < 100 && (
@@ -508,7 +534,7 @@ export default function BrandDashboardPage() {
                   disabled={launching}
                   className="mt-6 rounded-xl bg-slate-950 px-6 py-3 font-bold text-white hover:bg-slate-800 disabled:opacity-60"
                 >
-                  {launching ? "Uploading and publishing..." : "Publish My Free IRL Campaign"}
+                  {launching ? "Reading product packaging..." : "Publish My Free IRL Campaign"}
                 </button>
               </section>
             )}
