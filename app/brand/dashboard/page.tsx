@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import AppStoreCta from "../../../components/AppStoreCta";
 import { useEffect, useMemo, useState } from "react";
 import ProtectedRoute from "../../../components/ProtectedRoute";
 import StatCard from "../../../components/StatCard";
@@ -404,6 +405,11 @@ export default function BrandDashboardPage() {
           </div>
 
         </div>
+
+        <AppStoreCta
+          description="Scan your products and experience your IRL campaigns in Goshsha."
+          className="mt-6"
+        />
 
         {error && <p className="mt-6 text-red-600">{error}</p>}
 

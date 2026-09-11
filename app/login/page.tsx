@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../../lib/firebase";
 import { loginUser, sendResetPasswordEmail } from "../../lib/auth";
+import AppStoreCta from "../../components/AppStoreCta";
 
 const comparisonRows = [
   {
@@ -386,6 +387,11 @@ export default function LoginPage() {
                 </Link>
               </p>
             </div>
+
+            <AppStoreCta
+              description="Download the Goshsha app to scan products and experience IRL content."
+              className="mt-5 text-left"
+            />
           </div>
 
 

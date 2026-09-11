@@ -14,6 +14,7 @@ import {
 } from "firebase/auth";
 
 import ProtectedRoute from "../../../../components/ProtectedRoute";
+import AppStoreCta from "../../../../components/AppStoreCta";
 
 import { auth } from "../../../../lib/firebase";
 import {
@@ -2119,6 +2120,11 @@ async function handleTargetImageChange(
               </Link>
             </div>
           </header>
+
+          <AppStoreCta
+            description="Scan your products and experience your IRL campaigns in Goshsha."
+            className="mt-6"
+          />
 
           {/* PRODUCT 2 PRICE SUMMARY */}
 

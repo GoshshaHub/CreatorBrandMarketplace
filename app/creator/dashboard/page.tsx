@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import AppStoreCta from "../../../components/AppStoreCta";
 import {
   collection,
   doc,
@@ -199,6 +200,11 @@ export default function CreatorDashboardPage() {
             Edit Profile
           </Link>
         </div>
+
+        <AppStoreCta
+          description="Download Goshsha to see how creator content comes alive on physical products."
+          className="mb-8"
+        />
 
         <div className="mb-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
