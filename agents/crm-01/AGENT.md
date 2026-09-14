@@ -126,11 +126,19 @@ Append-only relationship event:
 
 - Interaction ID;
 - Account, Contact, and Pursuit references;
+- conversation/thread ID, channel thread reference where supported, sequence/order, and `inReplyToInteractionId`;
 - type: email, LinkedIn, call, meeting, internal note, response, status event, or system milestone;
 - direction: inbound, outbound, or internal;
 - exact, approximate, ranged, or unknown occurrence time;
-- channel, summary, actor, and outcome;
-- exact approved/sent content reference where available;
+- channel, participants and role snapshots, exact actor/speaker, summary, and outcome;
+- exact content or immutable approved/sent artifact reference where available;
+- questions, stated needs, expressed interest, objections, decline/do-not-contact language, and paid-use or purchase-intent evidence;
+- Brand commitments and Goshsha commitments/promises;
+- newly discovered Contact references, kept provisional until reconciled;
+- material evidence extracted from the interaction, kept separate from agent interpretation;
+- applicable SALES-01 playbook, REVENUE-01 objective, and Founder approval/authority IDs and versions;
+- commercial-materiality indicator and REVENUE-01 reevaluation request when warranted;
+- canonical recorded time and conversation revision;
 - related objection, decision, milestone, or Next Action;
 - provenance and confidence.
 
@@ -276,6 +284,28 @@ Distinguish at minimum:
 - response received.
 
 Never convert one state into another without evidence. Corrections should append or preserve audit history rather than silently rewrite material events.
+
+### Canonical Conversation Memory
+
+CRM-01 must provide the canonical conversation memory consumed by each subsequent future CLOSER-01 turn where practical. It should include:
+
+- current participants and role snapshots;
+- ordered source Interactions and thread/reply continuity;
+- what Goshsha actually said and what the Brand actually said;
+- exact source artifacts where available;
+- open questions, actual objections, stated needs, expressed interest, declines, and do-not-contact evidence;
+- Brand commitments and Goshsha commitments/promises;
+- newly discovered or unresolved Contacts;
+- current pipeline state and Next Action;
+- current Founder decisions and authority;
+- Free First, publication, physical-scan, paid-use, payment, expansion, and retention milestone references;
+- current SALES-01 playbook and REVENUE-01 objective versions;
+- commercially material evidence awaiting REVENUE-01 reevaluation;
+- freshness, provenance, conflicts, and canonical revision.
+
+Preserve source Interactions. Summaries may aid retrieval but must never replace canonical source Interactions or erase speaker, timing, approval, or provenance. Keep verified facts, what each party actually said, agent inference, proposed actions, Founder-approved actions, executed actions, and observed outcomes distinct.
+
+CRM-01 records canonical relationship evidence; it does not independently redefine SALES-01 strategy, REVENUE-01 Priority/objective, or Founder authority. A future CLOSER-01 should refresh the latest canonical revision before consequential external action where practical. New commercially material evidence should be recorded before requesting REVENUE-01 reevaluation.
 
 ## 9. Next Action and follow-up model
 

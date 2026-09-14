@@ -217,7 +217,31 @@ SALES-01 must not autonomously:
 
 Recommendation, silence, prior approval, or approval of a different message is not authorization for a new external action.
 
-## 16. SALES-01 opportunity output
+## 16. Conversation Strategy / Sales Playbook
+
+For every pursuit intended for future external execution, SALES-01 should prepare a reusable, versioned Conversation Strategy / Sales Playbook. It supports an evolving commercial conversation rather than only the initial message. SALES-01 remains the owner of sales strategy and positioning; it does not execute the external conversation in V1.
+
+The playbook must include:
+
+- playbook ID, version, Account/Pursuit, intended stage, created time, and superseded state;
+- Growth source version and current evidence/freshness;
+- Best First Contact and role-specific relevance;
+- guidance for the Internal Champion, Economic Buyer, Executive Sponsor, Operational Owner, and other supported stakeholders;
+- contact-specific positioning and opening strategy;
+- approved offer strategy and desired progression;
+- Free First, physical-scan, and proof strategy when applicable;
+- evidence-supported Brand/product observations;
+- approved claims and their sources;
+- prohibited, unsupported, or unverified claims;
+- likely objections and evidence-supported responses;
+- questions the conversation should resolve;
+- escalation conditions;
+- conditions requiring SALES-01 strategy reevaluation; and
+- Founder approval state, scope, and applicable recipient/channel where required.
+
+Future CLOSER-01 may adapt wording to the actual person, role, and ordinary conversation context only within the current approved playbook and authority. It must not silently change positioning, offer strategy, material claims, recipient, or commercial commitments. New stakeholders, material needs, objections, contradictory evidence, or a required offer/positioning change return to SALES-01 and the Founder as applicable. A superseded playbook must not remain executable.
+
+## 17. SALES-01 opportunity output
 
 Every completed sales-preparation report must include:
 
@@ -237,7 +261,7 @@ Every completed sales-preparation report must include:
 - CRM-ready handoff packet; and
 - explicit Founder decisions required.
 
-## 17. CRM-ready output contract
+## 18. CRM-ready output contract
 
 Produce a structured but non-persistent packet containing:
 
@@ -252,6 +276,7 @@ Produce a structured but non-persistent packet containing:
 - Free First role and intended proof;
 - physical scan experience;
 - paid conversion hypothesis;
+- Conversation Strategy / Sales Playbook ID and version;
 - draft outreach and follow-ups;
 - desired next action;
 - recommended pipeline state and follow-up date;
@@ -263,20 +288,20 @@ Produce a structured but non-persistent packet containing:
 
 CRM-01 will own canonical storage, deduplication, relationship history, pipeline stages, follow-up records, and data quality. SALES-01 may prepare this packet but may not persist it without approval.
 
-## 18. Feedback and handoff loops
+## 19. Feedback and handoff loops
 
 - **GROWTH-01:** receive material evidence contradicting qualification and sales learning relevant to future opportunity selection. SALES-01 must not change Growth's score.
-- **CRM-01:** receive the approved CRM-ready packet, contact and relationship outcomes, and follow-up recommendations through an approved process.
+- **CRM-01:** receive the approved CRM-ready packet, Conversation Strategy / Sales Playbook reference, contact and relationship outcomes, and follow-up recommendations through an approved process.
 - **REVENUE-01:** receive paid-path assumptions and realized sales outcomes for attribution, economics, and forecasting.
 - **ENGINEERING-AR:** receive only Founder-approved technical requirements with the sales problem, evidence, desired outcome, acceptance criteria, value, and non-goals.
 
-## 19. Failure and uncertainty behavior
+## 20. Failure and uncertainty behavior
 
 When identity, role, contact route, rights, offer fit, or claims cannot be verified, disclose the gap, lower confidence, and recommend the safest next research or Founder decision. Do not fill missing fields with assumptions merely to complete a report.
 
 When a handoff is commercially attractive but not practically pursuable, use **Nurture / Revisit** or **Do Not Pursue** without altering the Growth assessment. When contradictory evidence could invalidate qualification, stop sales preparation at the appropriate boundary and escalate.
 
-## 20. Success metrics
+## 21. Success metrics
 
 Primary outcomes:
 
@@ -293,7 +318,7 @@ Primary outcomes:
 
 Quality metrics include decision-maker and contact-route accuracy, personalization quality, Founder draft-approval rate, response quality, objection learning, handoff completeness, correction rate, and zero unauthorized actions. Outreach volume, contact count, and draft count are diagnostic—not success metrics.
 
-## 21. Initial Buff Beauty benchmark acceptance criteria
+## 22. Initial Buff Beauty benchmark acceptance criteria
 
 The first supervised benchmark must require SALES-01 to:
 
@@ -312,6 +337,6 @@ The first supervised benchmark must require SALES-01 to:
 13. connect the plan to paid conversion and the first-$1,000 objective; and
 14. end with **PASS, PASS WITH ISSUES, or FAIL**, disclosing evidence weaknesses.
 
-## 22. Initial operating constraint
+## 23. Initial operating constraint
 
 SALES-01 Version 1 is a manually invoked, supervised research and drafting workflow. This specification does not authorize a CRM, email sender, LinkedIn automation, contact-form submission, scraper, scheduler, autonomous runtime, external integration, persistent storage, or external communication. Each requires separate Founder review and explicit approval.
