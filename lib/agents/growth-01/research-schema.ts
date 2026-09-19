@@ -253,7 +253,6 @@ function nativeSourcesFromResponse(response: Record<string, unknown>, asOfDate: 
       });
     }
   }
-  if (deduplicated.size > MAX_RESEARCH_SOURCES) throw new GrowthResearchError("source_limit_exceeded", `Provider returned more than ${MAX_RESEARCH_SOURCES} native sources.`, 422);
   return [...deduplicated.values()];
 }
 
@@ -294,6 +293,7 @@ export function normalizeOpenAIResearchResponse(params: {
   const nativeSources = nativeSourcesFromResponse(params.response, params.request.asOfDate);
   if (nativeSources.length === 0) throw new GrowthResearchError("native_source_provenance_missing", "Provider returned no native web-search source provenance.", 422);
   const sourceByCanonicalUrl = new Map(nativeSources.map((source) => [source.canonicalUrl, source]));
+  const referencedSources = new Map<string, NormalizedResearchSource>();
   const accessDate = params.completedAt.slice(0, 10);
   let qualifiedCount = 0;
   const candidates: GrowthCandidateInput[] = structured.candidates.map((candidate) => {
@@ -311,12 +311,20 @@ export function normalizeOpenAIResearchResponse(params: {
         if (!validDate(item.publicationDate) || item.publicationDate > currentUtcDate() || item.publicationDate > params.request.asOfDate) throw new GrowthResearchError("publication_date_invalid", `Candidate ${candidate.id} supplied a malformed or future publication date.`, 422);
         if (nativeSource.publicationDate !== item.publicationDate) throw new GrowthResearchError("publication_date_unsupported", `Candidate ${candidate.id} supplied a publication date unsupported by native source metadata.`, 422);
       }
+      if (!referencedSources.has(canonicalUrl)) {
+        referencedSources.set(canonicalUrl, {
+          ...nativeSource,
+          id: `source-${referencedSources.size + 1}`,
+        });
+      }
       return { ...item, sourceUrl: nativeSource.rawUrl, publicationDate: nativeSource.publicationDate, accessDate };
     });
     const deductions = Object.fromEntries(candidate.deductions.map((item) => [item.type, item.value])) as GrowthCandidateInput["deductions"];
     return { ...candidate, evidence, deductions, benchmarkFixture: false };
   });
   if (qualifiedCount > params.request.maximumQualified) throw new GrowthResearchError("provider_qualified_count_invalid", "Provider marked more candidates qualified than the Founder allowed.", 422);
+  if (referencedSources.size > MAX_RESEARCH_SOURCES) throw new GrowthResearchError("source_limit_exceeded", `Provider candidates referenced more than ${MAX_RESEARCH_SOURCES} native sources.`, 422);
+  const normalizedSources = [...referencedSources.values()];
 
   const usage = (params.response.usage && typeof params.response.usage === "object" ? params.response.usage : {}) as Record<string, unknown>;
   const outputDetails = (usage.output_tokens_details && typeof usage.output_tokens_details === "object" ? usage.output_tokens_details : {}) as Record<string, unknown>;
@@ -345,8 +353,8 @@ export function normalizeOpenAIResearchResponse(params: {
       reasoningTokens: typeof outputDetails.reasoning_tokens === "number" ? outputDetails.reasoning_tokens : null,
       webSearchCalls,
     },
-    normalizedSourceCount: nativeSources.length,
-    sources: nativeSources,
+    normalizedSourceCount: normalizedSources.length,
+    sources: normalizedSources,
     proposedRun,
     authority: {
       providerOutput: "untrusted_research_proposal",

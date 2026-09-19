@@ -34,15 +34,38 @@ function providerCandidate(candidate, sourceUrl, publicationDate = null) {
 
 function mockResponse(candidates, options = {}) {
   const sourceUrl = options.sourceUrl || "https://brand.example/news?utm_source=test";
+  const sources = options.sources || [{ url: sourceUrl, title: "Official source", ...(options.nativePublicationDate ? { publication_date: options.nativePublicationDate } : {}) }];
   return {
     id: "resp_mock",
     model: "gpt-5.6-terra",
     status: "completed",
     output: [
-      { type: "web_search_call", action: { sources: [{ url: sourceUrl, title: "Official source", ...(options.nativePublicationDate ? { publication_date: options.nativePublicationDate } : {}) }] } },
+      { type: "web_search_call", action: { sources } },
       { type: "message", content: [{ type: "output_text", text: JSON.stringify({ partial: options.partial || false, limitations: options.limitations || [], marketPattern: "Mock market pattern", candidates }) }] },
     ],
     usage: { input_tokens: 100, output_tokens: 200, total_tokens: 300, output_tokens_details: { reasoning_tokens: 20 } },
+  };
+}
+
+function evidenceItem(id, sourceUrl) {
+  return {
+    id,
+    publisher: "Official source",
+    sourceUrl,
+    sourceType: "official_brand",
+    publicationDate: null,
+    supportedClaim: `Supported claim ${id}`,
+    classification: "verified_fact",
+    reliability: "high",
+  };
+}
+
+function candidateWithEvidence(id, sourceUrls) {
+  return {
+    ...providerCandidate(buffBenchmarkCandidate, sourceUrls[0]),
+    id,
+    selectionStatus: "watch",
+    evidence: sourceUrls.map((sourceUrl, index) => evidenceItem(`${id}-evidence-${index + 1}`, sourceUrl)),
   };
 }
 
@@ -119,6 +142,81 @@ test("native source provenance is normalized, raw URL retained, and missing publ
   assert.equal(result.sources[0].publicationDate, null);
   assert.equal(result.proposedRun.candidates[0].evidence[0].accessDate, "2026-09-14");
   assert.equal(result.proposedRun.candidates[0].evidence[0].publicationDate, null);
+});
+
+test("more than 40 unique native sources are allowed when candidates reference no more than 40", () => {
+  const nativeSources = Array.from({ length: 45 }, (_, index) => ({
+    url: `https://brand.example/source-${index + 1}?utm_source=provider`,
+    title: `Native source ${index + 1}`,
+  }));
+  const referencedRawUrl = nativeSources[44].url;
+  const result = normalizeOpenAIResearchResponse({
+    response: mockResponse([candidateWithEvidence("candidate-one", [referencedRawUrl])], { sources: nativeSources }),
+    request,
+    requestedModel: "gpt-5.6-terra",
+    completedAt: "2026-09-14T12:00:00.000Z",
+  });
+  assert.equal(result.normalizedSourceCount, 1);
+  assert.deepEqual(result.sources.map((source) => source.rawUrl), [referencedRawUrl]);
+  assert.equal(result.sources[0].canonicalUrl, "https://brand.example/source-45");
+});
+
+test("only candidate-referenced sources are returned and repeated citations deduplicate in first-reference order", () => {
+  const firstRawUrl = "https://brand.example/product-b?utm_source=first";
+  const firstCanonicalVariant = "https://brand.example/product-b?utm_medium=repeat";
+  const secondRawUrl = "https://brand.example/#/product-a?variant=one";
+  const unusedRawUrl = "https://brand.example/unused";
+  const result = normalizeOpenAIResearchResponse({
+    response: mockResponse([
+      candidateWithEvidence("candidate-one", [firstCanonicalVariant, secondRawUrl, firstRawUrl]),
+    ], { sources: [
+      { url: unusedRawUrl, title: "Unused" },
+      { url: firstRawUrl, title: "Product B" },
+      { url: secondRawUrl, title: "Product A route" },
+    ] }),
+    request,
+    requestedModel: "gpt-5.6-terra",
+    completedAt: "2026-09-14T12:00:00.000Z",
+  });
+  assert.deepEqual(result.sources.map((source) => source.id), ["source-1", "source-2"]);
+  assert.deepEqual(result.sources.map((source) => source.rawUrl), [firstRawUrl, secondRawUrl]);
+  assert.deepEqual(result.sources.map((source) => source.canonicalUrl), [
+    "https://brand.example/product-b",
+    "https://brand.example/#/product-a?variant=one",
+  ]);
+});
+
+test("more than 40 unique candidate-referenced canonical sources fail visibly", () => {
+  const sourceUrls = Array.from({ length: 41 }, (_, index) => `https://brand.example/referenced-${index + 1}`);
+  const candidates = Array.from({ length: 7 }, (_, index) => candidateWithEvidence(
+    `candidate-${index + 1}`,
+    sourceUrls.slice(index * 6, Math.min((index + 1) * 6, sourceUrls.length))
+  ));
+  assert.throws(
+    () => normalizeOpenAIResearchResponse({
+      response: mockResponse(candidates, { sources: sourceUrls.map((url) => ({ url, title: url })) }),
+      request,
+      requestedModel: "gpt-5.6-terra",
+      completedAt: "2026-09-14T12:00:00.000Z",
+    }),
+    (error) => error?.code === "source_limit_exceeded" && /referenced more than 40 native sources/.test(error.message)
+  );
+});
+
+test("model-only citations remain rejected when the internal native lookup exceeds 40", () => {
+  const nativeSources = Array.from({ length: 45 }, (_, index) => ({
+    url: `https://brand.example/native-${index + 1}`,
+    title: `Native source ${index + 1}`,
+  }));
+  assert.throws(
+    () => normalizeOpenAIResearchResponse({
+      response: mockResponse([candidateWithEvidence("candidate-one", ["https://fabricated.example/story"])], { sources: nativeSources }),
+      request,
+      requestedModel: "gpt-5.6-terra",
+      completedAt: "2026-09-14T12:00:00.000Z",
+    }),
+    /absent from native provider provenance/
+  );
 });
 
 test("fabricated model-only URLs are rejected", () => {
