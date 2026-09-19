@@ -3,6 +3,8 @@ import test from "node:test";
 
 import { buffBenchmarkCandidate, retailerDependentBenchmarkCandidate } from "../../lib/agents/growth-01/fixtures.ts";
 import { canonicalizeResearchUrl, normalizeOpenAIResearchResponse, validateGrowthResearchRequest } from "../../lib/agents/growth-01/research-schema.ts";
+import { scoreGrowthCandidate } from "../../lib/agents/growth-01/scoring.ts";
+import { validateGrowthCandidate } from "../../lib/agents/growth-01/validation.ts";
 
 const request = {
   asOfDate: "2026-09-14",
@@ -90,6 +92,23 @@ test("URL canonicalization strips ordinary anchors but preserves distinct hash r
     canonicalizeResearchUrl("https://example.com/article?utm_source=test&sku=one#/product-a?variant=one"),
     "https://example.com/article?sku=one#/product-a?variant=one"
   );
+});
+
+test("application validation still rejects required empty text", () => {
+  const { candidate } = scoreGrowthCandidate({ ...buffBenchmarkCandidate, brand: "" });
+  const validation = validateGrowthCandidate(candidate);
+  assert.equal(validation.valid, false);
+  assert.ok(validation.findings.some((finding) => finding.field === "brand" && finding.code === "required_field_missing"));
+});
+
+test("normalization still rejects invalid and non-HTTP source URLs", () => {
+  for (const sourceUrl of ["not-a-url", "ftp://brand.example/news"]) {
+    const response = mockResponse([providerCandidate(buffBenchmarkCandidate, sourceUrl)], { sourceUrl });
+    assert.throws(
+      () => normalizeOpenAIResearchResponse({ response, request, requestedModel: "gpt-5.6-terra", completedAt: "2026-09-14T12:00:00.000Z" }),
+      /Invalid URL|invalid evidence URL|not HTTP\(S\)/
+    );
+  }
 });
 
 test("native source provenance is normalized, raw URL retained, and missing publication date remains unknown", () => {

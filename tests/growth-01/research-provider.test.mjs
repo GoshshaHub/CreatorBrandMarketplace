@@ -2,8 +2,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
 
-import { calculateSpendingAuthority } from "../../lib/agents/growth-01/research-provider.ts";
+import {
+  calculateSpendingAuthority,
+  consumeProviderErrorDiagnostics,
+  formatProviderErrorDiagnostics,
+} from "../../lib/agents/growth-01/research-provider.ts";
 import { buildGrowthResearchInstructions } from "../../lib/agents/growth-01/research-prompt.ts";
+import { OPENAI_GROWTH_RESEARCH_JSON_SCHEMA } from "../../lib/agents/growth-01/research-schema.ts";
 
 test("spending authority is hierarchical and governed by the lowest remaining $1 → $20 → $50 limit", () => {
   assert.equal(calculateSpendingAuthority({ confirmedByFounder: true, growthMonthSpendUsd: 0, commercialDepartmentMonthSpendUsd: 0 }).effectiveRunAuthorityUsd, 1);
@@ -37,4 +42,40 @@ test("adapter performs one fetch and contains no automatic retry loop", async ()
   assert.doesNotMatch(source, /for\s*\([^)]*retry|while\s*\(|automaticRetry\s*:\s*true/i);
   assert.match(source, /store:\s*false/);
   assert.match(source, /max_tool_calls:\s*MAX_WEB_SEARCH_CALLS/);
+});
+
+test("strict provider schema excludes unsupported string constraints", () => {
+  const serialized = JSON.stringify(OPENAI_GROWTH_RESEARCH_JSON_SCHEMA);
+  assert.doesNotMatch(serialized, /"minLength"/);
+  assert.doesNotMatch(serialized, /"format":"uri"/);
+});
+
+test("mocked provider error is consumed once and yields only sanitized diagnostics", async () => {
+  let reads = 0;
+  const secret = "sk-test-secret-value";
+  const response = {
+    status: 400,
+    headers: new Headers({ "x-request-id": "req_safe_123" }),
+    async text() {
+      reads += 1;
+      return JSON.stringify({
+        error: {
+          message: `Authorization: Bearer ${secret}; {\"instructions\":\"complete private prompt\"}`,
+          type: "invalid_request_error",
+          code: "invalid_json_schema",
+          param: "text.format.schema",
+        },
+      });
+    },
+  };
+  const diagnostics = await consumeProviderErrorDiagnostics(response);
+  const formatted = formatProviderErrorDiagnostics(diagnostics);
+  assert.equal(reads, 1);
+  assert.equal(diagnostics.status, 400);
+  assert.equal(diagnostics.message, "[redacted provider diagnostic]");
+  assert.match(formatted, /invalid_request_error/);
+  assert.match(formatted, /invalid_json_schema/);
+  assert.match(formatted, /text\.format\.schema/);
+  assert.match(formatted, /req_safe_123/);
+  assert.doesNotMatch(formatted, /sk-test|Authorization|complete private prompt|instructions/);
 });

@@ -1,4 +1,8 @@
-import type { GrowthResearchProvider } from "../research-provider";
+import {
+  consumeProviderErrorDiagnostics,
+  formatProviderErrorDiagnostics,
+  type GrowthResearchProvider,
+} from "../research-provider";
 import { buildGrowthResearchInstructions } from "../research-prompt";
 import {
   MAX_PROVIDER_OUTPUT_TOKENS,
@@ -58,8 +62,22 @@ export class OpenAIResponsesWebResearchProvider implements GrowthResearchProvide
         }),
         signal: timeoutController.signal,
       });
-      if (response.status === 429) throw new GrowthResearchError("provider_rate_limited", "OpenAI rate-limited the research request. Try again later only with current Founder spending authority.", 429);
-      if (!response.ok) throw new GrowthResearchError("provider_request_failed", `OpenAI research failed with status ${response.status}. No automatic retry was attempted.`, 502);
+      if (!response.ok) {
+        const diagnostics = await consumeProviderErrorDiagnostics(response);
+        const safeDetails = formatProviderErrorDiagnostics(diagnostics);
+        if (response.status === 429) {
+          throw new GrowthResearchError(
+            "provider_rate_limited",
+            `OpenAI rate-limited the research request.${safeDetails ? ` ${safeDetails}` : ""} Try again later only with current Founder spending authority. No automatic retry was attempted.`,
+            429
+          );
+        }
+        throw new GrowthResearchError(
+          "provider_request_failed",
+          `OpenAI research failed with status ${response.status}.${safeDetails ? ` ${safeDetails}` : ""} No automatic retry was attempted.`,
+          502
+        );
+      }
       const payload = await response.json() as Record<string, unknown>;
       return normalizeOpenAIResearchResponse({ response: payload, request, requestedModel: this.model, completedAt: new Date().toISOString() });
     } catch (error) {

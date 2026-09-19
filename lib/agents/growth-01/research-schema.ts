@@ -29,7 +29,7 @@ export const PROVIDER_TIMEOUT_MS = 150_000;
 const classifications = ["verified_fact", "reasonable_inference", "hypothesis", "unknown"];
 const sourceTypes = ["official_brand", "official_retailer", "direct_observation", "trade_business_reporting", "credible_secondary"];
 
-const text = { type: "string", minLength: 1 } as const;
+const text = { type: "string" } as const;
 const nullableDate = { anyOf: [{ type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" }, { type: "null" }] } as const;
 
 export const OPENAI_GROWTH_RESEARCH_JSON_SCHEMA = {
@@ -110,7 +110,7 @@ export const OPENAI_GROWTH_RESEARCH_JSON_SCHEMA = {
               properties: {
                 id: text,
                 publisher: text,
-                sourceUrl: { type: "string", format: "uri" },
+                sourceUrl: { type: "string" },
                 sourceType: { type: "string", enum: sourceTypes },
                 publicationDate: nullableDate,
                 supportedClaim: text,
