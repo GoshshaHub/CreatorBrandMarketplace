@@ -27,7 +27,7 @@ export function buildGrowthResearchInstructions(context: GrowthResearchProviderC
     "Never invent retailers, launches, campaigns, products, rights, dates, contacts, trends, urgency, or citations.",
     "Classify each statement explicitly as verified_fact, reasonable_inference, hypothesis, or unknown.",
     "Source presence establishes provenance, not truth. Prefer official Brand and retailer sources, then reputable trade/business reporting.",
-    "Use publicationDate only when native source metadata supports the exact YYYY-MM-DD date; otherwise return null.",
+    "Do not return, infer, or author publicationDate metadata. The server assigns publication dates solely from native web-search source provenance; webpage prose and model knowledge are not authoritative publication-date metadata.",
     "Retailer approval is not required by default. Assert a retailer dependency only with evidence of retailer-controlled infrastructure, data, APIs, physical modifications, authorization, integration, or participation.",
     "Free First is a zero-dollar acquisition/proof mechanism and contributes zero score points. Fastest Revenue Path must name a paid destination or Unclear.",
     "Propose category scores, deductions, caps, and selection status, but deterministic application validation remains authoritative.",

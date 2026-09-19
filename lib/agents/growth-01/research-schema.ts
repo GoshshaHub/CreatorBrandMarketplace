@@ -30,7 +30,6 @@ const classifications = ["verified_fact", "reasonable_inference", "hypothesis", 
 const sourceTypes = ["official_brand", "official_retailer", "direct_observation", "trade_business_reporting", "credible_secondary"];
 
 const text = { type: "string" } as const;
-const nullableDate = { anyOf: [{ type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" }, { type: "null" }] } as const;
 
 export const OPENAI_GROWTH_RESEARCH_JSON_SCHEMA = {
   type: "object",
@@ -106,13 +105,12 @@ export const OPENAI_GROWTH_RESEARCH_JSON_SCHEMA = {
             items: {
               type: "object",
               additionalProperties: false,
-              required: ["id", "publisher", "sourceUrl", "sourceType", "publicationDate", "supportedClaim", "classification", "reliability"],
+              required: ["id", "publisher", "sourceUrl", "sourceType", "supportedClaim", "classification", "reliability"],
               properties: {
                 id: text,
                 publisher: text,
                 sourceUrl: { type: "string" },
                 sourceType: { type: "string", enum: sourceTypes },
-                publicationDate: nullableDate,
                 supportedClaim: text,
                 classification: { type: "string", enum: classifications },
                 reliability: { type: "string", enum: ["high", "medium", "low"] },
@@ -176,7 +174,7 @@ export const OPENAI_GROWTH_RESEARCH_JSON_SCHEMA = {
 
 type NativeSource = { url?: unknown; title?: unknown; publication_date?: unknown; published_at?: unknown; page_age?: unknown };
 type ProviderCandidate = Omit<GrowthCandidateInput, "evidence" | "deductions"> & {
-  evidence: Array<Omit<GrowthCandidateInput["evidence"][number], "accessDate" | "syntheticBenchmark">>;
+  evidence: Array<Omit<GrowthCandidateInput["evidence"][number], "accessDate" | "syntheticBenchmark" | "publicationDate"> & { publicationDate?: unknown }>;
   deductions: Array<{ type: keyof NonNullable<GrowthCandidateInput["deductions"]>; value: number }>;
 };
 type StructuredProposal = { partial: boolean; limitations: string[]; marketPattern: string; candidates: ProviderCandidate[] };
@@ -308,7 +306,7 @@ export function normalizeOpenAIResearchResponse(params: {
       const nativeSource = sourceByCanonicalUrl.get(canonicalUrl);
       if (!nativeSource) throw new GrowthResearchError("model_only_source_rejected", `Candidate ${candidate.id} cited a URL absent from native provider provenance.`, 422);
       if (item.publicationDate != null) {
-        if (!validDate(item.publicationDate) || item.publicationDate > currentUtcDate() || item.publicationDate > params.request.asOfDate) throw new GrowthResearchError("publication_date_invalid", `Candidate ${candidate.id} supplied a malformed or future publication date.`, 422);
+        if (typeof item.publicationDate !== "string" || !validDate(item.publicationDate) || item.publicationDate > currentUtcDate() || item.publicationDate > params.request.asOfDate) throw new GrowthResearchError("publication_date_invalid", `Candidate ${candidate.id} supplied a malformed or future publication date.`, 422);
         if (nativeSource.publicationDate !== item.publicationDate) throw new GrowthResearchError("publication_date_unsupported", `Candidate ${candidate.id} supplied a publication date unsupported by native source metadata.`, 422);
       }
       if (!referencedSources.has(canonicalUrl)) {

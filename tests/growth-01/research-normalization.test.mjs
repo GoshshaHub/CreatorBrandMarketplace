@@ -15,7 +15,7 @@ const request = {
   budgetAuthority: { confirmedByFounder: true, growthMonthSpendUsd: 0, commercialDepartmentMonthSpendUsd: 0 },
 };
 
-function providerCandidate(candidate, sourceUrl, publicationDate = null) {
+function providerCandidate(candidate, sourceUrl, publicationDate) {
   return {
     ...candidate,
     evidence: candidate.evidence.map((item) => ({
@@ -23,7 +23,7 @@ function providerCandidate(candidate, sourceUrl, publicationDate = null) {
       publisher: item.publisher,
       sourceUrl,
       sourceType: item.sourceType === "founder_supplied_benchmark" ? "credible_secondary" : item.sourceType,
-      publicationDate,
+      ...(typeof publicationDate !== "undefined" ? { publicationDate } : {}),
       supportedClaim: item.supportedClaim,
       classification: item.classification,
       reliability: item.reliability,
@@ -53,7 +53,6 @@ function evidenceItem(id, sourceUrl) {
     publisher: "Official source",
     sourceUrl,
     sourceType: "official_brand",
-    publicationDate: null,
     supportedClaim: `Supported claim ${id}`,
     classification: "verified_fact",
     reliability: "high",
@@ -224,18 +223,42 @@ test("fabricated model-only URLs are rejected", () => {
   assert.throws(() => normalizeOpenAIResearchResponse({ response, request, requestedModel: "gpt-5.6-terra", completedAt: "2026-09-14T12:00:00.000Z" }), /absent from native provider provenance/);
 });
 
-test("malformed, future, and unsupported publication dates are rejected", () => {
+test("unexpected malformed, future, unsupported, and conflicting model publication dates are rejected", () => {
   for (const date of ["September 1", "2026-10-01", "2026-09-01"]) {
     const response = mockResponse([providerCandidate(buffBenchmarkCandidate, "https://brand.example/news?utm_source=test", date)]);
     assert.throws(() => normalizeOpenAIResearchResponse({ response, request, requestedModel: "gpt-5.6-terra", completedAt: "2026-09-14T12:00:00.000Z" }));
   }
+  const conflicting = mockResponse(
+    [providerCandidate(buffBenchmarkCandidate, "https://brand.example/news?utm_source=test", "2026-09-02")],
+    { nativePublicationDate: "2026-09-01" }
+  );
+  assert.throws(
+    () => normalizeOpenAIResearchResponse({ response: conflicting, request, requestedModel: "gpt-5.6-terra", completedAt: "2026-09-14T12:00:00.000Z" }),
+    (error) => error?.code === "publication_date_unsupported"
+  );
+});
+
+test("native publication dates are authoritative and retained without a model-authored date", () => {
   const valid = normalizeOpenAIResearchResponse({
-    response: mockResponse([providerCandidate(buffBenchmarkCandidate, "https://brand.example/news?utm_source=test", "2026-09-01")], { nativePublicationDate: "2026-09-01" }),
+    response: mockResponse([providerCandidate(buffBenchmarkCandidate, "https://brand.example/news?utm_source=test")], { nativePublicationDate: "2026-09-01" }),
     request,
     requestedModel: "gpt-5.6-terra",
     completedAt: "2026-09-14T12:00:00.000Z",
   });
   assert.equal(valid.proposedRun.candidates[0].evidence[0].publicationDate, "2026-09-01");
+});
+
+test("malformed and future native publication dates are rejected", () => {
+  for (const nativePublicationDate of ["September 1", "2026-10-01"]) {
+    const response = mockResponse(
+      [providerCandidate(buffBenchmarkCandidate, "https://brand.example/news?utm_source=test")],
+      { nativePublicationDate }
+    );
+    assert.throws(
+      () => normalizeOpenAIResearchResponse({ response, request, requestedModel: "gpt-5.6-terra", completedAt: "2026-09-14T12:00:00.000Z" }),
+      (error) => error?.code === "invalid_native_publication_date"
+    );
+  }
 });
 
 test("retailer independence is preserved while an evidenced dependency is surfaced", () => {
