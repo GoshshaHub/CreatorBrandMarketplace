@@ -8,7 +8,16 @@ import {
   formatProviderErrorDiagnostics,
 } from "../../lib/agents/growth-01/research-provider.ts";
 import { buildGrowthResearchInstructions } from "../../lib/agents/growth-01/research-prompt.ts";
-import { OPENAI_GROWTH_RESEARCH_JSON_SCHEMA } from "../../lib/agents/growth-01/research-schema.ts";
+import { GrowthResearchError, OPENAI_GROWTH_RESEARCH_JSON_SCHEMA, normalizeCompletedOpenAIResearchResponse } from "../../lib/agents/growth-01/research-schema.ts";
+
+const providerRequest = {
+  asOfDate: "2026-09-14",
+  marketFocus: ["beauty"],
+  founderResearchFocus: "",
+  maximumCandidates: 10,
+  maximumQualified: 5,
+  budgetAuthority: { confirmedByFounder: true, growthMonthSpendUsd: 0, commercialDepartmentMonthSpendUsd: 0 },
+};
 
 test("spending authority is hierarchical and governed by the lowest remaining $1 → $20 → $50 limit", () => {
   assert.equal(calculateSpendingAuthority({ confirmedByFounder: true, growthMonthSpendUsd: 0, commercialDepartmentMonthSpendUsd: 0 }).effectiveRunAuthorityUsd, 1);
@@ -87,4 +96,72 @@ test("mocked provider error is consumed once and yields only sanitized diagnosti
   assert.match(formatted, /text\.format\.schema/);
   assert.match(formatted, /req_safe_123/);
   assert.doesNotMatch(formatted, /sk-test|Authorization|complete private prompt|instructions/);
+});
+
+test("completed provider response followed by local rejection retains only safe execution metadata", () => {
+  assert.throws(
+    () => normalizeCompletedOpenAIResearchResponse({
+      response: {
+        id: "resp_safe_123",
+        model: "gpt-5.6-terra",
+        status: "completed",
+        created_at: 1_799_712_000,
+        completed_at: 1_799_712_030,
+        output: [{ type: "web_search_call", action: { sources: [{ url: "https://brand.example/private-source", title: "Secret candidate source" }] } }],
+        usage: {
+          input_tokens: 35147,
+          input_tokens_details: { cached_tokens: 1200, cache_write_tokens: 400 },
+          output_tokens: 5355,
+          output_tokens_details: { reasoning_tokens: 900 },
+          total_tokens: 40502,
+        },
+        private_candidate_content: "must not escape",
+      },
+      request: providerRequest,
+      requestedModel: "gpt-5.6-terra",
+      serverReceivedAt: "2026-09-14T12:00:00.000Z",
+    }),
+    (error) => {
+      assert.ok(error instanceof GrowthResearchError);
+      assert.equal(error.code, "provider_output_missing");
+      assert.equal(error.providerExecution.outcome, "provider_completed_local_rejection");
+      assert.equal(error.providerExecution.providerResponseId, "resp_safe_123");
+      assert.equal(error.providerExecution.usage.inputTokens, 35147);
+      assert.equal(error.providerExecution.usage.cachedInputTokens, 1200);
+      assert.equal(error.providerExecution.usage.cacheWriteTokens, 400);
+      assert.equal(error.providerExecution.usage.outputTokens, 5355);
+      assert.equal(error.providerExecution.usage.reasoningTokens, 900);
+      assert.equal(error.providerExecution.usage.totalTokens, 40502);
+      assert.equal(error.providerExecution.usage.webSearchCalls, 1);
+      const serialized = JSON.stringify(error.providerExecution);
+      assert.doesNotMatch(serialized, /sk-test|Authorization|FROZEN CONTRACT|private-source|Secret candidate|must not escape|sources/);
+      return true;
+    }
+  );
+});
+
+test("provider HTTP, timeout, and ambiguous failures cannot claim completed metadata", async () => {
+  const source = await readFile("lib/agents/growth-01/providers/openai-responses-web.ts", "utf8");
+  assert.match(source, /if \(!response\.ok\)/);
+  assert.match(source, /provider_request_failed/);
+  assert.match(source, /provider_timeout/);
+  assert.match(source, /provider_failure_ambiguous/);
+  assert.match(source, /const payload = await response\.json\(\)/);
+  assert.ok(source.indexOf("const payload = await response.json()") > source.indexOf("if (!response.ok)"));
+  const incompleteResponse = {
+    id: "resp_incomplete",
+    model: "gpt-5.6-terra",
+    status: "incomplete",
+    output: [],
+    usage: { input_tokens: 10, output_tokens: 2, total_tokens: 12 },
+  };
+  assert.throws(
+    () => normalizeCompletedOpenAIResearchResponse({
+      response: incompleteResponse,
+      request: providerRequest,
+      requestedModel: "gpt-5.6-terra",
+      serverReceivedAt: "2026-09-14T12:00:00.000Z",
+    }),
+    (error) => error instanceof GrowthResearchError && error.code === "provider_incomplete" && error.providerExecution === null
+  );
 });

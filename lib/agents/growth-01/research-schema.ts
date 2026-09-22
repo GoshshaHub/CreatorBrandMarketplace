@@ -3,17 +3,20 @@ import type {
   GrowthResearchProposal,
   GrowthResearchRequest,
   NormalizedResearchSource,
+  ProviderExecutionMetadata,
 } from "./research-types";
 
 export class GrowthResearchError extends Error {
   code: string;
   httpStatus: number;
+  providerExecution: ProviderExecutionMetadata | null;
 
-  constructor(code: string, message: string, httpStatus = 502) {
+  constructor(code: string, message: string, httpStatus = 502, providerExecution: ProviderExecutionMetadata | null = null) {
     super(message);
     this.name = "GrowthResearchError";
     this.code = code;
     this.httpStatus = httpStatus;
+    this.providerExecution = providerExecution;
   }
 }
 
@@ -194,6 +197,63 @@ function validAsOfDate(value: unknown): value is string {
   return typeof value === "string" && validDate(value) && value <= currentUtcDate();
 }
 
+function safeProviderString(value: unknown, maximumLength = 200): string | null {
+  if (typeof value !== "string" || !value || value.length > maximumLength) return null;
+  return /^[A-Za-z0-9._:/-]+$/.test(value) ? value : null;
+}
+
+function safeTokenCount(value: unknown): number | null {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : null;
+}
+
+function safeProviderTimestamp(value: unknown): string | null {
+  if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
+    const timestamp = new Date(value * 1_000);
+    return Number.isNaN(timestamp.getTime()) ? null : timestamp.toISOString();
+  }
+  if (typeof value === "string") {
+    const timestamp = new Date(value);
+    return Number.isNaN(timestamp.getTime()) ? null : timestamp.toISOString();
+  }
+  return null;
+}
+
+export function extractProviderExecutionMetadata(params: {
+  response: Record<string, unknown>;
+  requestedModel: string;
+  serverReceivedAt: string;
+  outcome: ProviderExecutionMetadata["outcome"];
+}): ProviderExecutionMetadata {
+  const usage = (params.response.usage && typeof params.response.usage === "object" ? params.response.usage : {}) as Record<string, unknown>;
+  const inputDetails = (usage.input_tokens_details && typeof usage.input_tokens_details === "object" ? usage.input_tokens_details : {}) as Record<string, unknown>;
+  const outputDetails = (usage.output_tokens_details && typeof usage.output_tokens_details === "object" ? usage.output_tokens_details : {}) as Record<string, unknown>;
+  const webSearchCalls = (Array.isArray(params.response.output) ? params.response.output : []).filter((item) => (
+    item && typeof item === "object" && (item as { type?: unknown }).type === "web_search_call"
+  )).length;
+  const serverReceivedAt = safeProviderTimestamp(params.serverReceivedAt);
+  if (!serverReceivedAt) throw new GrowthResearchError("provider_metadata_invalid", "Provider execution metadata could not be safely normalized.");
+  return {
+    provider: "openai",
+    outcome: params.outcome,
+    requestedModel: safeProviderString(params.requestedModel) || "unknown",
+    returnedModel: safeProviderString(params.response.model),
+    providerResponseId: safeProviderString(params.response.id),
+    providerStatus: safeProviderString(params.response.status, 100),
+    providerCreatedAt: safeProviderTimestamp(params.response.created_at),
+    providerCompletedAt: safeProviderTimestamp(params.response.completed_at),
+    serverReceivedAt,
+    usage: {
+      inputTokens: safeTokenCount(usage.input_tokens),
+      cachedInputTokens: safeTokenCount(inputDetails.cached_tokens),
+      cacheWriteTokens: safeTokenCount(inputDetails.cache_write_tokens),
+      outputTokens: safeTokenCount(usage.output_tokens),
+      totalTokens: safeTokenCount(usage.total_tokens),
+      reasoningTokens: safeTokenCount(outputDetails.reasoning_tokens),
+      webSearchCalls,
+    },
+  };
+}
+
 export function canonicalizeResearchUrl(value: string): string {
   const url = new URL(value);
   if (url.protocol !== "https:" && url.protocol !== "http:") throw new GrowthResearchError("invalid_source_url", "A provider source URL is not HTTP(S).", 422);
@@ -274,7 +334,14 @@ export function normalizeOpenAIResearchResponse(params: {
   request: GrowthResearchRequest;
   requestedModel: string;
   completedAt: string;
+  executionMetadata?: ProviderExecutionMetadata;
 }): GrowthResearchProposal {
+  const execution = params.executionMetadata || extractProviderExecutionMetadata({
+    response: params.response,
+    requestedModel: params.requestedModel,
+    serverReceivedAt: params.completedAt,
+    outcome: "accepted",
+  });
   if (!validAsOfDate(params.request.asOfDate)) throw new GrowthResearchError("research_date_invalid", "Research asOfDate must be a real calendar date no later than the server's current UTC date.", 422);
   if (params.response.status !== "completed") throw new GrowthResearchError("provider_incomplete", "Provider response did not complete; no proposal was accepted.");
   const outputText = extractOutputText(params.response);
@@ -324,9 +391,7 @@ export function normalizeOpenAIResearchResponse(params: {
   if (referencedSources.size > MAX_RESEARCH_SOURCES) throw new GrowthResearchError("source_limit_exceeded", `Provider candidates referenced more than ${MAX_RESEARCH_SOURCES} native sources.`, 422);
   const normalizedSources = [...referencedSources.values()];
 
-  const usage = (params.response.usage && typeof params.response.usage === "object" ? params.response.usage : {}) as Record<string, unknown>;
-  const outputDetails = (usage.output_tokens_details && typeof usage.output_tokens_details === "object" ? usage.output_tokens_details : {}) as Record<string, unknown>;
-  const webSearchCalls = (Array.isArray(params.response.output) ? params.response.output : []).filter((item) => item && typeof item === "object" && (item as { type?: unknown }).type === "web_search_call").length;
+  const webSearchCalls = execution.usage.webSearchCalls;
   if (webSearchCalls > MAX_WEB_SEARCH_CALLS) throw new GrowthResearchError("web_search_limit_exceeded", "Provider exceeded the approved web-search limit.", 422);
 
   const proposedRun: GrowthRunRequest = {
@@ -344,13 +409,8 @@ export function normalizeOpenAIResearchResponse(params: {
     completedAt: params.completedAt,
     status: structured.partial ? "partial" : "full",
     limitations: Array.isArray(structured.limitations) ? structured.limitations : [],
-    usage: {
-      inputTokens: typeof usage.input_tokens === "number" ? usage.input_tokens : null,
-      outputTokens: typeof usage.output_tokens === "number" ? usage.output_tokens : null,
-      totalTokens: typeof usage.total_tokens === "number" ? usage.total_tokens : null,
-      reasoningTokens: typeof outputDetails.reasoning_tokens === "number" ? outputDetails.reasoning_tokens : null,
-      webSearchCalls,
-    },
+    usage: execution.usage,
+    execution: { ...execution, outcome: "accepted" },
     normalizedSourceCount: normalizedSources.length,
     sources: normalizedSources,
     proposedRun,
@@ -364,4 +424,32 @@ export function normalizeOpenAIResearchResponse(params: {
       externalCommunication: false,
     },
   };
+}
+
+export function normalizeCompletedOpenAIResearchResponse(params: {
+  response: Record<string, unknown>;
+  request: GrowthResearchRequest;
+  requestedModel: string;
+  serverReceivedAt: string;
+}): GrowthResearchProposal {
+  const executionMetadata = extractProviderExecutionMetadata({
+    response: params.response,
+    requestedModel: params.requestedModel,
+    serverReceivedAt: params.serverReceivedAt,
+    outcome: "accepted",
+  });
+  try {
+    return normalizeOpenAIResearchResponse({
+      response: params.response,
+      request: params.request,
+      requestedModel: params.requestedModel,
+      completedAt: params.serverReceivedAt,
+      executionMetadata,
+    });
+  } catch (error) {
+    if (error instanceof GrowthResearchError && executionMetadata.providerStatus === "completed") {
+      error.providerExecution = { ...executionMetadata, outcome: "provider_completed_local_rejection" };
+    }
+    throw error;
+  }
 }

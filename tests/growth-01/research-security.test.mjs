@@ -43,4 +43,15 @@ test("successful result identifies the frozen contract and failure metadata deni
   assert.match(route, /persisted:\s*false/);
   assert.match(route, /downstreamInvoked:\s*false/);
   assert.match(route, /automaticRetry:\s*false/);
+  assert.match(route, /providerExecution/);
+  assert.match(route, /providerFailureCodes/);
+});
+
+test("completed local rejection is displayed without exposing the rejected proposal", async () => {
+  const page = await readFile("app/admin/growth-01/research/page.tsx", "utf8");
+  assert.match(page, /Provider completed, but GROWTH-01 deterministic validation rejected the proposal/);
+  assert.match(page, /Cached input tokens/);
+  assert.match(page, /Cache-write tokens/);
+  assert.match(page, /Total tokens/);
+  assert.doesNotMatch(page, /estimated dollar|estimated cost/i);
 });

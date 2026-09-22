@@ -10,7 +10,7 @@ import {
   OPENAI_GROWTH_RESEARCH_JSON_SCHEMA,
   PROVIDER_TIMEOUT_MS,
   GrowthResearchError,
-  normalizeOpenAIResearchResponse,
+  normalizeCompletedOpenAIResearchResponse,
 } from "../research-schema";
 import type { GrowthResearchProviderContext, GrowthResearchRequest } from "../research-types";
 
@@ -79,7 +79,13 @@ export class OpenAIResponsesWebResearchProvider implements GrowthResearchProvide
         );
       }
       const payload = await response.json() as Record<string, unknown>;
-      return normalizeOpenAIResearchResponse({ response: payload, request, requestedModel: this.model, completedAt: new Date().toISOString() });
+      const serverReceivedAt = new Date().toISOString();
+      return normalizeCompletedOpenAIResearchResponse({
+        response: payload,
+        request,
+        requestedModel: this.model,
+        serverReceivedAt,
+      });
     } catch (error) {
       if (error instanceof GrowthResearchError) throw error;
       if (timeoutController.signal.aborted) throw new GrowthResearchError("provider_timeout", "Live research timed out. No automatic retry was attempted.", 504);

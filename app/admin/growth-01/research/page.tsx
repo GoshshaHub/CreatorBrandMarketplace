@@ -8,7 +8,9 @@ import { auth } from "../../../../lib/firebase";
 type ResearchResponse = {
   error?: string;
   code?: string;
+  outcome?: "provider_failed" | "provider_completed_local_rejection" | "accepted";
   findings?: string[];
+  providerExecution?: ProviderExecutionMetadata | null;
   researchRun?: { requestedAt: string; providerTimeoutMs: number; maximumWebSearchCalls: number };
   contract?: { path: string; sha256: string };
   spendingAuthority?: { effectiveRunAuthorityUsd: number; cumulativeAccounting: string; providerDollarCutoffGuaranteed: false };
@@ -20,13 +22,56 @@ type ResearchResponse = {
     completedAt: string;
     status: string;
     limitations: string[];
-    usage: { inputTokens: number | null; outputTokens: number | null; totalTokens: number | null; reasoningTokens: number | null; webSearchCalls: number };
+    usage: ProviderExecutionMetadata["usage"];
+    execution: ProviderExecutionMetadata;
     normalizedSourceCount: number;
     sources: Array<{ id: string; rawUrl: string; canonicalUrl: string; title: string; publicationDate: string | null }>;
     proposedRun: unknown;
     authority: Record<string, unknown>;
   };
 };
+
+type ProviderExecutionMetadata = {
+  provider: "openai";
+  outcome: "provider_completed_local_rejection" | "accepted";
+  requestedModel: string;
+  returnedModel: string | null;
+  providerResponseId: string | null;
+  providerStatus: string | null;
+  providerCreatedAt: string | null;
+  providerCompletedAt: string | null;
+  serverReceivedAt: string;
+  usage: {
+    inputTokens: number | null;
+    cachedInputTokens: number | null;
+    cacheWriteTokens: number | null;
+    outputTokens: number | null;
+    reasoningTokens: number | null;
+    totalTokens: number | null;
+    webSearchCalls: number;
+  };
+};
+
+function UsageDetails({ execution }: { execution: ProviderExecutionMetadata }) {
+  const usage = execution.usage;
+  return (
+    <div className="mt-3 grid gap-1 text-sm sm:grid-cols-2">
+      <p>Execution outcome: {execution.outcome}</p>
+      <p>Provider/model: {execution.provider} · {execution.requestedModel} → {execution.returnedModel ?? "unavailable"}</p>
+      <p>Provider status: {execution.providerStatus ?? "unavailable"}</p>
+      <p>Response ID: {execution.providerResponseId ?? "unavailable"}</p>
+      <p>Server received: {execution.serverReceivedAt}</p>
+      <p>Input tokens: {usage.inputTokens ?? "unavailable"}</p>
+      <p>Cached input tokens: {usage.cachedInputTokens ?? "unavailable"}</p>
+      <p>Cache-write tokens: {usage.cacheWriteTokens ?? "unavailable"}</p>
+      <p>Output tokens: {usage.outputTokens ?? "unavailable"}</p>
+      <p>Reasoning tokens: {usage.reasoningTokens ?? "unavailable"}</p>
+      <p>Total tokens: {usage.totalTokens ?? "unavailable"}</p>
+      <p>Web searches: {usage.webSearchCalls}</p>
+      <p>Provider created/completed: {execution.providerCreatedAt ?? "unavailable"} / {execution.providerCompletedAt ?? "unavailable"}</p>
+    </div>
+  );
+}
 
 type ValidationResponse = {
   error?: string;
@@ -123,7 +168,7 @@ export default function GrowthLiveResearchPage() {
             </button>
           </section>
 
-          {research?.error && <section className="rounded-2xl border border-red-800 bg-red-950/50 p-5 text-red-100"><strong>Research did not complete.</strong><p>{research.error}</p>{research.code && <p>Code: {research.code}</p>}{research.findings?.map((item) => <p key={item}>{item}</p>)}</section>}
+          {research?.error && <section className="rounded-2xl border border-red-800 bg-red-950/50 p-5 text-red-100"><strong>{research.outcome === "provider_completed_local_rejection" ? "Provider completed, but GROWTH-01 deterministic validation rejected the proposal." : "Research did not complete."}</strong><p>{research.error}</p>{research.code && <p>Code: {research.code}</p>}{research.providerExecution && <UsageDetails execution={research.providerExecution} />}{research.findings?.map((item) => <p key={item}>{item}</p>)}</section>}
 
           {research?.proposal && (
             <section className="space-y-4 rounded-2xl border border-slate-700 bg-slate-900 p-5">
@@ -134,10 +179,10 @@ export default function GrowthLiveResearchPage() {
                 <p>Status: {research.proposal.status}</p>
                 <p>Request ID: {research.proposal.providerRequestId}</p>
                 <p>Completed: {research.proposal.completedAt}</p>
-                <p>Usage: {research.proposal.usage.inputTokens ?? "unknown"} input / {research.proposal.usage.outputTokens ?? "unknown"} output / {research.proposal.usage.webSearchCalls} searches</p>
                 <p>Normalized sources: {research.proposal.normalizedSourceCount}</p>
                 <p className="break-all sm:col-span-2">Contract: {research.contract?.path} · {research.contract?.sha256}</p>
               </div>
+              <UsageDetails execution={research.proposal.execution} />
               {!!research.proposal.limitations.length && <ul className="list-disc pl-6 text-amber-200">{research.proposal.limitations.map((item) => <li key={item}>{item}</li>)}</ul>}
               <details><summary className="cursor-pointer font-semibold">Native source provenance</summary><ul className="mt-3 space-y-2 text-sm">{research.proposal.sources.map((source) => <li key={source.id}><a href={source.rawUrl} target="_blank" rel="noreferrer" className="text-emerald-300 underline">{source.title}</a> · {source.publicationDate || "publication date unknown"}<br /><span className="break-all text-slate-400">{source.canonicalUrl}</span></li>)}</ul></details>
               <details><summary className="cursor-pointer font-semibold">Raw untrusted proposal</summary><pre className="mt-3 max-h-96 overflow-auto whitespace-pre-wrap rounded-xl bg-slate-950 p-4 text-xs">{JSON.stringify(research.proposal.proposedRun, null, 2)}</pre></details>

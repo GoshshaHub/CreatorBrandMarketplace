@@ -43,7 +43,13 @@ function mockResponse(candidates, options = {}) {
       { type: "web_search_call", action: { sources } },
       { type: "message", content: [{ type: "output_text", text: JSON.stringify({ partial: options.partial || false, limitations: options.limitations || [], marketPattern: "Mock market pattern", candidates }) }] },
     ],
-    usage: { input_tokens: 100, output_tokens: 200, total_tokens: 300, output_tokens_details: { reasoning_tokens: 20 } },
+    usage: {
+      input_tokens: 100,
+      ...(options.inputTokenDetails ? { input_tokens_details: options.inputTokenDetails } : {}),
+      output_tokens: 200,
+      total_tokens: 300,
+      output_tokens_details: { reasoning_tokens: 20 },
+    },
   };
 }
 
@@ -141,6 +147,26 @@ test("native source provenance is normalized, raw URL retained, and missing publ
   assert.equal(result.sources[0].publicationDate, null);
   assert.equal(result.proposedRun.candidates[0].evidence[0].accessDate, "2026-09-14");
   assert.equal(result.proposedRun.candidates[0].evidence[0].publicationDate, null);
+});
+
+test("accepted responses expose allowlisted execution usage and leave missing optional fields unavailable", () => {
+  const url = "https://brand.example/news";
+  const result = normalizeOpenAIResearchResponse({
+    response: mockResponse([providerCandidate(buffBenchmarkCandidate, url)]),
+    request,
+    requestedModel: "gpt-5.6-terra",
+    completedAt: "2026-09-14T12:00:00.000Z",
+  });
+  assert.equal(result.execution.outcome, "accepted");
+  assert.equal(result.execution.providerResponseId, "resp_mock");
+  assert.equal(result.execution.usage.inputTokens, 100);
+  assert.equal(result.execution.usage.outputTokens, 200);
+  assert.equal(result.execution.usage.totalTokens, 300);
+  assert.equal(result.execution.usage.reasoningTokens, 20);
+  assert.equal(result.execution.usage.cachedInputTokens, null);
+  assert.equal(result.execution.usage.cacheWriteTokens, null);
+  assert.equal(result.execution.usage.webSearchCalls, 1);
+  assert.deepEqual(result.usage, result.execution.usage);
 });
 
 test("more than 40 unique native sources are allowed when candidates reference no more than 40", () => {

@@ -12,8 +12,18 @@ import type { GrowthResearchRequest, GrowthResearchResult } from "../../../../..
 export const runtime = "nodejs";
 export const maxDuration = 180;
 
-function errorResponse(status: number, code: string, message: string) {
-  return NextResponse.json({ error: message, code, persisted: false, downstreamInvoked: false, automaticRetry: false }, { status });
+const providerFailureCodes = new Set(["provider_not_configured", "provider_rate_limited", "provider_request_failed", "provider_incomplete", "provider_timeout", "provider_failure_ambiguous"]);
+
+function errorResponse(status: number, code: string, message: string, providerExecution: GrowthResearchError["providerExecution"] = null) {
+  return NextResponse.json({
+    error: message,
+    code,
+    outcome: providerExecution?.outcome || (providerFailureCodes.has(code) ? "provider_failed" : null),
+    providerExecution,
+    persisted: false,
+    downstreamInvoked: false,
+    automaticRetry: false,
+  }, { status });
 }
 
 export async function POST(request: Request) {
@@ -66,6 +76,7 @@ export async function POST(request: Request) {
     }, controller.signal);
 
     const output: GrowthResearchResult = {
+      outcome: "accepted",
       researchRun: {
         requestedByUid: authorized.uid,
         requestedAt: new Date().toISOString(),
@@ -81,7 +92,7 @@ export async function POST(request: Request) {
     return NextResponse.json(output, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     if (error instanceof GrowthAdminAuthError) return errorResponse(error.status, "authorization_failed", error.message);
-    if (error instanceof GrowthResearchError) return errorResponse(error.httpStatus, error.code, error.message);
+    if (error instanceof GrowthResearchError) return errorResponse(error.httpStatus, error.code, error.message, error.providerExecution);
     console.error("GROWTH-01 live research failed", error instanceof Error ? error.name : "unknown_error");
     return errorResponse(500, "research_failed", "Live research could not be completed. No result was saved or sent downstream.");
   }

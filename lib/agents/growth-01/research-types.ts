@@ -35,10 +35,25 @@ export type NormalizedResearchSource = {
 
 export type GrowthResearchUsage = {
   inputTokens: number | null;
+  cachedInputTokens: number | null;
+  cacheWriteTokens: number | null;
   outputTokens: number | null;
   totalTokens: number | null;
   reasoningTokens: number | null;
   webSearchCalls: number;
+};
+
+export type ProviderExecutionMetadata = {
+  provider: "openai";
+  outcome: "provider_completed_local_rejection" | "accepted";
+  requestedModel: string;
+  returnedModel: string | null;
+  providerResponseId: string | null;
+  providerStatus: string | null;
+  providerCreatedAt: string | null;
+  providerCompletedAt: string | null;
+  serverReceivedAt: string;
+  usage: GrowthResearchUsage;
 };
 
 export type GrowthResearchProposal = {
@@ -50,6 +65,7 @@ export type GrowthResearchProposal = {
   status: "full" | "partial";
   limitations: string[];
   usage: GrowthResearchUsage;
+  execution: ProviderExecutionMetadata;
   normalizedSourceCount: number;
   sources: NormalizedResearchSource[];
   proposedRun: GrowthRunRequest;
@@ -65,6 +81,7 @@ export type GrowthResearchProposal = {
 };
 
 export type GrowthResearchResult = {
+  outcome: "accepted";
   researchRun: {
     requestedByUid: string;
     requestedAt: string;
