@@ -39,7 +39,8 @@ test("browser receives no API key and displays proposal separately from Phase 1A
 test("successful result identifies the frozen contract and failure metadata denies state changes", async () => {
   const route = await readFile("app/api/admin/agents/growth-01/research/route.ts", "utf8");
   assert.match(route, /loadGrowthContractMetadata/);
-  assert.match(route, /contract\.sha256 !== researchContract\.sha256/);
+  assert.match(route, /verifyGrowthProviderResearchProjection/);
+  assert.ok(route.indexOf("verifyGrowthProviderResearchProjection") < route.indexOf("new OpenAIResponsesWebResearchProvider"));
   assert.match(route, /persisted:\s*false/);
   assert.match(route, /downstreamInvoked:\s*false/);
   assert.match(route, /automaticRetry:\s*false/);

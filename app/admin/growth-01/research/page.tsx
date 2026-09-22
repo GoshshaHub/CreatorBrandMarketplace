@@ -13,6 +13,7 @@ type ResearchResponse = {
   providerExecution?: ProviderExecutionMetadata | null;
   researchRun?: { requestedAt: string; providerTimeoutMs: number; maximumWebSearchCalls: number };
   contract?: { path: string; sha256: string };
+  providerProjection?: { version: string; sha256: string; pairedFrozenContractVersion: string; pairedFrozenContractSha256: string };
   spendingAuthority?: { effectiveRunAuthorityUsd: number; cumulativeAccounting: string; providerDollarCutoffGuaranteed: false };
   proposal?: {
     provider: string;
@@ -181,6 +182,8 @@ export default function GrowthLiveResearchPage() {
                 <p>Completed: {research.proposal.completedAt}</p>
                 <p>Normalized sources: {research.proposal.normalizedSourceCount}</p>
                 <p className="break-all sm:col-span-2">Contract: {research.contract?.path} · {research.contract?.sha256}</p>
+                <p className="break-all sm:col-span-2">Provider projection: {research.providerProjection?.version} · {research.providerProjection?.sha256}</p>
+                <p className="break-all sm:col-span-2">Projection pairing: {research.providerProjection?.pairedFrozenContractVersion} · {research.providerProjection?.pairedFrozenContractSha256}</p>
               </div>
               <UsageDetails execution={research.proposal.execution} />
               {!!research.proposal.limitations.length && <ul className="list-disc pl-6 text-amber-200">{research.proposal.limitations.map((item) => <li key={item}>{item}</li>)}</ul>}

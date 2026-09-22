@@ -5,7 +5,7 @@ import { authorizeGrowthAdmin, GrowthAdminAuthError } from "../../../../../../li
 import { loadGrowthContractMetadata } from "../../../../../../lib/agents/growth-01/contract";
 import { OpenAIResponsesWebResearchProvider } from "../../../../../../lib/agents/growth-01/providers/openai-responses-web";
 import { calculateSpendingAuthority } from "../../../../../../lib/agents/growth-01/research-provider";
-import { loadGrowthResearchContract } from "../../../../../../lib/agents/growth-01/research-prompt";
+import { GrowthProviderProjectionIntegrityError, verifyGrowthProviderResearchProjection } from "../../../../../../lib/agents/growth-01/provider-research-contract";
 import { GrowthResearchError, MAX_RESEARCH_REQUEST_BYTES, PROVIDER_TIMEOUT_MS, MAX_WEB_SEARCH_CALLS, validateGrowthResearchRequest } from "../../../../../../lib/agents/growth-01/research-schema";
 import type { GrowthResearchRequest, GrowthResearchResult } from "../../../../../../lib/agents/growth-01/research-types";
 
@@ -60,14 +60,15 @@ export async function POST(request: Request) {
       }, { status: 409 });
     }
 
-    const [contract, researchContract] = await Promise.all([loadGrowthContractMetadata(), loadGrowthResearchContract()]);
-    if (contract.sha256 !== researchContract.sha256) throw new GrowthResearchError("contract_hash_mismatch", "Frozen contract changed while preparing research.", 500);
+    const contract = await loadGrowthContractMetadata();
+    const providerProjection = verifyGrowthProviderResearchProjection({ frozenContractSha256: contract.sha256 });
     const model = process.env.OPENAI_GROWTH_MODEL?.trim() || "gpt-5.6-terra";
     const provider = new OpenAIResponsesWebResearchProvider({ apiKey: process.env.OPENAI_API_KEY?.trim() || "", model });
     const controller = new AbortController();
     const proposal = await provider.research(input, {
-      contractText: researchContract.text,
+      contractVersion: contract.version,
       contractSha256: contract.sha256,
+      providerProjection,
       asOfDate: input.asOfDate,
       marketFocus: input.marketFocus,
       founderResearchFocus: input.founderResearchFocus?.trim() || "",
@@ -86,12 +87,19 @@ export async function POST(request: Request) {
         maximumQualified: input.maximumQualified,
       },
       contract,
+      providerProjection: {
+        version: providerProjection.version,
+        sha256: providerProjection.sha256,
+        pairedFrozenContractVersion: providerProjection.pairedFrozenContractVersion,
+        pairedFrozenContractSha256: providerProjection.pairedFrozenContractSha256,
+      },
       spendingAuthority,
       proposal,
     };
     return NextResponse.json(output, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     if (error instanceof GrowthAdminAuthError) return errorResponse(error.status, "authorization_failed", error.message);
+    if (error instanceof GrowthProviderProjectionIntegrityError) return errorResponse(500, error.code, error.message);
     if (error instanceof GrowthResearchError) return errorResponse(error.httpStatus, error.code, error.message, error.providerExecution);
     console.error("GROWTH-01 live research failed", error instanceof Error ? error.name : "unknown_error");
     return errorResponse(500, "research_failed", "Live research could not be completed. No result was saved or sent downstream.");

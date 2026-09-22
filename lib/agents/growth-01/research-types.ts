@@ -1,4 +1,5 @@
 import type { ContractMetadata, GrowthRunRequest } from "./types";
+import type { GrowthProviderProjectionMetadata } from "./provider-research-contract";
 
 export type GrowthResearchRequest = {
   asOfDate: string;
@@ -91,13 +92,15 @@ export type GrowthResearchResult = {
     maximumQualified: number;
   };
   contract: ContractMetadata;
+  providerProjection: GrowthProviderProjectionMetadata;
   spendingAuthority: SpendingAuthority;
   proposal: GrowthResearchProposal;
 };
 
 export type GrowthResearchProviderContext = {
-  contractText: string;
+  contractVersion: string;
   contractSha256: string;
+  providerProjection: GrowthProviderProjectionMetadata & { body: string };
   asOfDate: string;
   marketFocus: GrowthResearchRequest["marketFocus"];
   founderResearchFocus: string;
