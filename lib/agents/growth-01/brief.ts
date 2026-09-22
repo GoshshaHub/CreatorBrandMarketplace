@@ -26,7 +26,7 @@ export function buildDailyBriefMarkdown(params: {
   ];
 
   for (const candidate of qualified) {
-    const evidenceLinks = candidate.evidence.slice(0, 5).map((item) => `${item.publisher} — ${item.publicationDate || item.accessDate} — ${item.supportedClaim} — ${item.sourceUrl}`);
+    const evidenceLinks = candidate.evidence.slice(0, 5).map((item) => `${item.publisher} — Published: ${item.publicationDate || "Unknown"} — Accessed: ${item.accessDate} — ${item.supportedClaim} — ${item.sourceUrl}`);
     lines.push(
       "",
       `### ${cleanLine(candidate.brand)} — ${cleanLine(candidate.productOrEvent)}`,
