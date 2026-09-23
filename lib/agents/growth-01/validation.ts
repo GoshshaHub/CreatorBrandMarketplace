@@ -140,7 +140,7 @@ export function validateGrowthRunRequest(input: GrowthRunRequest): ValidationFin
   if (!validDate(input.asOfDate)) {
     findings.push({ code: "run_date_invalid", severity: "error", field: "asOfDate", message: "asOfDate must use YYYY-MM-DD." });
   }
-  if (!Array.isArray(input.marketFocus) || input.marketFocus.length === 0 || input.marketFocus.some((value) => !["beauty", "skincare", "haircare"].includes(value))) {
+  if (!Array.isArray(input.marketFocus) || input.marketFocus.length === 0 || input.marketFocus.some((value) => !["supplements", "vitamins", "wellness_supplements", "skincare", "haircare", "oral_care", "beauty", "makeup"].includes(value))) {
     findings.push({ code: "market_focus_invalid", severity: "error", field: "marketFocus", message: "Select at least one approved initial market focus." });
   }
   if (!Array.isArray(input.candidates) || input.candidates.length === 0 || input.candidates.length > MAX_GROWTH_CANDIDATES) {

@@ -13,7 +13,11 @@ import { verifyGrowthProviderResearchProjection } from "../../lib/agents/growth-
 
 const providerRequest = {
   asOfDate: "2026-09-14",
-  marketFocus: ["beauty"],
+  marketPriority: {
+    priority1: ["supplements", "vitamins", "wellness_supplements"],
+    priority2: ["skincare", "haircare", "oral_care"],
+    priority3: ["beauty", "makeup"],
+  },
   founderResearchFocus: "",
   maximumCandidates: 10,
   maximumQualified: 5,
@@ -33,14 +37,14 @@ test("spending authority is hierarchical and governed by the lowest remaining $1
 
 test("provider prompt treats retrieved content as evidence rather than instructions and excludes budget/private identity", () => {
   const providerProjection = verifyGrowthProviderResearchProjection({
-    frozenContractSha256: "cdfb8fb45819cfba1cc512fb718bdd95aa5a271eb1fbe65389cdb2a457cf45b0",
+    frozenContractSha256: "618b895eb97479db83edc668a32bc4db93a222429b27e2a8f6cbadc2bbb7e860",
   });
   const prompt = buildGrowthResearchInstructions({
     contractVersion: "V1",
     contractSha256: providerProjection.pairedFrozenContractSha256,
     providerProjection,
     asOfDate: "2026-09-14",
-    marketFocus: ["beauty"],
+    marketPriority: providerRequest.marketPriority,
     founderResearchFocus: "current launches",
     maximumCandidates: 10,
     maximumQualified: 5,

@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { buffBenchmarkCandidate, retailerDependentBenchmarkCandidate } from "../../lib/agents/growth-01/fixtures.ts";
 import { scoreGrowthCandidate } from "../../lib/agents/growth-01/scoring.ts";
-import { validateGrowthCandidate, validateQualifiedCount } from "../../lib/agents/growth-01/validation.ts";
+import { validateGrowthCandidate, validateGrowthRunRequest, validateQualifiedCount } from "../../lib/agents/growth-01/validation.ts";
 
 function validate(candidate) {
   return validateGrowthCandidate(scoreGrowthCandidate(candidate).candidate);
@@ -42,4 +42,17 @@ test("fewer than five qualified opportunities is valid while more than the appro
   const scored = scoreGrowthCandidate(buffBenchmarkCandidate).candidate;
   assert.deepEqual(validateQualifiedCount([scored], 5), []);
   assert.ok(validateQualifiedCount(Array.from({ length: 6 }, () => scored), 5).some((finding) => finding.code === "qualified_limit_exceeded"));
+});
+
+test("Phase 1A accepts supplement, oral-care, and lower-priority beauty categories under unchanged scoring", () => {
+  const findings = validateGrowthRunRequest({
+    asOfDate: "2026-09-14",
+    marketFocus: ["supplements", "vitamins", "wellness_supplements", "skincare", "haircare", "oral_care", "beauty", "makeup"],
+    maximumQualified: 5,
+    candidates: [buffBenchmarkCandidate],
+  });
+  assert.equal(findings.some((finding) => finding.code === "market_focus_invalid"), false);
+  const buff = scoreGrowthCandidate(buffBenchmarkCandidate).candidate;
+  assert.equal(buff.computed.finalScore, 81);
+  assert.equal(buff.computed.band, "Immediate Priority");
 });

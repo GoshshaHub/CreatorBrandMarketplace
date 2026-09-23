@@ -319,7 +319,16 @@ export function validateGrowthResearchRequest(value: unknown): string[] {
   const input = value as Partial<GrowthResearchRequest>;
   const errors: string[] = [];
   if (!validAsOfDate(input.asOfDate)) errors.push("asOfDate must be a real YYYY-MM-DD calendar date no later than the server's current UTC date.");
-  if (!Array.isArray(input.marketFocus) || input.marketFocus.length === 0 || input.marketFocus.some((item) => !["beauty", "skincare", "haircare"].includes(item))) errors.push("marketFocus must contain approved markets.");
+  const priority = input.marketPriority;
+  const exactTier = (actual: unknown, expected: string[]) => Array.isArray(actual)
+    && actual.length === expected.length
+    && actual.every((item, index) => item === expected[index]);
+  if (!priority
+    || !exactTier(priority.priority1, ["supplements", "vitamins", "wellness_supplements"])
+    || !exactTier(priority.priority2, ["skincare", "haircare", "oral_care"])
+    || !exactTier(priority.priority3, ["beauty", "makeup"])) {
+    errors.push("marketPriority must preserve the approved Priority 1, Priority 2, and Priority 3 markets.");
+  }
   if (typeof input.founderResearchFocus !== "undefined" && (typeof input.founderResearchFocus !== "string" || input.founderResearchFocus.length > MAX_RESEARCH_FOCUS_CHARS)) errors.push(`founderResearchFocus must be at most ${MAX_RESEARCH_FOCUS_CHARS} characters.`);
   if (!Number.isInteger(input.maximumCandidates) || Number(input.maximumCandidates) < 1 || Number(input.maximumCandidates) > MAX_RESEARCH_CANDIDATES) errors.push(`maximumCandidates must be between 1 and ${MAX_RESEARCH_CANDIDATES}.`);
   if (!Number.isInteger(input.maximumQualified) || Number(input.maximumQualified) < 1 || Number(input.maximumQualified) > MAX_RESEARCH_QUALIFIED) errors.push(`maximumQualified must be between 1 and ${MAX_RESEARCH_QUALIFIED}.`);
@@ -396,7 +405,11 @@ export function normalizeOpenAIResearchResponse(params: {
 
   const proposedRun: GrowthRunRequest = {
     asOfDate: params.request.asOfDate,
-    marketFocus: params.request.marketFocus,
+    marketFocus: [
+      ...params.request.marketPriority.priority1,
+      ...params.request.marketPriority.priority2,
+      ...params.request.marketPriority.priority3,
+    ],
     maximumQualified: params.request.maximumQualified,
     marketPattern: structured.marketPattern,
     candidates,

@@ -30,6 +30,15 @@ test("machine-readable weights remain a projection of the frozen Markdown contra
   }
 });
 
+test("contract defines three-tier market priority and supplement/oral-care claim discipline", async () => {
+  const contract = await readFile("agents/growth-01/AGENT.md", "utf8");
+  assert.match(contract, /Priority 1 — Supplements \/ Vitamins \/ Wellness Supplements/);
+  assert.match(contract, /Priority 2 — Skincare \/ Haircare \/ Oral Care/);
+  assert.match(contract, /Priority 3 — Beauty \/ Makeup/);
+  assert.match(contract, /controls research allocation, not Opportunity Score points/);
+  assert.match(contract, /Do not independently originate, verify, or endorse medical, therapeutic, safety, disease-treatment\/prevention, efficacy, dosage, ingredient-interaction, or regulatory conclusions/);
+});
+
 test("Phase 1A route contains no persistence or external communication operation", async () => {
   const route = await readFile("app/api/admin/agents/growth-01/run/route.ts", "utf8");
   assert.doesNotMatch(route, /\.(set|add|update|delete)\s*\(/);

@@ -1,9 +1,15 @@
 import type { ContractMetadata, GrowthRunRequest } from "./types";
 import type { GrowthProviderProjectionMetadata } from "./provider-research-contract";
 
+export type GrowthMarketPriority = {
+  priority1: Array<"supplements" | "vitamins" | "wellness_supplements">;
+  priority2: Array<"skincare" | "haircare" | "oral_care">;
+  priority3: Array<"beauty" | "makeup">;
+};
+
 export type GrowthResearchRequest = {
   asOfDate: string;
-  marketFocus: Array<"beauty" | "skincare" | "haircare">;
+  marketPriority: GrowthMarketPriority;
   founderResearchFocus?: string;
   maximumCandidates: number;
   maximumQualified: number;
@@ -102,7 +108,7 @@ export type GrowthResearchProviderContext = {
   contractSha256: string;
   providerProjection: GrowthProviderProjectionMetadata & { body: string };
   asOfDate: string;
-  marketFocus: GrowthResearchRequest["marketFocus"];
+  marketPriority: GrowthResearchRequest["marketPriority"];
   founderResearchFocus: string;
   maximumCandidates: number;
   maximumQualified: number;

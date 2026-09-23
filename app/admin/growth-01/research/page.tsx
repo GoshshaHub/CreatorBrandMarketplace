@@ -101,7 +101,11 @@ export default function GrowthLiveResearchPage() {
       const token = await user.getIdToken();
       const body = {
         asOfDate: new Date().toISOString().slice(0, 10),
-        marketFocus: ["beauty", "skincare", "haircare"],
+        marketPriority: {
+          priority1: ["supplements", "vitamins", "wellness_supplements"],
+          priority2: ["skincare", "haircare", "oral_care"],
+          priority3: ["beauty", "makeup"],
+        },
         founderResearchFocus: focus,
         maximumCandidates: 10,
         maximumQualified: 5,
@@ -151,7 +155,7 @@ export default function GrowthLiveResearchPage() {
 
           <section className="grid gap-4 rounded-2xl border border-slate-700 bg-slate-900 p-5 sm:grid-cols-2">
             <label className="sm:col-span-2">Research focus (optional)
-              <textarea value={focus} maxLength={1000} onChange={(event) => setFocus(event.target.value)} className="mt-2 min-h-28 w-full rounded-xl border border-slate-700 bg-slate-950 p-3" placeholder="Example: current beauty retail launches with product-specific creator activity" />
+              <textarea value={focus} maxLength={1000} onChange={(event) => setFocus(event.target.value)} className="mt-2 min-h-28 w-full rounded-xl border border-slate-700 bg-slate-950 p-3" placeholder="Example: current supplement retail launches with product-specific creator or education activity" />
               <span className="mt-2 block text-sm text-slate-400">Public-web research instructions only. Do not enter private Founder, customer, Creator, CRM, payment, or relationship information.</span>
             </label>
             <label>GROWTH-01 AI spend this calendar month ($)

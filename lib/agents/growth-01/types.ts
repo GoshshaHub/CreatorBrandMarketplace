@@ -152,9 +152,19 @@ export type CandidateValidation = {
   findings: ValidationFinding[];
 };
 
+export type GrowthMarketCategory =
+  | "supplements"
+  | "vitamins"
+  | "wellness_supplements"
+  | "skincare"
+  | "haircare"
+  | "oral_care"
+  | "beauty"
+  | "makeup";
+
 export type GrowthRunRequest = {
   asOfDate: string;
-  marketFocus: Array<"beauty" | "skincare" | "haircare">;
+  marketFocus: GrowthMarketCategory[];
   maximumQualified?: number;
   marketPattern?: string;
   candidates: GrowthCandidateInput[];

@@ -70,7 +70,7 @@ export async function POST(request: Request) {
       contractSha256: contract.sha256,
       providerProjection,
       asOfDate: input.asOfDate,
-      marketFocus: input.marketFocus,
+      marketPriority: input.marketPriority,
       founderResearchFocus: input.founderResearchFocus?.trim() || "",
       maximumCandidates: input.maximumCandidates,
       maximumQualified: input.maximumQualified,

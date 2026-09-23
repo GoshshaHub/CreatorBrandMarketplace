@@ -25,7 +25,11 @@ function projectionContext(founderResearchFocus = "") {
     contractSha256: PAIRED_FROZEN_GROWTH_CONTRACT_SHA256,
     providerProjection,
     asOfDate: "2026-09-22",
-    marketFocus: ["beauty", "skincare", "haircare"],
+    marketPriority: {
+      priority1: ["supplements", "vitamins", "wellness_supplements"],
+      priority2: ["skincare", "haircare", "oral_care"],
+      priority3: ["beauty", "makeup"],
+    },
     founderResearchFocus,
     maximumCandidates: 10,
     maximumQualified: 5,
@@ -47,7 +51,7 @@ function legacyFrozenContractExpandedInstructions(contractText) {
     "Free First is a zero-dollar acquisition/proof mechanism and contributes zero score points. Fastest Revenue Path must name a paid destination or Unclear.",
     "Propose category scores, deductions, caps, and selection status, but deterministic application validation remains authoritative.",
     `Return at most ${context.maximumCandidates} candidates and at most ${context.maximumQualified} candidates marked qualified. Fewer is valid; never fill a quota with weak candidates.`,
-    `Research date: ${context.asOfDate}. Market focus: ${context.marketFocus.join(", ")}.`,
+    `Research date: ${context.asOfDate}. Market priority 1: ${context.marketPriority.priority1.join(", ")}. Market priority 2: ${context.marketPriority.priority2.join(", ")}. Market priority 3: ${context.marketPriority.priority3.join(", ")}.`,
     "Founder research focus: No additional focus supplied.",
     `Frozen contract SHA-256: ${context.contractSha256}`,
     "--- BEGIN FROZEN GROWTH-01 CONTRACT ---",
@@ -60,9 +64,9 @@ test("full frozen contract remains loaded, hashed, and exactly paired with the p
   const contract = await loadGrowthContractMetadata(new Date("2026-09-22T00:00:00.000Z"));
   assert.equal(contract.version, "V1");
   assert.equal(contract.sha256, PAIRED_FROZEN_GROWTH_CONTRACT_SHA256);
-  assert.equal(PAIRED_FROZEN_GROWTH_CONTRACT_SHA256, "cdfb8fb45819cfba1cc512fb718bdd95aa5a271eb1fbe65389cdb2a457cf45b0");
-  assert.equal(GROWTH_PROVIDER_RESEARCH_PROJECTION_VERSION, "growth-01-provider-research-v1");
-  assert.equal(APPROVED_GROWTH_PROVIDER_PROJECTION_SHA256, "29b6dc7354ed4f405338b44d323d883dd06abe0eeb5417eebb2d3660e35f94d4");
+  assert.equal(PAIRED_FROZEN_GROWTH_CONTRACT_SHA256, "618b895eb97479db83edc668a32bc4db93a222429b27e2a8f6cbadc2bbb7e860");
+  assert.equal(GROWTH_PROVIDER_RESEARCH_PROJECTION_VERSION, "growth-01-provider-research-v2");
+  assert.equal(APPROVED_GROWTH_PROVIDER_PROJECTION_SHA256, "f255d0450e2c48764d8068227460ce805740863395d86a299530f11b6ba3a7d1");
   assert.equal(sha256(GROWTH_PROVIDER_RESEARCH_PROJECTION_BODY), APPROVED_GROWTH_PROVIDER_PROJECTION_SHA256);
 });
 
@@ -106,6 +110,19 @@ test("projection preserves retailer independence, wedge, evidence, and provenanc
   assert.match(text, /Source presence establishes provenance, not truth/);
   assert.match(text, /Model-only URLs are forbidden/);
   assert.match(text, /Do not return, infer, or author publicationDate/);
+});
+
+test("projection preserves three-tier market priority without changing score semantics", () => {
+  const text = GROWTH_PROVIDER_RESEARCH_PROJECTION_BODY;
+  assert.match(text, /Priority 1 — supplements, vitamins, and wellness supplements/);
+  assert.match(text, /Priority 2 — skincare, haircare, and oral care/);
+  assert.match(text, /Priority 3 — beauty and makeup/);
+  assert.match(text, /materially greatest discovery effort to Priority 1, then Priority 2, then Priority 3/);
+  assert.match(text, /controls research allocation, not Opportunity Score points/);
+  assert.match(text, /Do not impose rigid candidate quotas/);
+  assert.match(text, /Priority 3 opportunity may legitimately qualify above a weaker Priority 1 opportunity/);
+  assert.match(text, /Do not independently originate, verify, or endorse medical, therapeutic, safety, disease-treatment\/prevention, efficacy, dosage, ingredient-interaction, or regulatory conclusions/);
+  assert.match(text, /attributed Brand claim, not as verified efficacy/);
 });
 
 test("projection preserves all scoring ranges, deductions, caps, and bands", () => {

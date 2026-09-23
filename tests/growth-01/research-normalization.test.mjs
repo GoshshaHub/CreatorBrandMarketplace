@@ -8,12 +8,22 @@ import { validateGrowthCandidate } from "../../lib/agents/growth-01/validation.t
 
 const request = {
   asOfDate: "2026-09-14",
-  marketFocus: ["beauty"],
+  marketPriority: {
+    priority1: ["supplements", "vitamins", "wellness_supplements"],
+    priority2: ["skincare", "haircare", "oral_care"],
+    priority3: ["beauty", "makeup"],
+  },
   founderResearchFocus: "",
   maximumCandidates: 10,
   maximumQualified: 5,
   budgetAuthority: { confirmedByFounder: true, growthMonthSpendUsd: 0, commercialDepartmentMonthSpendUsd: 0 },
 };
+
+test("research request requires the explicit approved three-tier market priority", () => {
+  assert.deepEqual(validateGrowthResearchRequest(request), []);
+  assert.ok(validateGrowthResearchRequest({ ...request, marketPriority: { ...request.marketPriority, priority2: ["skincare", "haircare"] } }).some((error) => error.includes("Priority 1, Priority 2, and Priority 3")));
+  assert.ok(validateGrowthResearchRequest({ ...request, marketPriority: { ...request.marketPriority, priority3: ["makeup", "beauty"] } }).some((error) => error.includes("Priority 1, Priority 2, and Priority 3")));
+});
 
 function providerCandidate(candidate, sourceUrl, publicationDate) {
   return {
