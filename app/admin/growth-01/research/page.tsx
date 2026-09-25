@@ -3,6 +3,9 @@
 import { useState } from "react";
 
 import ProtectedRoute from "../../../../components/ProtectedRoute";
+import { createGrowthSalesExport } from "../../../../lib/agents/sales-01/export";
+import type { GrowthProviderProjectionMetadata } from "../../../../lib/agents/growth-01/provider-research-contract";
+import type { ValidatedGrowthRun } from "../../../../lib/agents/growth-01/types";
 import { auth } from "../../../../lib/firebase";
 
 type ResearchResponse = {
@@ -74,12 +77,8 @@ function UsageDetails({ execution }: { execution: ProviderExecutionMetadata }) {
   );
 }
 
-type ValidationResponse = {
+type ValidationResponse = Partial<ValidatedGrowthRun> & {
   error?: string;
-  run?: { status: string; candidateCount: number; qualifiedCount: number };
-  contract?: { path: string; sha256: string };
-  findings?: Array<{ severity: string; message: string }>;
-  dailyBriefMarkdown?: string;
 };
 
 export default function GrowthLiveResearchPage() {
@@ -135,6 +134,26 @@ export default function GrowthLiveResearchPage() {
     } finally {
       setRunning(false);
     }
+  }
+
+  function exportForSales() {
+    if (!validation?.run || validation.run.status !== "valid" || !validation.contract || !validation.candidates || !validation.findings || !validation.dailyBriefMarkdown) return;
+    const packet = createGrowthSalesExport({
+      validatedRun: validation as ValidatedGrowthRun,
+      providerProjection: research?.providerProjection ? ({
+        version: research.providerProjection.version as "growth-01-provider-research-v2.1",
+        sha256: research.providerProjection.sha256,
+        pairedFrozenContractVersion: research.providerProjection.pairedFrozenContractVersion as "V1",
+        pairedFrozenContractSha256: research.providerProjection.pairedFrozenContractSha256,
+      } as GrowthProviderProjectionMetadata) : null,
+    });
+    const blob = new Blob([JSON.stringify(packet, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `growth-sales-export-${validation.run.id}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
   }
 
   return (
@@ -203,6 +222,8 @@ export default function GrowthLiveResearchPage() {
               {validation.run && <p>Status: <strong>{validation.run.status}</strong> · {validation.run.candidateCount} candidates · {validation.run.qualifiedCount} qualified</p>}
               {!!validation.findings?.length && <ul className="space-y-2 text-sm">{validation.findings.map((finding, index) => <li key={index}>{finding.severity.toUpperCase()}: {finding.message}</li>)}</ul>}
               {validation.dailyBriefMarkdown && <pre className="max-h-[48rem] overflow-auto whitespace-pre-wrap rounded-xl bg-white p-4 text-sm text-slate-900">{validation.dailyBriefMarkdown}</pre>}
+              {validation.run?.status === "valid" && <button type="button" onClick={exportForSales} className="rounded-xl bg-sky-400 px-5 py-3 font-bold text-slate-950">Export for SALES</button>}
+              {validation.run?.status === "valid" && <p className="text-sm text-slate-300">Downloads a complete current-session JSON export only. It does not invoke SALES, approve a handoff, persist data, or take downstream action.</p>}
               <p className="text-sm text-emerald-100">A validated brief is not Founder approval and does not authorize SALES, CRM, messaging, or any downstream action.</p>
             </section>
           )}
