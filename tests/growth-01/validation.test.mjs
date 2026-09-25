@@ -22,6 +22,43 @@ test("material claims require source evidence", () => {
   assert.ok(result.findings.some((finding) => finding.code === "material_claim_missing_evidence"));
 });
 
+test("unresolved content rights remain structurally valid without an affirmative rights claim", () => {
+  const candidate = {
+    ...buffBenchmarkCandidate,
+    knownUnknowns: ["The Brand must later supply or confirm Brand-owned or properly licensed content."],
+    claims: buffBenchmarkCandidate.claims.filter((claim) => !/rights/i.test(claim.claim)),
+  };
+  assert.equal(validate(candidate).valid, true);
+});
+
+test("unsupported affirmative material rights claims remain rejected", () => {
+  const result = validate({
+    ...buffBenchmarkCandidate,
+    claims: [{ id: "unsupported-rights", claim: "The Brand has cleared reusable activation rights to specific Creator content.", material: true, evidenceIds: [] }],
+  });
+  assert.ok(result.findings.some((finding) => finding.code === "material_claim_missing_evidence"));
+});
+
+test("affirmative rights claims remain valid only with an existing explicit evidence reference", () => {
+  const rightsEvidence = {
+    id: "explicit-rights",
+    publisher: "Brand rights confirmation",
+    sourceUrl: "https://brand.example/rights-confirmation",
+    sourceType: "official_brand",
+    publicationDate: null,
+    accessDate: "2026-09-24",
+    supportedClaim: "The Brand explicitly confirms the relevant reuse and activation rights for the specific content.",
+    classification: "verified_fact",
+    reliability: "high",
+  };
+  const candidate = {
+    ...buffBenchmarkCandidate,
+    evidence: [...buffBenchmarkCandidate.evidence, rightsEvidence],
+    claims: [{ id: "supported-rights", claim: "The Brand has the relevant reuse and activation rights for the specific content.", material: true, evidenceIds: [rightsEvidence.id] }],
+  };
+  assert.equal(validate(candidate).valid, true);
+});
+
 test("retailer independence requires no invented retailer approval evidence", () => {
   assert.equal(validate(buffBenchmarkCandidate).valid, true);
   const dependency = validate({

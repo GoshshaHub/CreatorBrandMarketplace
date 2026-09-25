@@ -1,9 +1,9 @@
 import { createHash } from "crypto";
 
-export const GROWTH_PROVIDER_RESEARCH_PROJECTION_VERSION = "growth-01-provider-research-v2" as const;
+export const GROWTH_PROVIDER_RESEARCH_PROJECTION_VERSION = "growth-01-provider-research-v2.1" as const;
 export const PAIRED_FROZEN_GROWTH_CONTRACT_VERSION = "V1" as const;
 export const PAIRED_FROZEN_GROWTH_CONTRACT_SHA256 = "618b895eb97479db83edc668a32bc4db93a222429b27e2a8f6cbadc2bbb7e860" as const;
-export const APPROVED_GROWTH_PROVIDER_PROJECTION_SHA256 = "f255d0450e2c48764d8068227460ce805740863395d86a299530f11b6ba3a7d1" as const;
+export const APPROVED_GROWTH_PROVIDER_PROJECTION_SHA256 = "97fc50693bfb4b99c10642042512d91b27885525ebc373c29ff06990b79d0280" as const;
 
 export const GROWTH_PROVIDER_RESEARCH_PROJECTION_BODY = `## Role, mission, and authority
 
@@ -22,7 +22,9 @@ Goshsha is a consumer-initiated digital layer over physical products: a shopper 
 - IRL Creator Network: Brand/Creator collaboration infrastructure; 14-day free trial, then $75/month.
 - Content Rights & Monetization is a distinct product area; never describe unimplemented capabilities as available.
 
-Creator collaboration and Retail Media are separate. Campaign approval does not activate Retail Media. Do not change, negotiate, discount, guarantee, or commit pricing. Do not assume content rights: automated/current activation requires Brand-owned or properly licensed content, and an unresolved rights assumption must remain an unknown and may require a deduction.
+Creator collaboration and Retail Media are separate. Campaign approval does not activate Retail Media. Do not change, negotiate, discount, guarantee, or commit pricing.
+
+Automated/current activation requires Brand-owned or properly licensed content. Public evidence of Creator activity, posting, reposting, collaboration, sponsorship, Brand use, or Brand association does not establish ownership or reusable Goshsha activation rights. It may support Creator/social activity evidence, but never content-ownership or activation-rights evidence. Only explicit evidence supporting the specific content and relevant reuse/activation right may support an affirmative rights claim. Otherwise rights status is unknown: put it in knownUnknowns, apply unresolvedRightsAssumption when appropriate, and do not claim or imply that the Brand owns, controls, has cleared, or can reuse specific content. Use this conditional language: “The Brand must later supply or confirm Brand-owned or properly licensed content.” Free First and paid Product 2 may be proposed conditionally on that future confirmation without asserting that rights currently exist. Genuinely affirmative material rights claims still require evidence.
 
 The acquisition path, when appropriate, is: awareness -> Brand interest -> Free First -> Brand physically scans its product -> Brand experiences the activation -> Product 2/IRL Retail Media and/or Creator Network paid-conversion opportunity. Treat the scan/experience as a proof milestone, not revenue.
 

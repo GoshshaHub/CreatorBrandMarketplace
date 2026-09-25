@@ -42,6 +42,20 @@ test("deductions apply once and the lowest applicable cap wins", () => {
   assert.equal(result.candidate.computed.finalScore, 49);
 });
 
+test("unresolved rights assumption remains an approved scored deduction", () => {
+  const result = scoreGrowthCandidate({
+    ...buffBenchmarkCandidate,
+    deductions: { unresolvedRightsAssumption: 5 },
+    claimedGrossScore: undefined,
+    claimedFinalScore: undefined,
+    claimedBand: undefined,
+  });
+  assert.equal(result.candidate.computed.deductionTotal, 5);
+  assert.equal(result.candidate.computed.finalScore, 76);
+  assert.equal(result.candidate.computed.band, "Strong Opportunity");
+  assert.equal(result.findings.length, 0);
+});
+
 test("exceptional structural benchmark receives only supported trigger points and the no-trigger cap", () => {
   const result = scoreGrowthCandidate(elfBenchmarkCandidate);
   assert.equal(result.candidate.scores.currentTimelyTrigger, 0);
