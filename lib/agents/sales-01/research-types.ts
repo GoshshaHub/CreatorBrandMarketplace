@@ -186,6 +186,7 @@ export type SalesResearchProviderContext = {
 
 export type SalesResearchResult = {
   outcome: "accepted";
+  envelope: GrowthSalesHandoffEnvelopeV1;
   providerProfile: {
     timeoutMs: 150_000;
     maximumWebSearchCalls: 6;
@@ -198,4 +199,5 @@ export type SalesResearchResult = {
   providerProjection: SalesProviderProjectionMetadata;
   spendingAuthority: SalesSpendingAuthority;
   proposal: SalesResearchProposal;
+  crmExport?: import("./crm-export").CrmSalesIngestionV1;
 };

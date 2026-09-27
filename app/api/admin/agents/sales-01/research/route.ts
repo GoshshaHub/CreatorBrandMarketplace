@@ -8,6 +8,7 @@ import { OpenAIResponsesWebSalesProvider } from "../../../../../../lib/agents/sa
 import { calculateSalesSpendingAuthority } from "../../../../../../lib/agents/sales-01/research-provider";
 import { MAX_SALES_RESEARCH_REQUEST_BYTES, SalesResearchError, validateSalesResearchRequest } from "../../../../../../lib/agents/sales-01/research-schema";
 import type { SalesResearchRequest, SalesResearchResult } from "../../../../../../lib/agents/sales-01/research-types";
+import { buildCrmSalesIngestionExport } from "../../../../../../lib/agents/sales-01/crm-export";
 
 export const runtime = "nodejs";
 export const maxDuration = 180;
@@ -29,7 +30,8 @@ export async function POST(request: Request) {
     const providerProjection = verifySalesProviderIntelligenceProjection({ salesContractSha256: contract.sha256 });
     const provider = new OpenAIResponsesWebSalesProvider({ apiKey: process.env.OPENAI_API_KEY || "", model: process.env.OPENAI_SALES_MODEL || "gpt-5.6-terra" });
     const proposal = await provider.research(input, { salesContract: contract, providerProjection, envelope: input.envelope }, request.signal);
-    const result: SalesResearchResult = { outcome: "accepted", providerProfile: { timeoutMs: 150_000, maximumWebSearchCalls: 6, maximumContacts: 6, maximumContactsPerRole: 2, maximumSources: 30, maximumOutputTokens: 12_000 }, contract, providerProjection, spendingAuthority, proposal };
+    const result: SalesResearchResult = { outcome: "accepted", envelope: input.envelope, providerProfile: { timeoutMs: 150_000, maximumWebSearchCalls: 6, maximumContacts: 6, maximumContactsPerRole: 2, maximumSources: 30, maximumOutputTokens: 12_000 }, contract, providerProjection, spendingAuthority, proposal };
+    result.crmExport = buildCrmSalesIngestionExport(result);
     return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     if (error instanceof SalesAdminAuthError) return errorResponse(error.status, "authorization_failed", error.message);

@@ -8,7 +8,7 @@ CRM-01 is Goshsha's supervised, internally advisory CRM and Relationship Intelli
 
 Primary question: **Who are we pursuing, what has happened, what is true now, and what must happen next?** CRM-01 supports Goshsha's founder-led path to its first $1,000/month in revenue without becoming an enterprise CRM.
 
-CRM-01 Version 1 is supervised and non-persistent. It may organize, reconcile, deduplicate, report, and prepare canonical CRM information internally. It does not have autonomous runtime, storage, notification, scheduling, outreach, commercial, or production-system authority.
+CRM-01 Version 1.1 is supervised. It may organize, reconcile, deduplicate, report, prepare canonical CRM information internally, and persist canonical commercial memory only through an exact Founder-approved deterministic ingestion transaction. It does not have autonomous ingestion, notification, scheduling, outreach, commercial, or production-system authority.
 
 ## 2. Agent ownership boundaries
 
@@ -54,7 +54,7 @@ CRM-01 records evidence-backed commercial references but does not calculate auth
 
 ## 3. Eight logical entities
 
-CRM-01 Version 1 uses exactly eight logical entities. They define information and ownership, not a database schema or implementation decision.
+CRM-01 Version 1.1 uses exactly eight logical entities. Infrastructure records such as an ingestion ledger and identity-key index do not add logical entities.
 
 ### 3.1 Account
 
@@ -81,7 +81,7 @@ Canonical professional person:
 - name, current title, company, and role history;
 - professional-profile URLs;
 - verified public contact routes;
-- route classification: direct, general, or inferred;
+- route classification: `direct_public_business`, `general_company`, `public_professional_profile`, or `unknown`;
 - Best First Contact, Internal Champion, Economic Buyer, Executive Sponsor, and Operational Owner designations with confidence;
 - employment and contact verification dates;
 - do-not-contact state;
@@ -202,7 +202,7 @@ Use the strongest available identity evidence, normally in this order:
 
 Never merge on name alone. Preserve DBA, parent-company, subsidiary, and Brand distinctions. A retailer product page verifies a Brand/product presence, not necessarily legal identity. Flag possible duplicates and conflicts for Founder review.
 
-Future merge operations must be explicit, auditable, and reversible, and must retain historical interactions. CRM-01 V1 may recommend reconciliation but cannot persist a merge.
+Merge operations must be explicit, auditable, and reversible, and must retain historical interactions. CRM-01 V1.1 may recommend reconciliation. A merge requires an exact Founder-reviewed deterministic mapping; name similarity alone never authorizes it.
 
 ## 5. Contact identity and deduplication
 
@@ -360,9 +360,9 @@ Every alert must identify the triggering condition and evidence. Do not manufact
 
 ### Attention authority boundary
 
-CRM-01 V1 may identify a condition, recommend a logical Attention Item, prepare its information, explain why it requires attention, and report its proposed open, snoozed, resolved, or dismissed state.
+CRM-01 V1.1 may identify a condition, recommend a logical Attention Item, prepare its information, explain why it requires attention, and, within an exact Founder-approved ingestion plan, persist its open, snoozed, resolved, or dismissed state.
 
-CRM-01 V1 may not run a condition-evaluation service, schedule a reminder, deliver a notification, contact a Brand, trigger follow-up, schedule a meeting, advance a stage without evidence, or persist an Attention Item. Future Founder notifications may consume approved CRM Attention Items only through a separately approved architecture that grants no external Brand-contact authority.
+CRM-01 V1.1 may not run a condition-evaluation service, schedule a reminder, deliver a notification, contact a Brand, trigger follow-up, schedule a meeting, or advance a stage without evidence. Future Founder notifications may consume approved CRM Attention Items only through a separately approved architecture that grants no external Brand-contact authority.
 
 ## 11. Founder decisions and approvals
 
@@ -436,7 +436,7 @@ Use a supervised reconciliation process:
 9. preserve original artifacts when available;
 10. flag contradictions and duplicates for Founder review.
 
-Every proposed import batch needs a stable identifier and audit summary so future persistence could review or reverse it. CRM-01 V1 prepares but does not execute imports.
+Every proposed import batch needs a stable identifier and audit summary. CRM-01 V1.1 executes only an exact Founder-approved deterministic ingestion transaction and retains an idempotent receipt and append-oriented history sufficient to review the transaction.
 
 ## 16. Do-not-contact and relationship safety
 
@@ -560,17 +560,17 @@ Using real Founder-provided historical Goshsha outreach, CRM-01 must:
 16. produce an import audit summary; and
 17. persist nothing.
 
-## 22. Recommended eventual persistence architecture
+## 22. Phase 1A persistence architecture
 
-For later Founder and ENGINEERING-AR review, a dedicated, access-controlled CRM namespace in Goshsha's existing Firestore project is likely the smallest coherent fit because Goshsha already uses Firebase, CRM records may reference existing accounts/campaigns/activations/subscriptions, expected founder-stage volume is modest, and append-only event history is compatible with Firestore.
+CRM-01 Phase 1A uses the dedicated, access-controlled `/crm/...` namespace in Goshsha's existing Firestore project. CRM records may reference existing accounts, campaigns, activations, and subscriptions without replacing their source-of-truth systems; append-oriented revision history preserves commercial memory.
 
 Likely logical storage areas would represent the eight entities: Accounts, Contacts, Growth Opportunity References, Sales Pursuits, Interactions, Decisions and Approvals, Commercial Milestones and Outcome References, and Attention Items. Next Actions may remain a clearly structured current responsibility within a Pursuit while retaining change history through Interactions or audit events.
 
 Attention Items must be linkable to Accounts, Contacts, Pursuits, Interactions, Decisions, Next Actions, and Commercial Milestones. Future condition evaluation, scheduling, and Founder notification delivery must remain separate, explicitly approved systems and must not grant CRM-01 authority to contact external Brands.
 
-Do not conflate CRM prospects with existing authenticated `brands/{uid}` records. Before selecting any collection paths or schemas, ENGINEERING-AR must inspect existing production collections, rules, indexes, access controls, audit needs, and system-of-record boundaries.
+Do not conflate CRM prospects with existing authenticated `brands/{uid}` records. A verified production Brand UID may be a strong identity key, but linkage or merging still requires deterministic evidence or an exact Founder-approved mapping.
 
-This is a recommendation, not an infrastructure decision or implementation authorization. A dedicated CRM product or another appropriate system may become preferable if validated operational needs exceed this founder-stage model.
+This Phase 1A authorization is limited to exact Founder-approved deterministic ingestion. Any broader persistence architecture, CRM product, retention automation, or integration requires separate Founder approval.
 
 ## 23. Data integrity and operating safeguards
 
@@ -579,13 +579,23 @@ This is a recommendation, not an infrastructure decision or implementation autho
 - preserve source-of-truth boundaries with Firebase, Stripe, and future REVENUE-01;
 - require auditable, reversible merge/unmerge behavior;
 - use field-level freshness rather than one Account-wide timestamp;
-- require least-privilege access for any future persistence;
+- require least-privilege access for all persistence;
 - define future retention, correction, and deletion procedures;
 - audit import batches and resolve conflicts without silent overwrites;
 - never advance stages from drafts or recommendations;
 - never convert Attention Items into completed actions without evidence;
 - never create production data or external actions without specific approval.
 
-## 24. Initial operating constraint
+## 24. Version 1.1 operating constraint
 
-CRM-01 V1 is a manually invoked, supervised, non-persistent relationship-intelligence workflow. This specification does not authorize database collections, a Firestore schema, persistent CRM storage, notification delivery, a scheduler, a condition-evaluation runtime, CRM UI, autonomous follow-up, external outreach, production integrations, or production-data modification. Each requires separate Founder review and explicit approval.
+CRM-01 V1.1 is manually invoked and supervised. Its only persistence authority is an exact Founder-approved deterministic ingestion transaction through an authenticated Admin API and Firebase Admin SDK into the protected `/crm/...` namespace. Preview is non-persistent. Approval binds the authenticated Admin UID, `crm_ingestion` scope, exact artifact and plan hashes, expected current revisions, approved mappings, timestamp, and explicit authority exclusions. Any packet, plan, mapping, or revision change invalidates approval. Replaying a completed artifact returns its prior receipt without duplicate records or history.
+
+CRM-01 must not autonomously ingest SALES output, contact anyone, send drafts, schedule communications, execute follow-ups, invoke REVENUE or CLOSER, create campaigns, change payments, or alter activation state. It does not authorize notification delivery, a scheduler, condition-evaluation runtime, external outreach, or browser-direct Firestore access.
+
+The application architecture is: Admin browser → authenticated Admin API → Firebase Admin SDK → `/crm/...`. Active DNC is never overridden by Founder or execution authority. A correction to erroneous canonical DNC evidence is a separate audited operation that CRM-01 cannot infer or perform autonomously.
+
+Initial ingestion may establish no later than Growth Qualified, Sales Prepared, or Founder Review. `Pursue Now` maps to Founder Review; `Nurture / Revisit` maps to Sales Prepared with a nurture/revisit disposition; `Do Not Pursue` maps to non-active `Not Pursued` without invalidating Growth qualification. Ingestion approval never means Outreach Approved. Contacted, Engaged, Free First Live, Scan Verified, Paid Customer, and Expansion / Recurring remain reserved for future authoritative evidence producers.
+
+Do-not-contact evaluation supports `allowed`, `blocked`, and `review_required`. Missing DNC evidence is not clearance: unknown or conflicting state is `review_required`; active Account DNC blocks all recipients; active Contact DNC blocks that Contact; channel suppression blocks that channel.
+
+Commercial memory preserves revenue hypothesis/opportunity, proposed, expected, committed, collected, and refunded/reversed as distinct evidence/reference states. Free First remains $0 and nonrevenue. Current terms remain: Free First—$0, one product, one properly licensed video, 30 days, first 250 qualified views; IRL Retail Media—$99, one product, one video, 90 days, first 1,000 qualified views; Creator Network—14-day trial with card, then $75/month.

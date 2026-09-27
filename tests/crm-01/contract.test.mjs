@@ -1,0 +1,3 @@
+import assert from "node:assert/strict"; import { readFile } from "node:fs/promises"; import test from "node:test";
+import { APPROVED_CRM_CONTRACT_SHA256, CRM_CONTRACT_VERSION, verifyCrmContractContents } from "../../lib/agents/crm-01/contract.ts";
+test("CRM V1.1 contract is pinned and drift fails closed", async () => { const contents = await readFile("agents/crm-01/AGENT.md"); assert.equal(CRM_CONTRACT_VERSION, "V1.1"); assert.equal(verifyCrmContractContents(contents), APPROVED_CRM_CONTRACT_SHA256); assert.throws(() => verifyCrmContractContents(Buffer.concat([contents, Buffer.from("x")]))); });

@@ -74,6 +74,17 @@ export default function SalesIntakePage() {
     } finally { setResearching(false); }
   }
 
+  function downloadCrmExport() {
+    if (!researchResult?.crmExport) return;
+    const blob = new Blob([JSON.stringify(researchResult.crmExport, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `crm-sales-ingestion-${researchResult.crmExport.artifactSha256.slice(0, 12)}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <ProtectedRoute allowedRole="admin">
       <main className="min-h-screen bg-slate-950 px-4 py-10 text-white sm:px-8">
@@ -153,6 +164,7 @@ export default function SalesIntakePage() {
             {researchResult.proposal && <>
               <div className="grid gap-2 text-sm sm:grid-cols-2"><p>Decision: {researchResult.proposal.playbook.salesPursuitDecision}</p><p>Contacts: {researchResult.proposal.playbook.contacts.length}</p><p>Sources: {researchResult.proposal.normalizedSourceCount}</p><p>Web searches: {researchResult.proposal.execution.usage.webSearchCalls}</p><p>Total tokens: {researchResult.proposal.execution.usage.totalTokens ?? "Unavailable"}</p><p>Sending/CRM: Not authorized</p></div>
               <details open><summary className="cursor-pointer font-semibold">Session-only Sales Playbook and CRM-ready preview</summary><pre className="mt-3 max-h-[50rem] overflow-auto whitespace-pre-wrap rounded-xl bg-slate-950 p-4 text-xs">{JSON.stringify(researchResult.proposal.playbook, null, 2)}</pre></details>
+              {researchResult.crmExport && <div className="flex flex-wrap gap-3"><button type="button" onClick={() => void navigator.clipboard.writeText(JSON.stringify(researchResult.crmExport, null, 2))} className="rounded-lg border border-sky-400 px-4 py-2 text-sm font-semibold text-sky-200">Copy CRM export</button><button type="button" onClick={downloadCrmExport} className="rounded-lg bg-sky-400 px-4 py-2 text-sm font-bold text-slate-950">Download CRM export</button><span className="self-center text-xs text-slate-400">Export only · no CRM write · no downstream authority</span></div>}
             </>}
             {researchResult.providerExecution && <details><summary className="cursor-pointer font-semibold">Safe provider execution metadata</summary><pre className="mt-3 overflow-auto rounded-xl bg-slate-950 p-4 text-xs">{JSON.stringify(researchResult.providerExecution, null, 2)}</pre></details>}
           </section>}
