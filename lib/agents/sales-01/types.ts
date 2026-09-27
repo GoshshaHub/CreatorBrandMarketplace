@@ -8,7 +8,7 @@ import type {
 
 export type SalesContractMetadata = {
   name: "SALES-01";
-  version: "V1.1";
+  version: "V1.2";
   path: "agents/sales-01/AGENT.md";
   sha256: string;
   byteLength: number;

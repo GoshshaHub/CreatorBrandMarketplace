@@ -79,6 +79,15 @@ export type SalesContact = {
   name: string;
   currentTitle: string;
   company: string;
+  identityEvidenceIds: string[];
+  currentRoleEvidenceIds: string[];
+  stakeholderFunction: string;
+  problemOwnership: "direct" | "adjacent" | "not_evidenced" | "unknown";
+  functionalRelevance: string;
+  functionalRelevanceClassification: "sales_inference";
+  confidence: "Confirmed" | "Probable" | "Uncertain";
+  freshness: "current" | "stale" | "conflicting" | "unknown";
+  conflictingEvidenceIds: string[];
   strategicRoles: Array<"Best First Contact" | "Internal Champion" | "Economic Buyer" | "Executive Sponsor" | "Operational Owner">;
   strategicRoleRationale: string;
   buyingAuthority: "unknown" | "supported";
@@ -123,6 +132,12 @@ export type SalesPlaybookV1 = {
     desiredNextAction: string;
   };
   contacts: SalesContact[];
+  contactSelection: {
+    status: "recommended" | "unavailable";
+    bestFirstContactId: string | null;
+    unavailableReason: string | null;
+    smallestSufficientSetRationale: string;
+  };
   proofStrategy: string;
   claims: SalesClaim[];
   inheritedUnknowns: Array<{
@@ -152,6 +167,8 @@ export type SalesPlaybookV1 = {
     opportunity: string;
     salesPursuitDecision: SalesPlaybookV1["salesPursuitDecision"];
     bestFirstContactId: string | null;
+    bestFirstContactStatus: "recommended" | "unavailable";
+    bestFirstContactUnavailableReason: string | null;
     contactIds: string[];
     trigger: string;
     wedge: string;

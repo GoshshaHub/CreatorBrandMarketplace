@@ -10,7 +10,8 @@ function request() { return { envelope: envelope(), founderAuthorization: { auth
 function proposal() { return {
   partial: false, limitations: [], salesPursuitDecision: "Pursue Now", salesPursuitRationale: "A small proof conversation is practical.",
   strategy: { observedTrigger: "The validated Growth trigger remains current.", specificProblem: "The shelf moment lacks the online product context.", goshshaWedge: "Bring the validated product story to the physical scan.", retailerIndependenceAssessment: "No retailer-controlled dependency is evidenced.", selectedEntryOffer: "Free First", offerRationale: "Use proof before the paid path.", physicalScanProofPoint: "Brand scans its own product and sees the experience.", paidConversionHypothesis: "$99 IRL Retail Media after proof.", desiredNextAction: "Seek a short exploratory conversation." },
-  contacts: [{ id: "contact-1", name: "Aisha Joshi", currentTitle: "Founder", company: "Buff Beauty", strategicRoles: ["Best First Contact"], strategicRoleRationale: "Small-company accessibility and direct Brand context.", buyingAuthority: "unknown", buyingAuthorityEvidenceIds: [], contactRoute: { type: "public_professional_profile", value: "https://example.com/aisha", evidenceIds: ["sales-1"] }, evidenceIds: ["sales-1"] }],
+  contacts: [{ id: "contact-1", name: "Aisha Joshi", currentTitle: "Founder", company: "Buff Beauty", identityEvidenceIds: ["sales-1"], currentRoleEvidenceIds: ["sales-1"], stakeholderFunction: "Brand leadership", problemOwnership: "direct", functionalRelevance: "The evidenced Brand leadership remit directly owns the identified product-story problem.", functionalRelevanceClassification: "sales_inference", confidence: "Confirmed", freshness: "current", conflictingEvidenceIds: [], strategicRoles: ["Best First Contact"], strategicRoleRationale: "Small-company accessibility and direct Brand context.", buyingAuthority: "unknown", buyingAuthorityEvidenceIds: [], contactRoute: { type: "public_professional_profile", value: "https://example.com/aisha", evidenceIds: ["sales-1"] }, evidenceIds: ["sales-1"] }],
+  contactSelection: { status: "recommended", bestFirstContactId: "contact-1", unavailableReason: null, smallestSufficientSetRationale: "One evidenced contact is sufficient for this Founder-stage conversation." },
   proofStrategy: "Confirm product/content readiness, then demonstrate the physical scan.",
   claims: [{ id: "claim-1", statement: "Aisha Joshi is publicly associated with Buff Beauty.", classification: "verified_fact", evidenceRefs: [{ kind: "sales_evidence", id: "sales-1" }] }, { id: "claim-2", statement: "Free First is a $0 proof mechanism.", classification: "goshsha_capability", evidenceRefs: [{ kind: "goshsha_capability", id: "cap-free-first" }] }],
   inheritedUnknowns: [{ originalText: "Brand interest and content rights remain unknown until verified.", status: "unresolved", resolution: null, salesEvidenceIds: [] }],
@@ -45,6 +46,24 @@ test("inherited unknowns cannot disappear and resolution requires current eviden
 test("strategic roles do not establish buying authority; supported authority needs explicit evidence", () => {
   assert.equal(normalize().playbook.contacts[0].buyingAuthority, "unknown");
   const unsupported = proposal(); unsupported.contacts[0].buyingAuthority = "supported"; assert.throws(() => normalize(unsupported), (error) => error.code === "buying_authority_unsupported");
+});
+
+test("contact intelligence requires separate identity, role, function, relevance, confidence, freshness, and evidence", () => {
+  for (const field of ["identityEvidenceIds", "currentRoleEvidenceIds"]) { const invalid = proposal(); invalid.contacts[0][field] = []; assert.throws(() => normalize(invalid), (error) => error.code === "contact_evidence_invalid"); }
+  const invalidRef = proposal(); invalidRef.contacts[0].currentRoleEvidenceIds = ["missing"]; assert.throws(() => normalize(invalidRef), (error) => error.code === "contact_evidence_invalid");
+  const wrongClass = proposal(); wrongClass.contacts[0].functionalRelevanceClassification = "verified_fact"; assert.throws(() => normalize(wrongClass), (error) => error.code === "functional_relevance_classification_invalid");
+  const conflicting = proposal(); conflicting.contacts[0].freshness = "conflicting"; assert.throws(() => normalize(conflicting), (error) => error.code === "contact_evidence_invalid");
+});
+
+test("Best First Contact is zero-or-one, evidence-supported, and may be explicitly unavailable", () => {
+  const second = structuredClone(proposal().contacts[0]); second.id = "contact-2"; const duplicate = proposal(); duplicate.contacts.push(second); assert.throws(() => normalize(duplicate), (error) => error.code === "best_first_contact_limit_exceeded");
+  for (const field of [["problemOwnership", "unknown"], ["confidence", "Uncertain"], ["freshness", "stale"]]) { const invalid = proposal(); invalid.contacts[0][field[0]] = field[1]; assert.throws(() => normalize(invalid), (error) => error.code === "best_first_contact_support_insufficient"); }
+  const unavailable = proposal(); unavailable.contacts[0].strategicRoles = ["Operational Owner"]; unavailable.contactSelection = { status: "unavailable", bestFirstContactId: null, unavailableReason: "No evidenced person currently meets the Best First Contact standard.", smallestSufficientSetRationale: "Retain the one evidenced operational contact without inventing a recommendation." }; const result = normalize(unavailable); assert.equal(result.playbook.crmReadyPacket.bestFirstContactId, null); assert.equal(result.playbook.crmReadyPacket.bestFirstContactStatus, "unavailable");
+  const missingGap = structuredClone(unavailable); missingGap.contactSelection.unavailableReason = null; assert.throws(() => normalize(missingGap), (error) => error.code === "best_first_contact_gap_missing");
+});
+
+test("generic or unrelated Partnerships titles do not qualify as Best First Contact", () => {
+  for (const [title, fn] of [["VP, Partnerships", "Partnerships"], ["Head of Technology Alliances", "Technology Alliances"], ["Director, Wholesale", "Wholesale"]]) { const invalid = proposal(); invalid.contacts[0].currentTitle = title; invalid.contacts[0].stakeholderFunction = fn; assert.throws(() => normalize(invalid), (error) => error.code === "best_first_contact_function_unsupported"); }
 });
 
 test("guessed email, phone, profile, inferred route, and model-only citations fail", () => {

@@ -21,7 +21,7 @@ export function validateCrmSalesExport(value: unknown): CrmSalesIngestionV1 {
   assert(artifact.canonicalizationVersion === "crm-sales-canonical-json-v1", "invalid_export", "Unsupported canonicalization version.");
   assert(verifyCrmSalesIngestionExport(artifact), "artifact_integrity_failed", "The CRM export hash does not match its contents.");
   assert(artifact.authority?.crmWriteAuthorized === false && artifact.authority.persistenceAuthorized === false && artifact.authority.downstreamInvocationAuthorized === false && artifact.authority.externalActionAuthorized === false, "authority_expansion", "The SALES export must remain nonauthorizing.");
-  assert(artifact.source.salesContract?.version === "V1.1" && artifact.source.salesContract.sha256 === APPROVED_SALES_CONTRACT_SHA256, "sales_contract_mismatch", "The SALES contract identity is not approved.");
+  assert(artifact.source.salesContract?.version === "V1.2" && artifact.source.salesContract.sha256 === APPROVED_SALES_CONTRACT_SHA256, "sales_contract_mismatch", "The SALES contract identity is not approved.");
   assert(artifact.source.salesProviderProjection?.version === SALES_PROVIDER_INTELLIGENCE_VERSION && artifact.source.salesProviderProjection.sha256 === APPROVED_SALES_PROVIDER_INTELLIGENCE_SHA256, "sales_projection_mismatch", "The SALES provider projection identity is not approved.");
   assert(verifySalesEnvelopeIntegrity(artifact.source.phase1AEnvelope), "growth_envelope_integrity_failed", "The immutable GROWTH/SALES envelope failed integrity validation.");
   assert(artifact.source.acceptedSalesPlaybook?.schemaVersion === "sales-playbook-v1", "invalid_playbook", "An accepted Sales Playbook is required.");

@@ -13,7 +13,7 @@ import { APPROVED_GROWTH_CONTRACT_SHA256, APPROVED_SALES_CONTRACT_SHA256 } from 
 
 export const syntheticSalesContractMetadata: SalesContractMetadata = {
   name: "SALES-01",
-  version: "V1.1",
+  version: "V1.2",
   path: "agents/sales-01/AGENT.md",
   sha256: APPROVED_SALES_CONTRACT_SHA256,
   byteLength: 1,

@@ -13,11 +13,11 @@ function envelope() {
   return validateSalesIntake({ input: { export: createSyntheticGrowthSalesExport(), candidateId: "buff-the-buff-ritual", founderApproval: { approved: true, scope: "sales_preparation_only" } }, approvedByUid: "founder", approvedAt: "2026-09-24T12:00:00.000Z", salesContract: syntheticSalesContractMetadata }).envelope;
 }
 
-test("projection is paired to SALES V1.1 and one-byte changes fail closed", () => {
-  const projection = verifySalesProviderIntelligenceProjection({ salesContractSha256: "86141fd7c1aff83cc487346976c6894633a32e37ae498334301138fd658a1f34" });
-  assert.equal(projection.version, "sales-01-provider-intelligence-v1");
+test("projection is paired to SALES V1.2 and one-byte changes fail closed", () => {
+  const projection = verifySalesProviderIntelligenceProjection({ salesContractSha256: syntheticSalesContractMetadata.sha256 });
+  assert.equal(projection.version, "sales-01-provider-intelligence-v1.1");
   assert.equal(projection.sha256, APPROVED_SALES_PROVIDER_INTELLIGENCE_SHA256);
-  assert.throws(() => verifySalesProviderIntelligenceProjection({ salesContractSha256: `0${projection.pairedSalesContractSha256.slice(1)}` }));
+  assert.throws(() => verifySalesProviderIntelligenceProjection({ salesContractSha256: `${projection.pairedSalesContractSha256[0] === "0" ? "1" : "0"}${projection.pairedSalesContractSha256.slice(1)}` }));
   assert.throws(() => verifySalesProviderIntelligenceProjection({ salesContractSha256: projection.pairedSalesContractSha256, projectionBody: `${projection.body}x` }));
 });
 
@@ -26,6 +26,9 @@ test("provider projection preserves contact, claims, rights, unknown, and non-se
   const prompt = buildSalesResearchInstructions({ salesContract: syntheticSalesContractMetadata, providerProjection: projection, envelope: envelope() });
   assert.match(prompt, /Never infer, pattern-match, or guess email/i);
   assert.match(prompt, /Buying authority is unknown/i);
+  assert.match(prompt, /smallest sufficient contact set/i);
+  assert.match(prompt, /Generic Partnerships is insufficient/i);
+  assert.match(prompt, /zero or one Best First Contact/i);
   assert.match(prompt, /Every inherited GROWTH unknown/i);
   assert.match(prompt, /Creator activity does not establish content rights/i);
   assert.match(prompt, /All outreach is non-sending/i);
@@ -37,6 +40,8 @@ test("strict schema excludes inferred contact routes and limits contacts", () =>
   assert.equal(contact.maxItems, 6);
   assert.deepEqual(contact.items.properties.contactRoute.properties.type.enum, ["direct_public_business", "general_company", "public_professional_profile", "unknown"]);
   assert.equal(contact.items.properties.contactRoute.properties.type.enum.includes("inferred"), false);
+  for (const field of ["identityEvidenceIds", "currentRoleEvidenceIds", "stakeholderFunction", "problemOwnership", "functionalRelevance", "functionalRelevanceClassification", "confidence", "freshness", "conflictingEvidenceIds"]) assert.ok(contact.items.required.includes(field));
+  assert.deepEqual(OPENAI_SALES_INTELLIGENCE_JSON_SCHEMA.properties.contactSelection.properties.status.enum, ["recommended", "unavailable"]);
 });
 
 test("SALES spending authority is hierarchical $1 → $20 → $50 and requires the full dollar", () => {

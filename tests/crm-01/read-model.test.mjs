@@ -17,10 +17,12 @@ test("CRM does not manufacture Best First Contact or buying authority", () => {
   assert.equal(plain.recommendedAsBestFirstContact, false);
   assert.equal(plain.recommendationClassification, "unavailable");
   assert.equal(plain.buyingAuthority, "unknown");
-  const recommended = toContactReadModel(record("contact", { name: "Pat", strategicRoles: ["Best First Contact"], strategicRoleRationale: "Directly owns the problem.", buyingAuthority: "unknown" }, ["sales_strategic_inference"]));
+  const recommended = toContactReadModel(record("contact", { name: "Pat", identityEvidenceIds: ["s1"], currentRoleEvidenceIds: ["s1"], stakeholderFunction: "Shopper Marketing", problemOwnership: "direct", functionalRelevance: "Owns the identified shelf-education problem.", functionalRelevanceClassification: "sales_inference", confidence: "Confirmed", freshness: "current", conflictingEvidenceIds: [], evidenceIds: ["s1"], recommendedAsBestFirstContact: true, strategicRoles: ["Best First Contact"], strategicRoleRationale: "Directly owns the problem.", buyingAuthority: "unknown", buyingAuthorityEvidenceIds: [] }, ["sales_strategic_inference"]));
   assert.equal(recommended.recommendedAsBestFirstContact, true);
   assert.equal(recommended.recommendationClassification, "sales_inference");
   assert.equal(recommended.buyingAuthority, "unknown");
+  assert.equal(recommended.functionalRelevanceClassification, "sales_inference");
+  assert.deepEqual(recommended.identityEvidenceIds, ["s1"]);
 });
 
 test("Next Action is memory and never execution authority", () => {
