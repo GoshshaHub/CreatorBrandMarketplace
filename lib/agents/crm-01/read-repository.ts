@@ -1,5 +1,6 @@
 import { FieldPath, type DocumentData, type Firestore, type Query, type QueryDocumentSnapshot } from "firebase-admin/firestore";
 import type { CrmStoredRecord } from "./types";
+import type { CrmRevisionRecord } from "./mutation-types";
 import { CRM_DETAIL_RELATION_LIMIT, CRM_READ_MAX_LIMIT } from "./read-types";
 import { decodeReadCursor, encodeReadCursor } from "./read-validation";
 
@@ -54,4 +55,13 @@ export async function readCrmAccountRecord(db: Firestore, accountId: string): Pr
 export async function readCrmRelatedRecords(db: Firestore, collection: Exclude<CrmReadCollection, "accounts">, accountId: string): Promise<{ records: CrmStoredRecord[]; truncated: boolean }> {
   const snapshot = await db.collection(collectionPath(collection)).where("data.accountId", "==", accountId).limit(CRM_DETAIL_RELATION_LIMIT + 1).get();
   return { records: snapshot.docs.slice(0, CRM_DETAIL_RELATION_LIMIT).map(asStoredRecord), truncated: snapshot.size > CRM_DETAIL_RELATION_LIMIT };
+}
+
+export async function readCrmRevisionRecords(db: Firestore, accountId: string): Promise<{ records: CrmRevisionRecord[]; truncated: boolean }> {
+  const collection = db.collection("crm/revisions/records");
+  const [related, account] = await Promise.all([collection.where("after.data.accountId", "==", accountId).limit(CRM_DETAIL_RELATION_LIMIT + 1).get(), collection.where("after.id", "==", accountId).limit(CRM_DETAIL_RELATION_LIMIT + 1).get()]);
+  const unique: Record<string, CrmRevisionRecord> = {};
+  [...related.docs, ...account.docs].forEach((doc) => { unique[doc.id] = doc.data() as CrmRevisionRecord; });
+  const values = Object.values(unique);
+  return { records: values.sort((a,b)=>b.recordedAt.localeCompare(a.recordedAt)).slice(0, CRM_DETAIL_RELATION_LIMIT), truncated: related.size > CRM_DETAIL_RELATION_LIMIT || account.size > CRM_DETAIL_RELATION_LIMIT || values.length > CRM_DETAIL_RELATION_LIMIT };
 }

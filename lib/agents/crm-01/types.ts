@@ -1,11 +1,12 @@
 import type { CrmSalesIngestionV1 } from "../sales-01/crm-export";
 
 export type CrmEntityType = "account" | "contact" | "growthOpportunity" | "salesPursuit" | "interaction" | "decision" | "milestone" | "attentionItem";
-export type CrmStage = "Growth Qualified" | "Sales Prepared" | "Founder Review";
+export type CrmStage = "Growth Qualified" | "Sales Prepared" | "Founder Review" | "Outreach Approved" | "Contacted" | "Engaged" | "Conversation Active" | "Free First Planned" | "Free First Live" | "Scan Verified" | "Paid Customer" | "Expansion / Recurring" | "Closed";
 export type CrmDncEvaluation = "allowed" | "blocked" | "review_required";
 export type CrmProvenance = "growth_derived_evidence" | "sales_public_evidence" | "sales_strategic_inference" | "founder_provided_information" | "future_closer_observation" | "future_brand_statement" | "production_system_reference" | "payment_provider_reference" | "system_generated_state" | "unknown" | "conflicting";
 
 export type CrmStoredRecord = {
+  recordSchemaVersion?: "crm-record-v1";
   id: string;
   entityType: CrmEntityType;
   revision: number;

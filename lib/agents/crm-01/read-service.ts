@@ -1,5 +1,5 @@
 import type { Firestore } from "firebase-admin/firestore";
-import { readCrmAccountRecord, readCrmRecentRecords, readCrmRecordPage, readCrmRelatedRecords } from "./read-repository";
+import { readCrmAccountRecord, readCrmRecentRecords, readCrmRecordPage, readCrmRelatedRecords, readCrmRevisionRecords } from "./read-repository";
 import { toAccountListItem, toAttentionListItem, toCommercialReadModel, toContactReadModel, toGrowthOpportunityReadModel, toPursuitListItem, toRevisionTimelineItems, toTimelineItem } from "./read-model";
 import type { CrmAccountDetailReadModel, CrmAccountListItem, CrmAttentionListItem, CrmDashboardReadModel, CrmPage, CrmPursuitListItem } from "./read-types";
 
@@ -30,11 +30,12 @@ export async function getCrmDashboard(db: Firestore, now: string): Promise<CrmDa
 
 export async function getCrmAccountDetail(db: Firestore, accountId: string, now: string): Promise<CrmAccountDetailReadModel> {
   const accountRecord = await readCrmAccountRecord(db, accountId); if (!accountRecord) throw new CrmReadNotFoundError("CRM Account not found.");
-  const [contacts, opportunities, pursuits, interactions, decisions, milestones, attention] = await Promise.all([
-    readCrmRelatedRecords(db, "contacts", accountId), readCrmRelatedRecords(db, "growthOpportunities", accountId), readCrmRelatedRecords(db, "salesPursuits", accountId), readCrmRelatedRecords(db, "interactions", accountId), readCrmRelatedRecords(db, "decisions", accountId), readCrmRelatedRecords(db, "milestones", accountId), readCrmRelatedRecords(db, "attentionItems", accountId),
+  const [contacts, opportunities, pursuits, interactions, decisions, milestones, attention, revisions] = await Promise.all([
+    readCrmRelatedRecords(db, "contacts", accountId), readCrmRelatedRecords(db, "growthOpportunities", accountId), readCrmRelatedRecords(db, "salesPursuits", accountId), readCrmRelatedRecords(db, "interactions", accountId), readCrmRelatedRecords(db, "decisions", accountId), readCrmRelatedRecords(db, "milestones", accountId), readCrmRelatedRecords(db, "attentionItems", accountId), readCrmRevisionRecords(db, accountId),
   ]);
   const allRecords = [accountRecord, ...contacts.records, ...opportunities.records, ...pursuits.records, ...interactions.records, ...decisions.records, ...milestones.records, ...attention.records];
-  const timeline = [...interactions.records, ...decisions.records, ...milestones.records, ...attention.records].map(toTimelineItem).concat(allRecords.flatMap(toRevisionTimelineItems)).sort(byDateDesc);
-  const relations = { Contacts: contacts, Opportunities: opportunities, Pursuits: pursuits, Interactions: interactions, Decisions: decisions, Milestones: milestones, Attention: attention };
+  const immutableRevisions = revisions.records.map((item) => ({ id:item.revisionId, entityType:"revision" as const, revision:item.resultingRevision, effectiveAt:item.effectiveAt, recordedAt:item.recordedAt, title:`${item.mutationKind}: ${item.entityType}`, summary:`${item.recordPath}; changed: ${item.changedFields.join(", ") || "none"}; before ${item.beforeSha256 ?? "none"}; after ${item.afterSha256}`, classification:"system_generated_state", provenance:item.evidence.map((entry)=>`${entry.classification}:${entry.id}`), correctionOf:item.correctionOfRevision===null?null:String(item.correctionOfRevision), supersededBy:null, warnings:[] }));
+  const timeline = [...interactions.records, ...decisions.records, ...milestones.records, ...attention.records].map(toTimelineItem).concat(allRecords.flatMap(toRevisionTimelineItems),immutableRevisions).sort(byDateDesc);
+  const relations = { Contacts: contacts, Opportunities: opportunities, Pursuits: pursuits, Interactions: interactions, Decisions: decisions, Milestones: milestones, Attention: attention, Revisions: revisions };
   return { schemaVersion: "crm-account-detail-v1", generatedAt: now, account: toAccountListItem(accountRecord), contacts: contacts.records.map(toContactReadModel), growthOpportunities: opportunities.records.map(toGrowthOpportunityReadModel), pursuits: pursuits.records.map(toPursuitListItem), attentionItems: attention.records.map(toAttentionListItem), timeline, commercial: milestones.records.map(toCommercialReadModel), relationLimit: 100, truncationWarnings: Object.entries(relations).filter(([, value]) => value.truncated).map(([name]) => `${name} exceeded the bounded detail limit and was truncated.`), cache: "no-store" };
 }
