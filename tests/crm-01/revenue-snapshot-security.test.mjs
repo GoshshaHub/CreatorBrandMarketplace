@@ -1,0 +1,8 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import test from "node:test";
+
+const route="app/api/admin/agents/crm-01/revenue-snapshot/route.ts",page="app/admin/crm-01/accounts/[accountId]/revenue-snapshot/page.tsx";
+test("Revenue snapshot route is Admin-only, GET-only and no-store through shared CRM auth",async()=>{const source=await readFile(route,"utf8"),shared=await readFile("lib/agents/crm-01/read-route.ts","utf8");assert.match(source,/authorizeCrmRead\(request\)/);assert.match(source,/export async function GET/);assert.doesNotMatch(source,/export async function (POST|PUT|PATCH|DELETE)|runTransaction|\.set\(|\.update\(|\.delete\(/);assert.match(shared,/authorizeCrmAdmin/);assert.match(shared,/isAdmin/);assert.match(shared,/no-store/);});
+test("Founder preview uses only Admin API and no browser Firestore or persistence",async()=>{const source=await readFile(page,"utf8");assert.match(source,/\/api\/admin\/agents\/crm-01\/revenue-snapshot/);assert.doesNotMatch(source,/firebase\/firestore|getFirestore|localStorage|sessionStorage|\.csv|download=|openai|revenue-01|closer-01/i);});
+test("snapshot implementation has no persistence, agent invocation or Revenue interpretation",async()=>{const source=(await Promise.all(["lib/agents/crm-01/revenue-snapshot.ts","lib/agents/crm-01/revenue-snapshot-repository.ts","lib/agents/crm-01/revenue-snapshot-service.ts"].map(x=>readFile(x,"utf8")))).join("\n");assert.doesNotMatch(source,/runTransaction|\.set\(|\.update\(|\.delete\(|openai|invokeRevenue|invokeCloser|sendgrid|mailgun|scheduler/i);assert.doesNotMatch(source,/Revenue Priority|Closest Dollar|Revenue Velocity|Revenue Effort|Monetize Now|recommended Revenue objective/i);});
