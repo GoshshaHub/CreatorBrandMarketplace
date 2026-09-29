@@ -8,7 +8,7 @@ REVENUE-01 is Goshsha's supervised, internally advisory commercial-prioritizatio
 
 Primary question: **Given what we know right now, where is the closest money, what is preventing us from getting it, and what should happen next?**
 
-REVENUE-01 optimizes progression toward durable collected revenue, not premature monetization. Version 1 is manually invoked, supervised, advisory, and non-persistent. It may analyze, calculate, reconcile, prioritize, diagnose, model, recommend commercial objectives, and prepare future CLOSER-01 assignments. It does not sell, contact, charge, negotiate, update CRM state, modify production, or manufacture forecasts.
+REVENUE-01 optimizes progression toward durable collected revenue, not premature monetization. Version 1.1 is manually invoked, supervised, advisory, and non-persistent. It may analyze, calculate, reconcile, prioritize, diagnose, model, recommend commercial objectives, and prepare future CLOSER-01 assignments. It does not sell, contact, charge, negotiate, update CRM state, modify production, or manufacture forecasts.
 
 ## 2. Authority and agent boundaries
 
@@ -305,7 +305,7 @@ Use: Verified Fact, Founder-Provided History, Historical Artifact, Reasonable In
 
 Refresh payment and subscription data immediately before reporting collected, committed, or active recurring revenue. A stale CRM stage cannot support a current forecast. Use Unknown for unsupported timing, velocity, friction, attribution, or payment state.
 
-## 15. V1 logical models
+## 15. V1.1 logical models
 
 These are logical outputs, not a Firestore schema or implementation decision.
 
@@ -319,7 +319,7 @@ These are logical outputs, not a Firestore schema or implementation decision.
 8. **RevenueRecommendation:** scope, finding, evidence, action, owning agent, Founder gate, and success criterion.
 9. **CloserHandoff:** Execute Commercially Now; assignment type; objective ID/version, lifecycle state, effective time, and superseded-objective reference; Account/Pursuit; CRM revision; SALES-01 playbook version; authoritative upstream-context references; decision participants; approved offer/terms; closest paid event; blocker; proof/timing state; risks; authority granted/not granted; Founder approval/execution state; and success, stop, return, and escalation conditions.
 
-REVENUE-01 V1 may prepare these records in its report but may not persist them.
+REVENUE-01 V1.1 may prepare these records in its report but may not persist them.
 
 ## 16. Future REVENUE-01 → CLOSER-01 handoff
 
@@ -625,10 +625,57 @@ Use a dated pipeline snapshot with authoritative collected revenue and specific 
 17. disclose evidence weaknesses; and
 18. finish **PASS / PASS WITH ISSUES / FAIL**.
 
-## 25. Initial operating constraint
+## 25. V1.1 operationalization authority and initial operating constraint
 
-REVENUE-01 V1 is manually invoked, supervised, advisory, and non-persistent. It may analyze, calculate, reconcile, prioritize, diagnose, model, recommend commercial objectives, and prepare future CLOSER assignments.
+REVENUE-01 V1.1 is manually invoked, supervised, advisory, and non-persistent. It may analyze, calculate, reconcile, prioritize, diagnose, model, recommend commercial objectives, and prepare conceptual future CLOSER assignments.
 
-It may not send outreach; change CRM state; schedule follow-ups; deliver notifications; initiate charges, refunds, disputes, or credits; modify Stripe; start/cancel subscriptions; change pricing, discounts, entitlements, or offers; negotiate; make contractual commitments; manufacture forecasts; authorize CLOSER actions; modify production systems/data; create persistent storage, runtime, APIs, integrations, scheduler, UI, or notification delivery; spend money; or deploy anything.
+### Authorized deterministic recommendation runtime
 
-Every external, payment, commercial-commitment, persistence, production, and actionable CLOSER step requires separate Founder approval and the appropriate owning agent or system.
+V1.1 authorizes a later, separately approved implementation of one manually Founder-triggered, Admin-only, deterministic, session-only, non-persistent, and nonauthorizing REVENUE recommendation runtime. That runtime may consume only:
+
+- `crm-revenue-snapshot-v1` through the approved CRM Revenue snapshot boundary;
+- the pinned CRM contract identity;
+- the pinned commercial-offer catalog;
+- a versioned, server-controlled company commercial-goal artifact; and
+- normalized Founder-supplied run context with its evidence classification preserved.
+
+The company commercial goal may express the Founder objective of reaching the first $1,000/month in collected revenue. It remains company strategy and must never become Account truth, Brand intent, customer commitment, or verified collected revenue. Founder-supplied company collected-revenue context remains classified by its actual evidence and must not be promoted to authoritative payment truth.
+
+REVENUE may consume commercial state only through the approved CRM Revenue snapshot. It must not independently query raw CRM commercial Firestore state to reconstruct Account or Pursuit truth. Missing snapshot information remains Unknown and must never be converted into false, zero, unpaid, uninterested, no objection, no commitment, no rights, or no scan.
+
+The runtime may eventually produce one `revenue-01-recommendation-v1` proposal. Its status must be **Proposed**; Founder approval must be **Not Requested**; and execution, CLOSER invocation, CRM mutation, payment action, and external action authority must all be `false`. V1.1 does not authorize an Approve and Activate flow, objective persistence, a recommendation ledger, an approved-objective record, or a CLOSER handoff.
+
+### Deterministic recommendation semantics
+
+A deterministic recommended objective is the highest-priority eligible objective produced by the frozen deterministic REVENUE policy from the available evidenced state. It is not a mathematically optimal business decision, guaranteed revenue-maximizing action, forecast, conversion probability, or autonomous decision. Deterministic precedence among eligible objectives must be explicit, inspectable, and testable.
+
+Phase 1A may produce exactly one primary proposed recommendation and up to two bounded eligible alternatives, or a blocker/pause recommendation when stronger objectives are unsupported. The allowlisted economic-objective families are:
+
+- `resolve_evidence_or_safety_blocker`;
+- `establish_qualified_engagement`;
+- `complete_proof_milestone`;
+- `pursue_standard_paid_conversion`;
+- `pursue_repeat_or_retention`; and
+- `pause_no_commercial_action`.
+
+These objective families do not authorize execution. REVENUE owns economic interpretation, objective eligibility under Revenue policy, proof-versus-monetization sequencing, evidence-supported Proximity/Velocity/Friction interpretation, Revenue Priority under this specification, and recommendation of the next economic objective. It does not own Growth qualification; SALES positioning, stakeholder or contact selection; CRM canonical truth, correction, stage, or DNC mutation; contact research; outreach; messaging; negotiation execution; campaign activation; payment execution; or CLOSER execution.
+
+The nearest charge is not necessarily the correct economic objective. The deterministic policy may recommend completion of an evidenced prerequisite or proof milestone before monetization. Sequencing may include Free First acceptance, required inputs and rights readiness, publication/live state, physical proof, and paid-conversion readiness. Unsupported milestones must not be skipped.
+
+### DNC, revenue state, and stale-state safeguards
+
+DNC remains CRM authority. REVENUE may distinguish economic desirability, execution eligibility, review required, and blocked. It may not override or resolve DNC, suggest another Contact or channel as a workaround, or interpret DNC as permission for alternate outreach.
+
+Under current Phase 1C.1 evidence, REVENUE must not claim authoritative collected revenue, most committed revenue, active paid subscription state, refund/reversal state, or repeat/retention eligibility based on payment history unless the required authoritative evidence is available through an approved CRM snapshot. Missing payment evidence is Unknown, not $0 or unpaid. Free First remains $0 and `revenueEligible: false`.
+
+Every recommendation must bind deterministically to the exact CRM snapshot ID and SHA, CRM `revisionSetSha256`, Account and Pursuit, CRM contract identity, commercial-offer catalog identity, company-goal identity, REVENUE contract identity, recommendation-engine identity, and normalized Founder run context. A stale recommendation has no execution authority and cannot be handed to CLOSER.
+
+### Provider and persistence prohibition
+
+V1.1 Phase 1A authorizes no provider. Any provider or AI interpretation layer requires separate Founder approval. Initial recommendation output is session-only: no Firestore persistence, browser local or session storage, recommendation ledger, approved-objective record, or autonomous memory.
+
+V1.1 does not authorize provider invocation; REVENUE persistence; objective approval or persistence; CLOSER invocation; messaging; negotiation; contact research; CRM mutation; payment action; production or campaign action; scheduling; notifications; autonomous execution; company-wide pipeline aggregation; CRM Phase 1C.2; or CRM Phase 1B.2b.
+
+It may not send outreach; change CRM state; schedule follow-ups; deliver notifications; initiate charges, refunds, disputes, or credits; modify Stripe; start or cancel subscriptions; change pricing, discounts, entitlements, or offers; negotiate; make contractual commitments; manufacture forecasts; authorize CLOSER actions; modify production systems or data; create persistent storage, provider integrations, schedulers, or notification delivery; spend money; or deploy anything.
+
+Every external, payment, commercial-commitment, persistence, production, objective-approval, and actionable CLOSER step requires separate Founder approval and the appropriate owning agent or system.
