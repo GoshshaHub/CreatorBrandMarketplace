@@ -1,6 +1,7 @@
 import type { CrmSalesIngestionV1 } from "../sales-01/crm-export";
 import { crmSha256, crmStableId } from "./canonical";
 import { commercialOfferIdForSalesSelection } from "./commercial-offers";
+import { buildPlaybookInfrastructureOperations, buildSalesPlaybookArtifact, salesPlaybookReferencePath } from "./sales-playbook-artifact";
 import type { CrmDncEvaluation, CrmEntityType, CrmIngestionPlan, CrmPlanOperation, CrmSnapshot, CrmStage, CrmStoredRecord } from "./types";
 
 const PATHS: Record<CrmEntityType, string> = { account: "accounts", contact: "contacts", growthOpportunity: "growthOpportunities", salesPursuit: "salesPursuits", interaction: "interactions", decision: "decisions", milestone: "milestones", attentionItem: "attentionItems" };
@@ -54,7 +55,7 @@ export function buildCrmIngestionPlan(params: { artifact: CrmSalesIngestionV1; s
     add("contact", id, { accountId, sourceContactId: contact.id, name: contact.name, currentTitle: contact.currentTitle, identityEvidenceIds: contact.identityEvidenceIds, currentRoleEvidenceIds: contact.currentRoleEvidenceIds, stakeholderFunction: contact.stakeholderFunction, problemOwnership: contact.problemOwnership, functionalRelevance: contact.functionalRelevance, functionalRelevanceClassification: contact.functionalRelevanceClassification, confidence: contact.confidence, freshness: contact.freshness, conflictingEvidenceIds: contact.conflictingEvidenceIds, strategicRoles: contact.strategicRoles, strategicRoleRationale: contact.strategicRoleRationale, recommendedAsBestFirstContact: playbook.contactSelection.bestFirstContactId === contact.id, buyingAuthority: contact.buyingAuthority, buyingAuthorityEvidenceIds: contact.buyingAuthorityEvidenceIds, contactRoute: contact.contactRoute, evidenceIds: contact.evidenceIds, identityKeys: strongKey ? [strongKey] : [], dnc: "unknown", dncEvaluation: "review_required" }, ["sales_public_evidence", "sales_strategic_inference", "unknown"]);
   }
   const opportunityId = crmStableId("growth", { candidateSha256: growth.candidate.candidateSha256, envelopeSha256: growth.envelope.payloadSha256 });
-  const pursuitId = crmStableId("pursuit", { artifact: artifact.artifactSha256, opportunityId });
+  const pursuitId = crmStableId("pursuit", { accountId, opportunityId });
   const decision = playbook.salesPursuitDecision;
   const stage: CrmStage = decision === "Pursue Now" ? "Founder Review" : "Sales Prepared";
   const disposition: CrmIngestionPlan["disposition"] = decision === "Pursue Now" ? "Active" : decision === "Do Not Pursue" ? "Not Pursued" : "Nurture / Revisit";
@@ -64,8 +65,11 @@ export function buildCrmIngestionPlan(params: { artifact: CrmSalesIngestionV1; s
   add("decision", crmStableId("decision", { artifact: artifact.artifactSha256, kind: "ingestion" }), { accountId, pursuitId, type: "founder_crm_ingestion_approval", commercialDecision: decision, doesNotAuthorizeOutreach: true }, ["founder_provided_information", "system_generated_state"]);
   add("milestone", crmStableId("milestone", { artifact: artifact.artifactSha256 }), { accountId, pursuitId, freeFirst: { state: playbook.opportunityStrategy.selectedEntryOffer === "Free First" || playbook.opportunityStrategy.selectedEntryOffer === "Combined" ? "recommended" : "not_recommended", revenueUsd: 0, live: false }, product2: { state: "proposed_path", collectedRevenueUsd: null }, creatorNetwork: { state: "proposed_path", collectedRevenueUsd: null }, commercialTruth: { expectedRevenue: "unknown", committedRevenue: "unknown", collectedRevenue: "unknown", refundedOrReversed: "unknown" } }, ["sales_strategic_inference", "unknown"]);
   add("attentionItem", crmStableId("attention", { artifact: artifact.artifactSha256 }), { accountId, pursuitId, type: decision === "Pursue Now" ? "condition_alert" : "reminder", reason: decision === "Pursue Now" ? "Founder review is required; outreach is not approved." : "Relationship requires Founder review before any future action.", priority: decision === "Pursue Now" ? "high" : "normal", dueAt: null, owner: "Founder", status: "open", triggeringCondition: "sales_playbook_ingested_without_external_authority" }, ["system_generated_state"]);
+  const playbookArtifact = buildSalesPlaybookArtifact({ exportArtifact: artifact, accountId, pursuitId });
+  const referencePath = salesPlaybookReferencePath(pursuitId);
+  const infrastructureOperations = buildPlaybookInfrastructureOperations({ artifact: playbookArtifact, priorReference: snapshot.sourceArtifactReferences?.[referencePath] ?? null });
   const creates = operations.filter((op) => op.kind === "create"); const updates = operations.filter((op) => op.kind === "update");
-  const expectedRevisions = Object.fromEntries(operations.map((op) => [op.path, op.expectedRevision]));
-  const body = { schemaVersion: "crm-ingestion-plan-v1" as const, artifactSha256: artifact.artifactSha256, crmContractSha256, mappings, creates, updates, matches, possibleMatches, conflicts: [] as string[], expectedRevisions, stage, disposition, unknowns: playbook.inheritedUnknowns.map((x) => x.originalText), dncEvaluation: evaluateDnc({ account: "unknown", contact: "unknown", channel: "unknown" }) };
+  const expectedRevisions = Object.fromEntries([...operations.map((op) => [op.path, op.expectedRevision] as const), ...infrastructureOperations.map((op) => [op.path, op.expectedRevision] as const)]);
+  const body = { schemaVersion: "crm-ingestion-plan-v1" as const, artifactSha256: artifact.artifactSha256, crmContractSha256, mappings, creates, updates, infrastructureOperations, matches, possibleMatches, conflicts: [] as string[], expectedRevisions, stage, disposition, unknowns: playbook.inheritedUnknowns.map((x) => x.originalText), dncEvaluation: evaluateDnc({ account: "unknown", contact: "unknown", channel: "unknown" }) };
   return { ...body, planSha256: crmSha256(body) };
 }

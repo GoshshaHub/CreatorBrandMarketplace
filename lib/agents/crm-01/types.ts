@@ -1,4 +1,5 @@
 import type { CrmSalesIngestionV1 } from "../sales-01/crm-export";
+import type { SalesPlaybookArtifactV1, SalesPlaybookCurrentReferenceV1, SalesPlaybookInfrastructureOperation } from "./sales-playbook-artifact";
 
 export type CrmEntityType = "account" | "contact" | "growthOpportunity" | "salesPursuit" | "interaction" | "decision" | "milestone" | "attentionItem";
 export type CrmStage = "Growth Qualified" | "Sales Prepared" | "Founder Review" | "Outreach Approved" | "Contacted" | "Engaged" | "Conversation Active" | "Free First Planned" | "Free First Live" | "Scan Verified" | "Paid Customer" | "Expansion / Recurring" | "Closed";
@@ -23,6 +24,8 @@ export type CrmSnapshot = {
   possibleAccountMatches: Array<{ id: string; displayName: string }>;
   possibleContactMatches: Array<{ id: string; name: string; accountId: string }>;
   completedReceipt: CrmIngestionReceipt | null;
+  sourceArtifacts?: Record<string, SalesPlaybookArtifactV1>;
+  sourceArtifactReferences?: Record<string, SalesPlaybookCurrentReferenceV1>;
 };
 
 export type CrmPlanOperation = { kind: "create" | "update"; entityType: CrmEntityType; path: string; expectedRevision: number | null; record: CrmStoredRecord };
@@ -34,6 +37,7 @@ export type CrmIngestionPlan = {
   mappings: Record<string, string>;
   creates: CrmPlanOperation[];
   updates: CrmPlanOperation[];
+  infrastructureOperations: SalesPlaybookInfrastructureOperation[];
   matches: Array<{ sourceId: string; canonicalId: string; basis: string }>;
   possibleMatches: Array<{ sourceId: string; candidateId: string; reason: string }>;
   conflicts: string[];

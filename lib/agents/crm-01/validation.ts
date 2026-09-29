@@ -14,9 +14,17 @@ function assert(condition: unknown, code: string, message: string): asserts cond
   if (!condition) throw new CrmValidationError(code, message);
 }
 
+const FORBIDDEN_ARTIFACT_CONTROL_FIELDS = new Set(["playbookArtifactId", "playbookArtifactSha256", "currentArtifactId", "currentArtifactSha256", "supersedesArtifactId", "supersededByArtifactId", "playbookCurrent", "playbookSuperseded"]);
+function containsArtifactControl(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some(containsArtifactControl);
+  if (!value || typeof value !== "object") return false;
+  return Object.entries(value as Record<string, unknown>).some(([key, item]) => FORBIDDEN_ARTIFACT_CONTROL_FIELDS.has(key) || containsArtifactControl(item));
+}
+
 export function validateCrmSalesExport(value: unknown): CrmSalesIngestionV1 {
   assert(value && typeof value === "object", "invalid_export", "A CRM SALES export is required.");
   const artifact = value as CrmSalesIngestionV1;
+  assert(!containsArtifactControl(value), "artifact_control_forbidden", "Client input cannot select, mark current, or supersede a Sales Playbook artifact.");
   assert(artifact.schemaVersion === "crm-sales-ingestion-v1", "invalid_export", "Unsupported CRM export version.");
   assert(artifact.canonicalizationVersion === "crm-sales-canonical-json-v1", "invalid_export", "Unsupported canonicalization version.");
   assert(verifyCrmSalesIngestionExport(artifact), "artifact_integrity_failed", "The CRM export hash does not match its contents.");

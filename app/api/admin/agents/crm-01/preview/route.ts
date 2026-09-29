@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     const input = JSON.parse(raw) as CrmPreviewRequest; const artifact = validateCrmSalesExport(input.export); const contract = await loadCrmContractMetadata();
     const at = artifact.source.acceptedSalesPlaybook.createdAt;
     const first = buildCrmIngestionPlan({ artifact, snapshot: await loadCrmSnapshot(adminDb, artifact), mappings: input.mappings, crmContractSha256: contract.sha256, at });
-    const snapshot = await loadCrmSnapshot(adminDb, artifact, [...first.creates, ...first.updates].map((op) => op.path));
+    const snapshot = await loadCrmSnapshot(adminDb, artifact, [...first.creates, ...first.updates, ...first.infrastructureOperations].map((op) => op.path));
     const plan = buildCrmIngestionPlan({ artifact, snapshot, mappings: input.mappings, crmContractSha256: contract.sha256, at });
     return reply({ contract, plan, persisted: false, externalAction: false });
   } catch (error) {
