@@ -1,0 +1,8 @@
+import assert from "node:assert/strict";import{readFile}from"node:fs/promises";import test from"node:test";
+import{APPROVED_REVENUE_CONTRACT_SHA256,REVENUE_CONTRACT_VERSION,verifyRevenueContractContents}from"../../lib/agents/revenue-01/contract.ts";
+import{COMMERCIAL_GOAL_BODY,COMMERCIAL_GOAL_SCHEMA,COMMERCIAL_GOAL_SHA256,COMMERCIAL_GOAL_VERSION,getCommercialGoal}from"../../lib/agents/revenue-01/commercial-goals.ts";
+import{revenueSha256}from"../../lib/agents/revenue-01/canonical.ts";
+
+test("REVENUE V1.1 contract is pinned and one-byte drift fails closed",async()=>{const contents=await readFile("agents/revenue-01/AGENT.md");assert.equal(REVENUE_CONTRACT_VERSION,"V1.1");assert.equal(verifyRevenueContractContents(contents),APPROVED_REVENUE_CONTRACT_SHA256);assert.throws(()=>verifyRevenueContractContents(Buffer.concat([contents,Buffer.from("x")])));});
+test("commercial goal has deterministic approved identity and exact meaning",()=>{assert.equal(COMMERCIAL_GOAL_SCHEMA,"goshsha-commercial-goal-v1");assert.equal(COMMERCIAL_GOAL_VERSION,"v1");assert.equal(COMMERCIAL_GOAL_BODY.metric,"collected_revenue");assert.equal(COMMERCIAL_GOAL_BODY.targetAmount,1000);assert.equal(COMMERCIAL_GOAL_BODY.currency,"USD");assert.equal(COMMERCIAL_GOAL_BODY.period,"calendar_month");assert.equal(COMMERCIAL_GOAL_BODY.authority,"Founder");assert.equal(COMMERCIAL_GOAL_SHA256,revenueSha256(COMMERCIAL_GOAL_BODY));assert.equal(getCommercialGoal().sha256,COMMERCIAL_GOAL_SHA256);});
+test("material commercial-goal drift changes identity",()=>{assert.notEqual(revenueSha256({...COMMERCIAL_GOAL_BODY,targetAmount:999}),COMMERCIAL_GOAL_SHA256);});
