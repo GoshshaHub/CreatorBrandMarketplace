@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { buffBenchmarkCandidate, retailerDependentBenchmarkCandidate } from "../../lib/agents/growth-01/fixtures.ts";
-import { canonicalizeResearchUrl, normalizeOpenAIResearchResponse, validateGrowthResearchRequest } from "../../lib/agents/growth-01/research-schema.ts";
+import { canonicalizeResearchUrl, GROWTH_RESEARCH_NORMALIZATION_VERSION, normalizeOpenAIResearchResponse, RIGHTS_UNCERTAINTY_RULE_ID, validateGrowthResearchRequest } from "../../lib/agents/growth-01/research-schema.ts";
 import { scoreGrowthCandidate } from "../../lib/agents/growth-01/scoring.ts";
 import { validateGrowthCandidate } from "../../lib/agents/growth-01/validation.ts";
 
@@ -177,6 +177,79 @@ test("accepted responses expose allowlisted execution usage and leave missing op
   assert.equal(result.execution.usage.cacheWriteTokens, null);
   assert.equal(result.execution.usage.webSearchCalls, 1);
   assert.deepEqual(result.usage, result.execution.usage);
+});
+
+test("exact structured output is retained while narrow rights uncertainty is moved losslessly with provenance", () => {
+  const url = "https://brand.example/news";
+  const uncertainty = "No affirmative content reuse or activation right for a particular Brand video has been verified.";
+  const rawCandidate = providerCandidate({
+    ...buffBenchmarkCandidate,
+    knownUnknowns: ["Existing unknown"],
+    claims: [
+      ...buffBenchmarkCandidate.claims,
+      { id: "rights-unknown", claim: uncertainty, material: true, evidenceIds: [] },
+    ],
+  }, url);
+  const response = mockResponse([rawCandidate], { sourceUrl: url });
+  const exactOutput = response.output[1].content[0].text;
+  const result = normalizeOpenAIResearchResponse({ response, request, requestedModel: "gpt-5.6-terra", completedAt: "2026-09-14T12:00:00.000Z" });
+  const normalized = result.proposedRun.candidates[0];
+
+  assert.equal(result.rawStructuredOutput.text, exactOutput);
+  assert.equal(result.rawStructuredOutput.sha256.length, 64);
+  assert.equal(result.normalization.version, GROWTH_RESEARCH_NORMALIZATION_VERSION);
+  assert.equal(result.normalization.transformations.length, 1);
+  assert.equal(result.normalization.transformations[0].ruleId, RIGHTS_UNCERTAINTY_RULE_ID);
+  assert.deepEqual(result.normalization.transformations[0].originalClaim, rawCandidate.claims.at(-1));
+  assert.equal(result.normalization.transformations[0].preservedText, uncertainty);
+  assert.equal(result.normalization.transformations[0].beforeSha256.length, 64);
+  assert.equal(result.normalization.transformations[0].afterSha256.length, 64);
+  assert.notEqual(result.normalization.transformations[0].beforeSha256, result.normalization.transformations[0].afterSha256);
+  assert.ok(normalized.knownUnknowns.includes(uncertainty));
+  assert.ok(!normalized.claims.some((claim) => claim.id === "rights-unknown"));
+  assert.deepEqual(normalized.evidence, result.proposedRun.candidates[0].evidence);
+  assert.deepEqual(normalized.scores, rawCandidate.scores);
+  assert.deepEqual(normalized.deductions, Object.fromEntries(rawCandidate.deductions.map((item) => [item.type, item.value])));
+  assert.deepEqual(normalized.caps, rawCandidate.caps);
+  assert.equal(normalized.selectionStatus, rawCandidate.selectionStatus);
+});
+
+test("ambiguous mixed uncertainty and affirmative rights assertions remain material claims", () => {
+  const url = "https://brand.example/news";
+  const claims = [
+    { id: "ambiguous", claim: "No affirmative content-reuse right or current product-specific Creator campaign was verified.", material: true, evidenceIds: [] },
+    { id: "affirmative", claim: "The Brand owns reusable activation rights to this Creator video.", material: true, evidenceIds: [] },
+  ];
+  const result = normalizeOpenAIResearchResponse({
+    response: mockResponse([providerCandidate({ ...buffBenchmarkCandidate, claims }, url)], { sourceUrl: url }),
+    request,
+    requestedModel: "gpt-5.6-terra",
+    completedAt: "2026-09-14T12:00:00.000Z",
+  });
+  assert.equal(result.normalization.transformations.length, 0);
+  assert.deepEqual(result.proposedRun.candidates[0].claims, claims);
+  const validation = validateGrowthCandidate(scoreGrowthCandidate(result.proposedRun.candidates[0]).candidate);
+  assert.equal(validation.valid, false);
+  assert.equal(validation.findings.filter((finding) => finding.code === "material_claim_missing_evidence").length, 2);
+});
+
+test("mixed valid and invalid candidates preserve fail-closed candidate validation", () => {
+  const url = "https://brand.example/news";
+  const validUncertainty = "No affirmative right to activate a particular Brand video has been verified.";
+  const response = mockResponse([
+    providerCandidate({ ...buffBenchmarkCandidate, id: "valid-after-normalization", claims: [
+      ...buffBenchmarkCandidate.claims,
+      { id: "unknown-rights", claim: validUncertainty, material: true, evidenceIds: [] },
+    ] }, url),
+    providerCandidate({ ...buffBenchmarkCandidate, id: "still-invalid", claims: [
+      ...buffBenchmarkCandidate.claims,
+      { id: "affirmative-rights", claim: "The Brand owns this video.", material: true, evidenceIds: [] },
+    ] }, url),
+  ], { sourceUrl: url });
+  const result = normalizeOpenAIResearchResponse({ response, request, requestedModel: "gpt-5.6-terra", completedAt: "2026-09-14T12:00:00.000Z" });
+  const validations = result.proposedRun.candidates.map((candidate) => validateGrowthCandidate(scoreGrowthCandidate(candidate).candidate));
+  assert.equal(validations[0].valid, true);
+  assert.equal(validations[1].valid, false);
 });
 
 test("more than 40 unique native sources are allowed when candidates reference no more than 40", () => {

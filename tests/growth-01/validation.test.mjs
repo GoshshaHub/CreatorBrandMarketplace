@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { buffBenchmarkCandidate, retailerDependentBenchmarkCandidate } from "../../lib/agents/growth-01/fixtures.ts";
 import { scoreGrowthCandidate } from "../../lib/agents/growth-01/scoring.ts";
-import { validateGrowthCandidate, validateGrowthRunRequest, validateQualifiedCount } from "../../lib/agents/growth-01/validation.ts";
+import { deriveGrowthHandoffEligibility, validateGrowthCandidate, validateGrowthRunRequest, validateQualifiedCount } from "../../lib/agents/growth-01/validation.ts";
 
 function validate(candidate) {
   return validateGrowthCandidate(scoreGrowthCandidate(candidate).candidate);
@@ -92,4 +92,20 @@ test("Phase 1A accepts supplement, oral-care, and lower-priority beauty categori
   const buff = scoreGrowthCandidate(buffBenchmarkCandidate).candidate;
   assert.equal(buff.computed.finalScore, 81);
   assert.equal(buff.computed.band, "Immediate Priority");
+});
+
+test("one invalid candidate makes every provider-proposed qualification ineligible for handoff", () => {
+  const valid = scoreGrowthCandidate(buffBenchmarkCandidate).candidate;
+  const invalidResult = scoreGrowthCandidate({
+    ...buffBenchmarkCandidate,
+    id: "invalid-mixed-candidate",
+    claims: [{ id: "unsupported", claim: "Unsupported material claim", material: true, evidenceIds: [] }],
+  }).candidate;
+  const invalidFindings = validateGrowthCandidate(invalidResult).findings;
+  const eligibility = deriveGrowthHandoffEligibility([valid, invalidResult], invalidFindings);
+  assert.deepEqual(eligibility, {
+    status: "validation_failed",
+    qualifiedCount: 0,
+    providerProposedQualifiedCount: 2,
+  });
 });

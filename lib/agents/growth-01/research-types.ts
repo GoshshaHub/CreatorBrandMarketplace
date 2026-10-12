@@ -1,5 +1,17 @@
 import type { ContractMetadata, GrowthRunRequest } from "./types";
 import type { GrowthProviderProjectionMetadata } from "./provider-research-contract";
+import type { GrowthCandidateInput } from "./types";
+
+export type GrowthResearchTransformation = {
+  ruleId: "rights-uncertainty-material-claim-to-known-unknown-v1";
+  candidateId: string;
+  originalClaimIndex: number;
+  originalClaim: GrowthCandidateInput["claims"][number];
+  destination: "knownUnknowns";
+  preservedText: string;
+  beforeSha256: string;
+  afterSha256: string;
+};
 
 export type GrowthMarketPriority = {
   priority1: Array<"supplements" | "vitamins" | "wellness_supplements">;
@@ -75,6 +87,15 @@ export type GrowthResearchProposal = {
   execution: ProviderExecutionMetadata;
   normalizedSourceCount: number;
   sources: NormalizedResearchSource[];
+  rawStructuredOutput: {
+    format: "openai-structured-output-json-v1";
+    text: string;
+    sha256: string;
+  };
+  normalization: {
+    version: "growth-01-research-normalization-v1";
+    transformations: GrowthResearchTransformation[];
+  };
   proposedRun: GrowthRunRequest;
   authority: {
     providerOutput: "untrusted_research_proposal";

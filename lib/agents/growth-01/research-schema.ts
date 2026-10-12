@@ -1,10 +1,70 @@
+import { createHash } from "crypto";
+
 import type { GrowthCandidateInput, GrowthRunRequest } from "./types";
 import type {
   GrowthResearchProposal,
   GrowthResearchRequest,
   NormalizedResearchSource,
-  ProviderExecutionMetadata,
+  ProviderExecutionMetadata, GrowthResearchTransformation,
 } from "./research-types";
+
+export const GROWTH_RESEARCH_NORMALIZATION_VERSION = "growth-01-research-normalization-v1" as const;
+export const RIGHTS_UNCERTAINTY_RULE_ID = "rights-uncertainty-material-claim-to-known-unknown-v1" as const;
+
+type ProviderClaim = GrowthCandidateInput["claims"][number];
+
+function canonicalJson(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  const record = value as Record<string, unknown>;
+  return `{${Object.keys(record).sort().map((key) => `${JSON.stringify(key)}:${canonicalJson(record[key])}`).join(",")}}`;
+}
+
+function sha256Canonical(value: unknown): string {
+  return createHash("sha256").update(canonicalJson(value), "utf8").digest("hex");
+}
+
+function sha256Text(value: string): string {
+  return createHash("sha256").update(value, "utf8").digest("hex");
+}
+
+function isNarrowRightsUncertainty(claim: ProviderClaim): boolean {
+  if (!claim.material || claim.evidenceIds.length !== 0) return false;
+  const value = claim.claim;
+  if (!/^No affirmative .+ (?:has been|was) verified\.$/i.test(value)) return false;
+  if (/\b(?:campaign|posting|collaboration|sponsorship|retail|distribution|current product|product-specific)\b/i.test(value)) return false;
+  return /^No affirmative (?:content[- ]reuse or activation rights?|content[- ]reuse rights?|reuse rights?|activation rights?|ownership rights?|right to activate)\b/i.test(value);
+}
+
+function normalizeRightsUncertaintyClaims<T extends { id: string; claims: ProviderClaim[]; knownUnknowns: string[] }>(candidate: T): {
+  candidate: T;
+  transformations: GrowthResearchTransformation[];
+} {
+  const beforeClaims = candidate.claims.map((claim) => ({ ...claim, evidenceIds: [...claim.evidenceIds] }));
+  const beforeUnknowns = [...candidate.knownUnknowns];
+  const moved = beforeClaims.map((claim, index) => ({ claim, index })).filter(({ claim }) => isNarrowRightsUncertainty(claim));
+  if (moved.length === 0) return { candidate, transformations: [] };
+  const movedIndexes = new Set(moved.map(({ index }) => index));
+  const claims = beforeClaims.filter((_, index) => !movedIndexes.has(index));
+  const knownUnknowns = [...beforeUnknowns];
+  for (const { claim } of moved) if (!knownUnknowns.includes(claim.claim)) knownUnknowns.push(claim.claim);
+  const normalized = { ...candidate, claims, knownUnknowns } as T;
+  const beforeSha256 = sha256Canonical({ claims: beforeClaims, knownUnknowns: beforeUnknowns });
+  const afterSha256 = sha256Canonical({ claims, knownUnknowns });
+  return {
+    candidate: normalized,
+    transformations: moved.map(({ claim, index }) => ({
+      ruleId: RIGHTS_UNCERTAINTY_RULE_ID,
+      candidateId: candidate.id,
+      originalClaimIndex: index,
+      originalClaim: claim,
+      destination: "knownUnknowns",
+      preservedText: claim.claim,
+      beforeSha256,
+      afterSha256,
+    })),
+  };
+}
 
 export class GrowthResearchError extends Error {
   code: string;
@@ -370,7 +430,11 @@ export function normalizeOpenAIResearchResponse(params: {
   const referencedSources = new Map<string, NormalizedResearchSource>();
   const accessDate = params.completedAt.slice(0, 10);
   let qualifiedCount = 0;
-  const candidates: GrowthCandidateInput[] = structured.candidates.map((candidate) => {
+  const transformations: GrowthResearchProposal["normalization"]["transformations"] = [];
+  const candidates: GrowthCandidateInput[] = structured.candidates.map((rawCandidate) => {
+    const normalized = normalizeRightsUncertaintyClaims(rawCandidate);
+    transformations.push(...normalized.transformations);
+    const candidate = normalized.candidate;
     if (candidate.selectionStatus === "qualified") qualifiedCount += 1;
     const evidence = candidate.evidence.map((item) => {
       let canonicalUrl: string;
@@ -426,6 +490,15 @@ export function normalizeOpenAIResearchResponse(params: {
     execution: { ...execution, outcome: "accepted" },
     normalizedSourceCount: normalizedSources.length,
     sources: normalizedSources,
+    rawStructuredOutput: {
+      format: "openai-structured-output-json-v1",
+      text: outputText,
+      sha256: sha256Text(outputText),
+    },
+    normalization: {
+      version: GROWTH_RESEARCH_NORMALIZATION_VERSION,
+      transformations,
+    },
     proposedRun,
     authority: {
       providerOutput: "untrusted_research_proposal",

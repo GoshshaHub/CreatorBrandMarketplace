@@ -10,6 +10,7 @@ import type { GrowthRunRequest, ValidatedGrowthRun, ValidationFinding } from "..
 import {
   MAX_GROWTH_REQUEST_BYTES,
   MAX_QUALIFIED_RESULTS,
+  deriveGrowthHandoffEligibility,
   validateGrowthCandidate,
   validateGrowthRunRequest,
   validateQualifiedCount,
@@ -62,7 +63,7 @@ export async function POST(request: Request) {
     findings.push(...validateQualifiedCount(scored, maximumQualified));
 
     const contract = await loadGrowthContractMetadata();
-    const status = findings.some((finding) => finding.severity === "error") ? "validation_failed" : "valid";
+    const { status, qualifiedCount, providerProposedQualifiedCount } = deriveGrowthHandoffEligibility(scored, findings);
     const output: ValidatedGrowthRun = {
       run: {
         id: randomUUID(),
@@ -72,7 +73,8 @@ export async function POST(request: Request) {
         marketFocus: input.marketFocus,
         status,
         candidateCount: scored.length,
-        qualifiedCount: scored.filter((candidate) => candidate.selectionStatus === "qualified").length,
+        qualifiedCount,
+        providerProposedQualifiedCount,
         authority: "founder_supervised_preview_only",
         persistence: false,
         externalCommunication: false,
@@ -85,6 +87,7 @@ export async function POST(request: Request) {
         marketPattern: input.marketPattern,
         candidates: scored,
         findings,
+        validationStatus: status,
       }),
     };
 

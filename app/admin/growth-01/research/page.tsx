@@ -30,6 +30,8 @@ type ResearchResponse = {
     execution: ProviderExecutionMetadata;
     normalizedSourceCount: number;
     sources: Array<{ id: string; rawUrl: string; canonicalUrl: string; title: string; publicationDate: string | null }>;
+    rawStructuredOutput: { format: string; text: string; sha256: string };
+    normalization: { version: string; transformations: Array<Record<string, unknown>> };
     proposedRun: unknown;
     authority: Record<string, unknown>;
   };
@@ -211,7 +213,8 @@ export default function GrowthLiveResearchPage() {
               <UsageDetails execution={research.proposal.execution} />
               {!!research.proposal.limitations.length && <ul className="list-disc pl-6 text-amber-200">{research.proposal.limitations.map((item) => <li key={item}>{item}</li>)}</ul>}
               <details><summary className="cursor-pointer font-semibold">Native source provenance</summary><ul className="mt-3 space-y-2 text-sm">{research.proposal.sources.map((source) => <li key={source.id}><a href={source.rawUrl} target="_blank" rel="noreferrer" className="text-emerald-300 underline">{source.title}</a> · {source.publicationDate || "publication date unknown"}<br /><span className="break-all text-slate-400">{source.canonicalUrl}</span></li>)}</ul></details>
-              <details><summary className="cursor-pointer font-semibold">Raw untrusted proposal</summary><pre className="mt-3 max-h-96 overflow-auto whitespace-pre-wrap rounded-xl bg-slate-950 p-4 text-xs">{JSON.stringify(research.proposal.proposedRun, null, 2)}</pre></details>
+              <details><summary className="cursor-pointer font-semibold">Exact structured provider output (untrusted, nonpersistent)</summary><pre className="mt-3 max-h-96 overflow-auto whitespace-pre-wrap rounded-xl bg-slate-950 p-4 text-xs">{research.proposal.rawStructuredOutput.text}</pre></details>
+              <details><summary className="cursor-pointer font-semibold">Normalized proposal and transformation provenance</summary><pre className="mt-3 max-h-96 overflow-auto whitespace-pre-wrap rounded-xl bg-slate-950 p-4 text-xs">{JSON.stringify({ normalization: research.proposal.normalization, proposedRun: research.proposal.proposedRun }, null, 2)}</pre></details>
             </section>
           )}
 
@@ -219,7 +222,8 @@ export default function GrowthLiveResearchPage() {
             <section className="space-y-4 rounded-2xl border border-emerald-700 bg-emerald-950/20 p-5">
               <h2 className="text-xl font-bold">Phase 1A deterministic validation</h2>
               {validation.error && <p className="text-red-200">{validation.error}</p>}
-              {validation.run && <p>Status: <strong>{validation.run.status}</strong> · {validation.run.candidateCount} candidates · {validation.run.qualifiedCount} qualified</p>}
+              {validation.run && validation.run.status === "validation_failed" && <p className="font-bold text-red-200">Validation failed — no candidate is eligible for SALES handoff.</p>}
+              {validation.run && <p>Status: <strong>{validation.run.status}</strong> · {validation.run.candidateCount} candidates · {validation.run.qualifiedCount} eligible for handoff{validation.run.status === "validation_failed" ? ` · ${validation.run.providerProposedQualifiedCount ?? 0} provider-proposed qualified (provisional)` : ""}</p>}
               {!!validation.findings?.length && <ul className="space-y-2 text-sm">{validation.findings.map((finding, index) => <li key={index}>{finding.severity.toUpperCase()}: {finding.message}</li>)}</ul>}
               {validation.dailyBriefMarkdown && <pre className="max-h-[48rem] overflow-auto whitespace-pre-wrap rounded-xl bg-white p-4 text-sm text-slate-900">{validation.dailyBriefMarkdown}</pre>}
               {validation.run?.status === "valid" && <button type="button" onClick={exportForSales} className="rounded-xl bg-sky-400 px-5 py-3 font-bold text-slate-950">Export for SALES</button>}

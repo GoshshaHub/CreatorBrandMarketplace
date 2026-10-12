@@ -45,3 +45,21 @@ test("Daily Brief renders publication and access dates as separate facts", () =>
   assert.doesNotMatch(brief, /Unknown-date publisher — 2026-09-19 —/);
   assert.match(brief, /\*\*Score\/Band\/Confidence:\*\* 81\/100 \/ Immediate Priority \/ High/);
 });
+
+test("failed runs suppress handoff eligibility and label provider-proposed results provisional", () => {
+  const { candidate } = scoreGrowthCandidate(buffBenchmarkCandidate);
+  const brief = buildDailyBriefMarkdown({
+    asOfDate: "2026-09-19",
+    marketPattern: "Mixed validation result.",
+    candidates: [candidate],
+    findings: [{ code: "material_claim_missing_evidence", severity: "error", candidateId: candidate.id, message: "Unsupported material claim." }],
+    validationStatus: "validation_failed",
+  });
+
+  assert.match(brief, /Validation failed — no candidate is eligible for SALES handoff\./);
+  assert.match(brief, /Provider-proposed qualified .*\(provisional\)/);
+  assert.match(brief, /Provisional provider proposal:/);
+  assert.match(brief, /Provider-proposed score\/band\/confidence \(provisional\)/);
+  assert.match(brief, /Resolve validation errors; no SALES-01 handoff is available/);
+  assert.doesNotMatch(brief, /\*\*Founder decisions:\*\* Review qualified opportunities for SALES-01 handoff/);
+});

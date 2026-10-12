@@ -34,6 +34,9 @@ test("browser receives no API key and displays proposal separately from Phase 1A
   assert.match(page, /Phase 1A deterministic validation/);
   assert.match(page, /does not persist or independently know cumulative monthly spend/i);
   assert.match(page, /validated brief is not Founder approval/i);
+  assert.match(page, /Exact structured provider output \(untrusted, nonpersistent\)/);
+  assert.match(page, /Normalized proposal and transformation provenance/);
+  assert.match(page, /Validation failed — no candidate is eligible for SALES handoff/);
 });
 
 test("successful result identifies the frozen contract and failure metadata denies state changes", async () => {

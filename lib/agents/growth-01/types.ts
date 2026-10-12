@@ -190,6 +190,7 @@ export type ValidatedGrowthRun = {
     status: "valid" | "validation_failed";
     candidateCount: number;
     qualifiedCount: number;
+    providerProposedQualifiedCount?: number;
     authority: "founder_supervised_preview_only";
     persistence: false;
     externalCommunication: false;

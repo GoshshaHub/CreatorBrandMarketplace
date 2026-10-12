@@ -9,6 +9,7 @@ export function buildDailyBriefMarkdown(params: {
   marketPattern?: string;
   candidates: ScoredCandidate[];
   findings: ValidationFinding[];
+  validationStatus?: "valid" | "validation_failed";
 }): string {
   const qualified = params.candidates
     .filter((candidate) => candidate.selectionStatus === "qualified")
@@ -17,11 +18,17 @@ export function buildDailyBriefMarkdown(params: {
   const strong = qualified.filter((candidate) => candidate.computed.band === "Strong Opportunity").length;
   const structural = qualified.filter((candidate) => candidate.opportunityType === "Exceptional Structural").length;
   const watch = params.candidates.filter((candidate) => candidate.selectionStatus === "watch").length;
+  const failed = params.validationStatus === "validation_failed" || params.findings.some((finding) => finding.severity === "error");
   const lines = [
     `# GROWTH-01 Daily Brief — ${params.asOfDate}`,
     "",
-    `**Qualified / Immediate / Strong / Structural / Watch:** ${qualified.length} / ${immediate} / ${strong} / ${structural} / ${watch}`,
-    `**Founder decisions:** ${qualified.length ? "Review qualified opportunities for SALES-01 handoff" : "No qualified handoff recommended"}`,
+    failed
+      ? "**Validation status:** Validation failed — no candidate is eligible for SALES handoff."
+      : "**Validation status:** Valid",
+    failed
+      ? `**Provider-proposed qualified / Immediate / Strong / Structural / Watch (provisional):** ${qualified.length} / ${immediate} / ${strong} / ${structural} / ${watch}`
+      : `**Qualified / Immediate / Strong / Structural / Watch:** ${qualified.length} / ${immediate} / ${strong} / ${structural} / ${watch}`,
+    `**Founder decisions:** ${failed ? "Resolve validation errors; no SALES-01 handoff is available" : qualified.length ? "Review qualified opportunities for SALES-01 handoff" : "No qualified handoff recommended"}`,
     `**Market pattern:** ${cleanLine(params.marketPattern || "No Founder-supplied market pattern.")}`,
   ];
 
@@ -29,9 +36,9 @@ export function buildDailyBriefMarkdown(params: {
     const evidenceLinks = candidate.evidence.slice(0, 5).map((item) => `${item.publisher} — Published: ${item.publicationDate || "Unknown"} — Accessed: ${item.accessDate} — ${item.supportedClaim} — ${item.sourceUrl}`);
     lines.push(
       "",
-      `### ${cleanLine(candidate.brand)} — ${cleanLine(candidate.productOrEvent)}`,
+      `### ${failed ? "Provisional provider proposal: " : ""}${cleanLine(candidate.brand)} — ${cleanLine(candidate.productOrEvent)}`,
       "",
-      `**Score/Band/Confidence:** ${candidate.computed.finalScore}/100 / ${candidate.computed.band} / ${candidate.confidence}`,
+      `**${failed ? "Provider-proposed score/band/confidence (provisional)" : "Score/Band/Confidence"}:** ${candidate.computed.finalScore}/100 / ${candidate.computed.band} / ${candidate.confidence}`,
       `**Founder-Stage Pursuit Feasibility:** ${candidate.founderStagePursuitFeasibility}`,
       `**Feasibility rationale:** ${cleanLine(candidate.feasibilityRationale)}`,
       `**Opportunity type:** ${candidate.opportunityType}`,
@@ -46,7 +53,7 @@ export function buildDailyBriefMarkdown(params: {
       `**Fastest Revenue Path:** ${candidate.fastestRevenuePath}`,
       `**Revenue-path rationale:** ${cleanLine(candidate.revenuePathRationale)}`,
       `**Evidence strength / Known gap:** ${candidate.confidence}; ${cleanLine(candidate.knownUnknowns.join("; ") || "No supplied unknowns")}`,
-      `**Next action / Handoff:** ${candidate.handoff} — ${cleanLine(candidate.nextAction)}`,
+      `**${failed ? "Provider-proposed next action / handoff (provisional; unavailable)" : "Next action / Handoff"}:** ${candidate.handoff} — ${cleanLine(candidate.nextAction)}`,
       `**Scoring:** gross ${candidate.computed.grossScore}; deductions ${candidate.computed.deductionTotal}; cap ${candidate.computed.applicableCap ?? "none"}; final ${candidate.computed.finalScore}`,
       "**Key sources:**",
       ...evidenceLinks.map((item) => `- ${item}`)

@@ -167,3 +167,17 @@ export function validateQualifiedCount(candidates: ScoredCandidate[], maximumQua
   }
   return [];
 }
+
+export function deriveGrowthHandoffEligibility(candidates: ScoredCandidate[], findings: ValidationFinding[]): {
+  status: "valid" | "validation_failed";
+  qualifiedCount: number;
+  providerProposedQualifiedCount: number;
+} {
+  const status = findings.some((finding) => finding.severity === "error") ? "validation_failed" : "valid";
+  const providerProposedQualifiedCount = candidates.filter((candidate) => candidate.selectionStatus === "qualified").length;
+  return {
+    status,
+    qualifiedCount: status === "valid" ? providerProposedQualifiedCount : 0,
+    providerProposedQualifiedCount,
+  };
+}
