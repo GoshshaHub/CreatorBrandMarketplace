@@ -101,7 +101,7 @@ export type SalesContact = {
 };
 
 export type SalesPlaybookV1 = {
-  schemaVersion: "sales-playbook-v1";
+  schemaVersion: "sales-playbook-v1.1";
   createdAt: string;
   growthQualification: {
     candidateId: string;
@@ -130,6 +130,17 @@ export type SalesPlaybookV1 = {
     physicalScanProofPoint: string;
     paidConversionHypothesis: string;
     desiredNextAction: string;
+  };
+  positioningFoundation: {
+    schemaVersion: "goshsha-commercial-positioning-v1";
+    version: "v1";
+    sha256: string;
+    opportunitySpecificPositioning: string;
+    approvedPlatformClaims: Array<{ id: string; statement: string; classification: "goshsha_capability" }>;
+    mechanicsQualifications: string[];
+    audienceObjection: { objection: "How many users does Goshsha have?"; response: string; deeperQualification: string };
+    prohibitedClaims: readonly string[];
+    offerBindings: { catalogVersion: "goshsha-commercial-offers-v1"; catalogSha256: string; product2OfferId: "irl-retail-media-product-2"; freeFirstOfferId: "free-first-irl-campaign" };
   };
   contacts: SalesContact[];
   contactSelection: {
@@ -199,6 +210,7 @@ export type SalesResearchProviderContext = {
   salesContract: SalesContractMetadata;
   providerProjection: SalesProviderProjectionMetadata & { body: string };
   envelope: GrowthSalesHandoffEnvelopeV1;
+  commercialPositioning?: ReturnType<typeof import("../commercial-positioning").verifyCommercialPositioning>;
 };
 
 export type SalesResearchResult = {

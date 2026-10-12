@@ -67,6 +67,7 @@ export type CrmPursuitListItem = {
   salesPursuitDecision: string | null;
   rationale: string | null;
   contactSelection: { status: "recommended" | "unavailable" | "unknown"; bestFirstContactId: string | null; unavailableReason: string | null; smallestSufficientSetRationale: string | null };
+  canonicalConversation: { conversationId: string | null; revision: number | null; participantKeys: string[] };
   nextAction: { description: string | null; owner: string | null; status: string | null; dueAt: string | null; executionAuthorized: false };
   dncEvaluation: "allowed" | "blocked" | "review_required";
   unknowns: Array<{ text: string; status: string | null }>;

@@ -67,6 +67,14 @@ test("CRM namespace denies reads and writes for unauthenticated and authenticate
   await expectWriteDenied(path, true);
 });
 
+test("CLOSER simulation-consumption receipts deny client reads and writes", async () => {
+  const path = `crm/closerSimulationConsumption/receipts/${randomUUID()}`;
+  await expectReadDenied(path);
+  await expectWriteDenied(path);
+  await expectReadDenied(path, true);
+  await expectWriteDenied(path, true);
+});
+
 test("broad fallback retains public reads and authenticated-only writes", async () => {
   const path = `rulesRegression/${randomUUID()}`;
   await expectReadAllowed(path);

@@ -1,4 +1,4 @@
-import postmark from "postmark";
+import { ServerClient } from "postmark";
 
 const token = process.env.POSTMARK_API_TOKEN || "";
 
@@ -15,7 +15,7 @@ export async function sendEmail(params: {
     throw new Error("Missing POSTMARK_API_TOKEN");
   }
 
-  const client = new postmark.ServerClient(token);
+  const client = new ServerClient(token);
 
   return client.sendEmail({
     From: "Goshsha <support@goshsha.com>",

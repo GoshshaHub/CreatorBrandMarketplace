@@ -26,11 +26,16 @@ function normalize(value = proposal()) { return normalizeCompletedOpenAISalesRes
 
 test("valid provider output becomes a nonpersistent, non-sending playbook and CRM preview", () => {
   const result = normalize();
-  assert.equal(result.playbook.schemaVersion, "sales-playbook-v1"); assert.equal(result.playbook.growthQualification.score, 81); assert.equal(result.playbook.growthQualification.band, "Immediate Priority");
+  assert.equal(result.playbook.schemaVersion, "sales-playbook-v1.1"); assert.equal(result.playbook.growthQualification.score, 81); assert.equal(result.playbook.growthQualification.band, "Immediate Priority");
   assert.equal(result.playbook.outreach.sendingAuthorized, false); assert.equal(result.playbook.crmReadyPacket.schemaVersion, "sales-crm-ready-v1"); assert.equal(result.playbook.crmReadyPacket.crmWriteAuthorized, false); assert.equal(result.playbook.authority.persistence, false);
   assert.equal(result.playbook.opportunityStrategy.offerFacts.irlRetailMedia, "$99 / one product / one video / 90 days / first 1,000 qualified views");
   assert.equal(result.playbook.evidence[0].canonicalUrl, "https://example.com/aisha"); assert.equal(result.playbook.evidence[0].rawUrl, "https://example.com/aisha?utm_source=test");
+  assert.equal(result.playbook.positioningFoundation.schemaVersion, "goshsha-commercial-positioning-v1");
+  assert.equal(result.playbook.positioningFoundation.audienceObjection.objection, "How many users does Goshsha have?");
+  assert.equal(result.playbook.objections[0].objection, "How many users does Goshsha have?");
 });
+
+test("unsupported audience, guaranteed reach, and performance claims fail closed",()=>{for(const statement of ["Goshsha has a massive audience.","Goshsha guarantees 1,000 views.","Goshsha guarantees sales lift."]){const invalid=proposal();invalid.claims[0].statement=statement;assert.throws(()=>normalize(invalid),(error)=>["unsupported_audience_claim","unsupported_commercial_promise"].includes(error.code));}});
 
 test("Phase 1B requires separate authorization and a current intact Phase 1A envelope", () => {
   assert.deepEqual(validateSalesResearchRequest(request()), []);

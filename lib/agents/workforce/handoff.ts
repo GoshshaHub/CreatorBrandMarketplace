@@ -12,12 +12,12 @@ export const APPROVED_WORKFORCE_HANDOFF_CONTRACT_SHA256="9b7afb2d91251fc0167d28a
 export const WORKFORCE_RECEIVER_REGISTRY_VERSION="goshsha-workforce-receiver-registry-v1" as const;
 export const WORKFORCE_RECEIVER_REGISTRY={version:WORKFORCE_RECEIVER_REGISTRY_VERSION,receivers:{
   "CRM-01":{contractVersion:"V1.1",contractSha256:"68129fc2d2d4fdd5646b93879d0b469a71c3ef4c93e84fd0e4aaccc011fa8194",capabilityId:"canonical-resolution-preparation-v1",mode:"preparation_preview_only",families:["resolve_evidence_or_safety_blocker","pause_no_commercial_action"],assignmentTypes:["None"],invocationAuthorized:false,mutationAuthorized:false},
-  "SALES-01":{contractVersion:"V1.2",contractSha256:"0428ae67558fb21d288e3588139a8f46d2fdd17cc436b07f7ce1f17f14c265e6",capabilityId:"strategy-playbook-preparation-v1",mode:"preparation_preview_only",families:["establish_qualified_engagement"],assignmentTypes:["Pursuit"],invocationAuthorized:false,providerAuthorized:false,outreachAuthorized:false},
+  "SALES-01":{contractVersion:"V1.3",contractSha256:"71285e9cd3e58da0e772f0eaa8fbc1a61b3238efd1155dfd1c9ec9659df68927",capabilityId:"strategy-playbook-preparation-v1",mode:"preparation_preview_only",families:["establish_qualified_engagement"],assignmentTypes:["Pursuit"],invocationAuthorized:false,providerAuthorized:false,outreachAuthorized:false},
   "future CLOSER-01":{contractVersion:"V1",contractSha256:"097371ac3333f12321ae834c805eece1e2f6a967009de44bf742df4242cb0368",capabilityId:"tier0-simulation-preparation-v1",mode:"tier0_simulation_preview_only",families:["complete_proof_milestone","pursue_standard_paid_conversion","pursue_repeat_or_retention"],assignmentTypes:["Proof / Progression","Conversion","Expansion / Retention"],invocationAuthorized:false,requiredInputs:["conversationThreadId","growthSourceVersion","salesPlaybookIdVersion","crmCanonicalRevision","revenueObjectiveIdVersionState","founderAuthorityIdVersion","recipientParticipantChannelScope","freshnessAndSupersession"]},
   "GROWTH-01":{contractVersion:"V1",contractSha256:"618b895eb97479db83edc668a32bc4db93a222429b27e2a8f6cbadc2bbb7e860",capabilityId:null,mode:"unsupported",families:[],assignmentTypes:[],invocationAuthorized:false}
 }}as const;
 export const WORKFORCE_RECEIVER_REGISTRY_SHA256=revenueSha256(WORKFORCE_RECEIVER_REGISTRY);
-export const APPROVED_WORKFORCE_RECEIVER_REGISTRY_SHA256="8907bd68c96c41a029894b136079e36805465af194c991a734e244eae93ee3b6" as const;
+export const APPROVED_WORKFORCE_RECEIVER_REGISTRY_SHA256="a7e891d8805d274a1c20a4e69a67abf104ec9b15611cd05b73912577d67993ad" as const;
 
 export class WorkforceHandoffError extends Error{code:string;constructor(code:string,message:string){super(message);this.name="WorkforceHandoffError";this.code=code;}}
 type ReceiverName=keyof typeof WORKFORCE_RECEIVER_REGISTRY.receivers;

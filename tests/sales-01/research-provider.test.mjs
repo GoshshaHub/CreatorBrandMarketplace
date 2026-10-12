@@ -13,9 +13,9 @@ function envelope() {
   return validateSalesIntake({ input: { export: createSyntheticGrowthSalesExport(), candidateId: "buff-the-buff-ritual", founderApproval: { approved: true, scope: "sales_preparation_only" } }, approvedByUid: "founder", approvedAt: "2026-09-24T12:00:00.000Z", salesContract: syntheticSalesContractMetadata }).envelope;
 }
 
-test("projection is paired to SALES V1.2 and one-byte changes fail closed", () => {
+test("projection is paired to SALES V1.3 and one-byte changes fail closed", () => {
   const projection = verifySalesProviderIntelligenceProjection({ salesContractSha256: syntheticSalesContractMetadata.sha256 });
-  assert.equal(projection.version, "sales-01-provider-intelligence-v1.1");
+  assert.equal(projection.version, "sales-01-provider-intelligence-v1.2");
   assert.equal(projection.sha256, APPROVED_SALES_PROVIDER_INTELLIGENCE_SHA256);
   assert.throws(() => verifySalesProviderIntelligenceProjection({ salesContractSha256: `${projection.pairedSalesContractSha256[0] === "0" ? "1" : "0"}${projection.pairedSalesContractSha256.slice(1)}` }));
   assert.throws(() => verifySalesProviderIntelligenceProjection({ salesContractSha256: projection.pairedSalesContractSha256, projectionBody: `${projection.body}x` }));
@@ -32,6 +32,9 @@ test("provider projection preserves contact, claims, rights, unknown, and non-se
   assert.match(prompt, /Every inherited GROWTH unknown/i);
   assert.match(prompt, /Creator activity does not establish content rights/i);
   assert.match(prompt, /All outreach is non-sending/i);
+  assert.match(prompt, /goshsha-commercial-positioning-v1/);
+  assert.match(prompt, /How many users does Goshsha have/);
+  assert.match(prompt, /not automatically Goshsha traffic/);
   assert.doesNotMatch(prompt, /growthMonthSpendUsd|salesMonthSpendUsd|commercialDepartmentMonthSpendUsd|Firebase UID/);
 });
 

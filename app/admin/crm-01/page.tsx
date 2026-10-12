@@ -5,8 +5,11 @@ import { useEffect, useState } from "react";
 import ProtectedRoute from "../../../components/ProtectedRoute";
 import { auth } from "../../../lib/firebase";
 import type { CrmDashboardReadModel } from "../../../lib/agents/crm-01/read-types";
+import CanonicalPatternHandoff from "./CanonicalPatternHandoff";
+import CommercialFeedbackPanel from "./CommercialFeedbackPanel";
 
 async function loadDashboard(): Promise<CrmDashboardReadModel> {
+  await auth.authStateReady();
   const user = auth.currentUser;
   if (!user) throw new Error("Admin session unavailable.");
   const response = await fetch("/api/admin/agents/crm-01/dashboard", { headers: { Authorization: `Bearer ${await user.getIdToken()}` }, cache: "no-store" });
@@ -27,6 +30,6 @@ export default function CrmDashboardPage() {
       <div className="grid gap-6 lg:grid-cols-2"><section className="rounded-2xl border border-amber-700 bg-amber-950/20 p-5"><h2 className="text-xl font-bold">Needs Founder Attention</h2><div className="mt-4 space-y-3">{data.needsFounderAttention.length === 0 ? <p className="text-slate-400">No open Attention Items in the bounded view.</p> : data.needsFounderAttention.map((item) => <article key={item.id} className="rounded-xl bg-slate-950 p-4"><p className="font-semibold">{item.reason ?? "Reason unavailable"}</p><p className="text-sm text-slate-400">{item.type} · {item.priority} · {item.status}{item.dueAt ? ` · due ${item.dueAt}` : ""}</p><p className="mt-1 text-xs text-amber-200">Attention does not authorize execution.</p></article>)}</div></section>
       <section className="rounded-2xl border border-slate-700 bg-slate-900 p-5"><h2 className="text-xl font-bold">Recent Pursuits</h2><div className="mt-4 space-y-3">{data.recentPursuits.length === 0 ? <p className="text-slate-400">No pursuits in the bounded view.</p> : data.recentPursuits.map((item) => <article key={item.id} className="rounded-xl bg-slate-950 p-4"><p className="font-semibold">{item.stage ?? "Stage unknown"} · {item.disposition ?? "Disposition unknown"}</p><p className="text-sm text-slate-400">Sales decision: {item.salesPursuitDecision ?? "Unknown"}</p><p className="mt-2 text-sm">Next action: {item.nextAction.description ?? "Unknown"} <span className="text-amber-300">(not execution-authorized)</span></p></article>)}</div></section></div>
       <section className="rounded-2xl border border-slate-700 bg-slate-900 p-5"><h2 className="text-xl font-bold">Accounts</h2><div className="mt-4 grid gap-3 md:grid-cols-2">{data.priorityAccounts.map((account) => <Link key={account.id} href={`/admin/crm-01/accounts/${encodeURIComponent(account.id)}`} className="rounded-xl bg-slate-950 p-4 hover:ring-1 hover:ring-cyan-400"><p className="font-semibold">{account.displayName ?? "Account name unavailable"}</p><p className="text-sm text-slate-400">{account.relationshipStatus ?? "Relationship state unknown"} · DNC {account.dnc.evaluation}</p></Link>)}</div></section>
-      {data.dataQualityWarnings.length > 0 && <section className="rounded-2xl border border-violet-700 bg-violet-950/20 p-5"><h2 className="font-bold">Data quality / uncertainty</h2><ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-violet-100">{data.dataQualityWarnings.map((item) => <li key={item}>{item}</li>)}</ul></section>}</>}
+      <CanonicalPatternHandoff/><CommercialFeedbackPanel/>{data.dataQualityWarnings.length > 0 && <section className="rounded-2xl border border-violet-700 bg-violet-950/20 p-5"><h2 className="font-bold">Data quality / uncertainty</h2><ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-violet-100">{data.dataQualityWarnings.map((item) => <li key={item}>{item}</li>)}</ul></section>}</>}
   </div></main></ProtectedRoute>;
 }

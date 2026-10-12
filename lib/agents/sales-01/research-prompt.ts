@@ -1,4 +1,5 @@
 import type { SalesResearchProviderContext } from "./research-types";
+import { verifyCommercialPositioning } from "../commercial-positioning";
 
 export const GOSHSHHA_CAPABILITY_FACTS = {
   "cap-free-first": "Free First is $0, one product, one properly licensed uploaded video, 30 days, first 250 qualified views, and is a proof/acquisition mechanism rather than revenue.",
@@ -9,10 +10,13 @@ export const GOSHSHHA_CAPABILITY_FACTS = {
 
 export function buildSalesResearchInstructions(context: SalesResearchProviderContext): string {
   const envelope = context.envelope;
+  const commercialPositioning = context.commercialPositioning ?? verifyCommercialPositioning();
   return [
     "# SALES-01 Provider Intelligence Projection",
     `Projection version: ${context.providerProjection.version}\nProjection SHA-256: ${context.providerProjection.sha256}\nPaired SALES contract: ${context.salesContract.version}\nContract SHA-256: ${context.salesContract.sha256}`,
     context.providerProjection.body,
+    "## Founder-owned canonical commercial positioning",
+    JSON.stringify(commercialPositioning),
     "## Immutable GROWTH qualification",
     JSON.stringify({
       candidateId: envelope.candidate.candidateId,

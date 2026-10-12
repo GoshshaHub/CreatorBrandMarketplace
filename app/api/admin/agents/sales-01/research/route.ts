@@ -9,6 +9,7 @@ import { calculateSalesSpendingAuthority } from "../../../../../../lib/agents/sa
 import { MAX_SALES_RESEARCH_REQUEST_BYTES, SalesResearchError, validateSalesResearchRequest } from "../../../../../../lib/agents/sales-01/research-schema";
 import type { SalesResearchRequest, SalesResearchResult } from "../../../../../../lib/agents/sales-01/research-types";
 import { buildCrmSalesIngestionExport } from "../../../../../../lib/agents/sales-01/crm-export";
+import { verifyCommercialPositioning, CommercialPositioningIntegrityError } from "../../../../../../lib/agents/commercial-positioning";
 
 export const runtime = "nodejs";
 export const maxDuration = 180;
@@ -28,14 +29,15 @@ export async function POST(request: Request) {
     if (!spendingAuthority.fullProfileAuthorized) return errorResponse(422, "spending_authority_insufficient", "The full $1 SALES run is not authorized under the Founder-supplied $20 SALES-month and $50 Commercial-AI-month totals.");
     const contract = await loadSalesContractMetadata();
     const providerProjection = verifySalesProviderIntelligenceProjection({ salesContractSha256: contract.sha256 });
+    const commercialPositioning = verifyCommercialPositioning();
     const provider = new OpenAIResponsesWebSalesProvider({ apiKey: process.env.OPENAI_API_KEY || "", model: process.env.OPENAI_SALES_MODEL || "gpt-5.6-terra" });
-    const proposal = await provider.research(input, { salesContract: contract, providerProjection, envelope: input.envelope }, request.signal);
+    const proposal = await provider.research(input, { salesContract: contract, providerProjection, envelope: input.envelope, commercialPositioning }, request.signal);
     const result: SalesResearchResult = { outcome: "accepted", envelope: input.envelope, providerProfile: { timeoutMs: 150_000, maximumWebSearchCalls: 6, maximumContacts: 6, maximumContactsPerRole: 2, maximumSources: 30, maximumOutputTokens: 12_000 }, contract, providerProjection, spendingAuthority, proposal };
     result.crmExport = buildCrmSalesIngestionExport(result);
     return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     if (error instanceof SalesAdminAuthError) return errorResponse(error.status, "authorization_failed", error.message);
-    if (error instanceof SalesContractIntegrityError || error instanceof SalesProviderProjectionIntegrityError) return errorResponse(500, "contract_integrity_failed", error.message);
+    if (error instanceof SalesContractIntegrityError || error instanceof SalesProviderProjectionIntegrityError || error instanceof CommercialPositioningIntegrityError) return errorResponse(500, "contract_integrity_failed", error.message);
     if (error instanceof SalesResearchError) return errorResponse(error.httpStatus, error.code, error.message, error.providerExecution);
     console.error("SALES-01 research failed", error instanceof Error ? error.name : "unknown_error");
     return errorResponse(500, "sales_research_failed", "SALES research could not be completed. No data or downstream state was created.");

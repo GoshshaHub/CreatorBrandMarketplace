@@ -2,7 +2,7 @@ import { createHash } from "crypto";
 
 import { APPROVED_SALES_CONTRACT_SHA256, SALES_CONTRACT_VERSION } from "./contract";
 
-export const SALES_PROVIDER_INTELLIGENCE_VERSION = "sales-01-provider-intelligence-v1.1" as const;
+export const SALES_PROVIDER_INTELLIGENCE_VERSION = "sales-01-provider-intelligence-v1.2" as const;
 export const PAIRED_SALES_CONTRACT_SHA256 = APPROVED_SALES_CONTRACT_SHA256;
 
 export const SALES_PROVIDER_INTELLIGENCE_BODY = `You are the public-web intelligence provider for supervised SALES-01. Research one already-qualified GROWTH opportunity. You propose Sales intelligence; the server validates it and the Founder reviews it. Do not rescore or requalify GROWTH.
@@ -21,11 +21,13 @@ Creator activity does not establish content rights. Retail presence does not est
 
 Every inherited GROWTH unknown must be returned verbatim as unresolved or resolved_by_sales_evidence. Resolution requires explicit current SALES evidence IDs. Unknowns may not disappear.
 
-Server-controlled offers: Free First is $0, one product, one properly licensed uploaded video, 30 days, first 250 qualified views, proof/acquisition only. IRL Retail Media is $99, one product, one video, 90 days, first 1,000 qualified views. Creator Network is a 14-day trial with card, then $75/month. Do not invent discounts, guarantees, custom entitlements, or capabilities.
+Consume the supplied, integrity-verified Founder commercial-positioning artifact. Apply it to this opportunity without contradicting its mechanics, audience distinctions, measurement limits, rights qualification, offer bindings, or prohibited claims. Do not invent a user count, imply massive built-in reach, confuse existing shopper traffic with Goshsha users, or represent included qualified views as guaranteed delivered audience. The server will attach the canonical user-count objection strategy to the accepted Playbook; your opportunity-specific wording and claims must remain compatible with it.
+
+Server-controlled offers: Free First is $0, one product, one properly licensed uploaded video, 30 days, first 250 qualified views, proof/acquisition only. IRL Retail Media is $99, one product, one video, 90 days, first 1,000 qualified views. Creator Network is a 14-day trial with card, then $75/month. Do not invent discounts, guarantees, custom entitlements, or capabilities. Included qualified views are entitlements, not guaranteed audience delivery.
 
 Draft only. All outreach is non-sending and requires Founder review. Keep objections within verified claims and flag reserved matters for escalation. Return only the requested strict structured output.`;
 
-export const APPROVED_SALES_PROVIDER_INTELLIGENCE_SHA256 = "d110a98f59fae7840cc3968a781279bd7b5cc1df901b0fef0378f3f187e80dae" as const;
+export const APPROVED_SALES_PROVIDER_INTELLIGENCE_SHA256 = "7c5c1626c63b087b95009b9bec945e59efade081824a0d98ac6c7c05b53beeca" as const;
 
 export type SalesProviderProjectionMetadata = {
   version: typeof SALES_PROVIDER_INTELLIGENCE_VERSION;
