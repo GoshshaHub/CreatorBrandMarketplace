@@ -1,6 +1,8 @@
+import { createHash } from "crypto";
+
 import { canonicalizeResearchUrl } from "../growth-01/research-schema";
 import { GOSHSHHA_CAPABILITY_FACTS } from "./research-prompt";
-import type { SalesClaim, SalesContact, SalesProviderExecutionMetadata, SalesResearchProposal, SalesResearchRequest } from "./research-types";
+import type { SalesClaim, SalesContact, SalesProviderExecutionMetadata, SalesResearchProposal, SalesResearchRequest, SalesSourceRejectionDiagnostics } from "./research-types";
 import { verifySalesEnvelopeIntegrity } from "./validation";
 import { APPROVED_SALES_CONTRACT_SHA256 } from "./contract";
 import { verifyCommercialPositioning } from "../commercial-positioning";
@@ -17,8 +19,9 @@ export class SalesResearchError extends Error {
   code: string;
   httpStatus: number;
   providerExecution: SalesProviderExecutionMetadata | null;
-  constructor(code: string, message: string, httpStatus = 502, execution: SalesProviderExecutionMetadata | null = null) {
-    super(message); this.name = "SalesResearchError"; this.code = code; this.httpStatus = httpStatus; this.providerExecution = execution;
+  rejectionDiagnostics: SalesSourceRejectionDiagnostics | null;
+  constructor(code: string, message: string, httpStatus = 502, execution: SalesProviderExecutionMetadata | null = null, diagnostics: SalesSourceRejectionDiagnostics | null = null) {
+    super(message); this.name = "SalesResearchError"; this.code = code; this.httpStatus = httpStatus; this.providerExecution = execution; this.rejectionDiagnostics = diagnostics;
   }
 }
 
@@ -48,6 +51,7 @@ export const OPENAI_SALES_INTELLIGENCE_JSON_SCHEMA = {
 
 type RawProposal = any;
 type NativeSource = { url?: unknown; title?: unknown; publication_date?: unknown; published_at?: unknown; page_age?: unknown };
+type NativeSourceChannel = "web_search_action" | "url_citation_annotation";
 const validDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`));
 const currentUtcDate = () => new Date().toISOString().slice(0, 10);
 const requiredText = (value: unknown, field: string) => { if (typeof value !== "string" || !value.trim()) throw new SalesResearchError("provider_output_invalid", `${field} must contain text.`, 422); return value.trim(); };
@@ -73,18 +77,65 @@ function outputText(response: Record<string, unknown>): string {
   return (Array.isArray(response.output) ? response.output : []).flatMap((item: any) => Array.isArray(item?.content) ? item.content.filter((c: any) => c?.type === "output_text" && typeof c.text === "string").map((c: any) => c.text) : []).join("");
 }
 
+const MAX_REJECTION_NATIVE_HASHES = 20;
+const MAX_DIAGNOSTIC_HOSTNAME_LENGTH = 253;
+const sha256Diagnostic = (value: string) => createHash("sha256").update(value).digest("hex");
+function safeDiagnosticHostname(canonicalUrl: string): string | null {
+  try {
+    const hostname = new URL(canonicalUrl).hostname.toLowerCase();
+    if (!hostname || hostname.length > MAX_DIAGNOSTIC_HOSTNAME_LENGTH || !/^[a-z0-9.-]+$/.test(hostname)) return null;
+    return hostname;
+  } catch { return null; }
+}
+
 function nativeSources(response: Record<string, unknown>, accessDate: string) {
-  const raw: NativeSource[] = [];
-  for (const item of Array.isArray(response.output) ? response.output : []) if ((item as any)?.type === "web_search_call" && Array.isArray((item as any).action?.sources)) raw.push(...(item as any).action.sources);
+  const raw: Array<{ source: NativeSource; channel: NativeSourceChannel }> = [];
+  let actionSourceCount = 0;
+  let annotationSourceCount = 0;
+  for (const item of Array.isArray(response.output) ? response.output : []) {
+    if ((item as any)?.type === "web_search_call" && Array.isArray((item as any).action?.sources)) {
+      for (const source of (item as any).action.sources) { raw.push({ source, channel: "web_search_action" }); actionSourceCount += 1; }
+    }
+    if ((item as any)?.type === "message" && Array.isArray((item as any).content)) {
+      for (const content of (item as any).content) {
+        if (!Array.isArray(content?.annotations)) continue;
+        for (const annotation of content.annotations) {
+          if (annotation?.type !== "url_citation" || typeof annotation.url !== "string") continue;
+          raw.push({ source: { url: annotation.url, title: annotation.title }, channel: "url_citation_annotation" });
+          annotationSourceCount += 1;
+        }
+      }
+    }
+  }
   const map = new Map<string, { rawUrl: string; canonicalUrl: string; title: string; publicationDate: string | null; accessDate: string }>();
-  for (const source of raw) {
+  for (const { source } of raw) {
     if (typeof source.url !== "string") continue;
     const canonicalUrl = canonicalizeResearchUrl(source.url);
     const date = source.publication_date ?? source.published_at ?? source.page_age ?? null;
     if (date != null && (typeof date !== "string" || !validDate(date) || date > currentUtcDate() || date > accessDate)) throw new SalesResearchError("native_publication_date_invalid", "A native source contained an invalid or future publication date.", 422);
     if (!map.has(canonicalUrl)) map.set(canonicalUrl, { rawUrl: source.url, canonicalUrl, title: safeString(source.title) || new URL(canonicalUrl).hostname, publicationDate: date as string | null, accessDate });
   }
-  return map;
+  return { map, actionSourceCount, annotationSourceCount };
+}
+
+function sourceRejectionDiagnostics(params: { evidenceItem: any; evidenceOrdinal: number; proposedCanonicalUrl: string; native: ReturnType<typeof nativeSources>; request: SalesResearchRequest }): SalesSourceRejectionDiagnostics {
+  const nativeHashes = [...params.native.map.keys()].map(sha256Diagnostic).sort();
+  const inheritedCanonical = new Set(params.request.envelope.evidence.items.flatMap((item) => { try { return [canonicalizeResearchUrl(item.sourceUrl)]; } catch { return []; } }));
+  const evidenceId = typeof params.evidenceItem?.id === "string" ? params.evidenceItem.id.slice(0, 500) : "";
+  return {
+    failureStage: "sales_evidence_native_reconciliation",
+    failingEvidenceOrdinal: Math.max(0, Math.min(params.evidenceOrdinal, MAX_SALES_RESEARCH_SOURCES - 1)),
+    failingEvidenceIdSha256: sha256Diagnostic(evidenceId),
+    proposedCanonicalUrlSha256: sha256Diagnostic(params.proposedCanonicalUrl),
+    proposedHostname: safeDiagnosticHostname(params.proposedCanonicalUrl),
+    nativeActionSourceCount: Math.min(params.native.actionSourceCount, 1_000),
+    nativeAnnotationSourceCount: Math.min(params.native.annotationSourceCount, 1_000),
+    nativeCanonicalSourceCount: Math.min(params.native.map.size, 1_000),
+    nativeCanonicalUrlHashes: nativeHashes.slice(0, MAX_REJECTION_NATIVE_HASHES),
+    nativeHashListTruncated: nativeHashes.length > MAX_REJECTION_NATIVE_HASHES,
+    matchesInheritedGrowthSource: inheritedCanonical.has(params.proposedCanonicalUrl),
+    redirectResolutionAttempted: false,
+  };
 }
 
 export function validateSalesResearchRequest(value: unknown): string[] {
@@ -166,11 +217,11 @@ export function normalizeCompletedOpenAISalesResponse(params: { response: Record
     if (execution.usage.webSearchCalls > MAX_SALES_WEB_SEARCH_CALLS) throw new SalesResearchError("web_search_limit_exceeded", "Provider exceeded the approved web-search limit.", 422);
     const raw = outputText(params.response); if (!raw) throw new SalesResearchError("provider_output_missing", "Provider returned no structured output.");
     let proposal: RawProposal; try { proposal = JSON.parse(raw); } catch { throw new SalesResearchError("provider_output_malformed", "Provider structured output was malformed."); }
-    const accessDate = params.serverReceivedAt.slice(0, 10); const native = nativeSources(params.response, accessDate); if (!native.size) throw new SalesResearchError("native_source_provenance_missing", "Provider returned no native source provenance.", 422);
+    const accessDate = params.serverReceivedAt.slice(0, 10); const native = nativeSources(params.response, accessDate); if (!native.map.size) throw new SalesResearchError("native_source_provenance_missing", "Provider returned no native source provenance.", 422);
     const referenced = new Map<string, any>();
-    const evidence = (proposal.evidence || []).map((item: any) => {
-      const canonical = canonicalizeResearchUrl(requiredText(item.sourceUrl, "evidence.sourceUrl")); const source = native.get(canonical);
-      if (!source) throw new SalesResearchError("model_only_source_rejected", "A SALES citation was absent from native provider provenance.", 422);
+    const evidence = (proposal.evidence || []).map((item: any, evidenceOrdinal: number) => {
+      const canonical = canonicalizeResearchUrl(requiredText(item.sourceUrl, "evidence.sourceUrl")); const source = native.map.get(canonical);
+      if (!source) throw new SalesResearchError("model_only_source_rejected", "A SALES citation was absent from native provider provenance.", 422, null, sourceRejectionDiagnostics({ evidenceItem: item, evidenceOrdinal, proposedCanonicalUrl: canonical, native, request: params.request }));
       if (!referenced.has(canonical)) referenced.set(canonical, source);
       return { id: requiredText(item.id, "evidence.id"), publisher: requiredText(item.publisher, "evidence.publisher"), ...source, supportedClaim: requiredText(item.supportedClaim, "evidence.supportedClaim"), classification: item.classification };
     });
@@ -210,7 +261,7 @@ export function normalizeCompletedOpenAISalesResponse(params: { response: Record
       authority: { founderReviewed: false, sendingAuthorized: false, crmWriteAuthorized: false, persistence: false, revenueInvocationAuthorized: false, closerInvocationAuthorized: false, externalAction: false },
     } };
   } catch (error) {
-    if (error instanceof SalesResearchError && execution.providerStatus === "completed") error.providerExecution = { ...execution, outcome: "provider_completed_local_rejection" };
+    if (error instanceof SalesResearchError && execution.providerStatus === "completed") error.providerExecution = { ...execution, outcome: "provider_completed_local_rejection", ...(error.rejectionDiagnostics ? { rejectionDiagnostics: error.rejectionDiagnostics } : {}) };
     throw error;
   }
 }

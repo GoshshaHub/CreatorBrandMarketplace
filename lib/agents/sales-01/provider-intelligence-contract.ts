@@ -2,7 +2,7 @@ import { createHash } from "crypto";
 
 import { APPROVED_SALES_CONTRACT_SHA256, SALES_CONTRACT_VERSION } from "./contract";
 
-export const SALES_PROVIDER_INTELLIGENCE_VERSION = "sales-01-provider-intelligence-v1.2" as const;
+export const SALES_PROVIDER_INTELLIGENCE_VERSION = "sales-01-provider-intelligence-v1.3" as const;
 export const PAIRED_SALES_CONTRACT_SHA256 = APPROVED_SALES_CONTRACT_SHA256;
 
 export const SALES_PROVIDER_INTELLIGENCE_BODY = `You are the public-web intelligence provider for supervised SALES-01. Research one already-qualified GROWTH opportunity. You propose Sales intelligence; the server validates it and the Founder reviews it. Do not rescore or requalify GROWTH.
@@ -17,6 +17,8 @@ Allowed contact routes are direct_public_business, general_company, public_profe
 
 Classify every substantive statement as verified_fact, attributed_brand_claim, goshsha_capability, reasonable_inference, hypothesis, unknown, or prohibited_unsupported. Every factual claim used in outreach must reference inherited validated GROWTH evidence, reconciled native SALES evidence, or an exact server-controlled Goshsha capability fact. Never fabricate personalization, relationship, urgency, interest, budget, authority, outcome, rights, retailer approval, medical/efficacy claim, performance claim, revenue, or commitment.
 
+The evidence[] array is only for current-run SALES sources. Every evidence[].sourceUrl must exactly use a URL present in this response's provider-native web-search provenance. Never place a URL found only in your generated JSON or prose into evidence[]. Inherited GROWTH facts must use growth_evidence claim references; do not copy inherited GROWTH sources into evidence[] unless the same URL was independently returned in current-run native provenance. Do not substitute redirect URLs, guessed canonical URLs, homepages, alternate profiles, or lookalike URLs.
+
 Creator activity does not establish content rights. Retail presence does not establish retailer authorization or endorsement. Brand health/efficacy statements remain attributed Brand claims; testimonials, popularity, reviews, and retail presence do not prove safety or effectiveness. GROWTH hypotheses remain hypotheses. Paid paths are not expected or committed revenue. Unsupported capability is never a promise.
 
 Every inherited GROWTH unknown must be returned verbatim as unresolved or resolved_by_sales_evidence. Resolution requires explicit current SALES evidence IDs. Unknowns may not disappear.
@@ -27,7 +29,7 @@ Server-controlled offers: Free First is $0, one product, one properly licensed u
 
 Draft only. All outreach is non-sending and requires Founder review. Keep objections within verified claims and flag reserved matters for escalation. Return only the requested strict structured output.`;
 
-export const APPROVED_SALES_PROVIDER_INTELLIGENCE_SHA256 = "7c5c1626c63b087b95009b9bec945e59efade081824a0d98ac6c7c05b53beeca" as const;
+export const APPROVED_SALES_PROVIDER_INTELLIGENCE_SHA256 = "ab0a9d2a32778f1ed5a902dd5e986f2460a82bdb68e143ed30d5468a89c73d13" as const;
 
 export type SalesProviderProjectionMetadata = {
   version: typeof SALES_PROVIDER_INTELLIGENCE_VERSION;

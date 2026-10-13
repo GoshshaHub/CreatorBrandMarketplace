@@ -75,7 +75,69 @@ test("guessed email, phone, profile, inferred route, and model-only citations fa
   for (const value of ["ceo@example.com", "+1 555 000 0000"]) { const invalid = proposal(); invalid.contacts[0].contactRoute.value = value; assert.throws(() => normalize(invalid), (error) => error.code === "contact_route_invalid"); }
   const guessedProfile = proposal(); guessedProfile.contacts[0].contactRoute.value = "https://linkedin.com/in/unlisted-person"; assert.throws(() => normalize(guessedProfile), (error) => error.code === "contact_route_unverified");
   const inferred = proposal(); inferred.contacts[0].contactRoute.type = "inferred"; assert.throws(() => normalize(inferred), (error) => error.code === "contact_route_invalid");
-  const modelOnly = proposal(); modelOnly.evidence[0].sourceUrl = "https://not-native.example/contact"; assert.throws(() => normalize(modelOnly), (error) => error.code === "model_only_source_rejected");
+  const modelOnly = proposal(); modelOnly.evidence[0].sourceUrl = "https://not-native.example/contact";
+  assert.throws(() => normalize(modelOnly), (error) => {
+    assert.equal(error.code, "model_only_source_rejected");
+    assert.equal(error.providerExecution.rejectionDiagnostics.failureStage, "sales_evidence_native_reconciliation");
+    assert.equal(error.providerExecution.rejectionDiagnostics.proposedHostname, "not-native.example");
+    assert.equal(error.providerExecution.rejectionDiagnostics.redirectResolutionAttempted, false);
+    assert.equal(error.providerExecution.rejectionDiagnostics.nativeActionSourceCount, 1);
+    assert.equal(error.providerExecution.rejectionDiagnostics.nativeAnnotationSourceCount, 0);
+    assert.doesNotMatch(JSON.stringify(error.providerExecution), /contact-1|sales-1|not-native\.example\/contact/);
+    return true;
+  });
+});
+
+test("provider-native Responses URL citation annotations are accepted without scanning generated JSON", () => {
+  const annotated = response();
+  annotated.output[0].action.sources = [];
+  annotated.output[1].content[0].annotations = [{ type: "url_citation", start_index: 0, end_index: 5, url: "https://example.com/aisha?utm_source=annotation", title: "Aisha citation" }];
+  const result = normalizeCompletedOpenAISalesResponse({ response: annotated, request: request(), requestedModel: "gpt-5.6-terra", serverReceivedAt: "2026-09-24T12:30:00.000Z" });
+  assert.equal(result.playbook.evidence[0].canonicalUrl, "https://example.com/aisha");
+  assert.equal(result.playbook.evidence[0].rawUrl, "https://example.com/aisha?utm_source=annotation");
+
+  const generatedOnly = response();
+  generatedOnly.output[0].action.sources = [];
+  assert.throws(() => normalizeCompletedOpenAISalesResponse({ response: generatedOnly, request: request(), requestedModel: "gpt-5.6-terra", serverReceivedAt: "2026-09-24T12:30:00.000Z" }), (error) => error.code === "native_source_provenance_missing");
+});
+
+test("malformed or unsupported annotations are ignored while valid action sources remain authoritative", () => {
+  const malformed = response();
+  malformed.output[1].content[0].annotations = [null, { type: "url_citation" }, { type: "url_citation", url: 42 }, { type: "other", url: "https://not-native.example" }, { type: "url_citation", url_citation: { url: "https://not-native.example" } }];
+  assert.equal(normalizeCompletedOpenAISalesResponse({ response: malformed, request: request(), requestedModel: "gpt-5.6-terra", serverReceivedAt: "2026-09-24T12:30:00.000Z" }).normalizedSourceCount, 1);
+});
+
+test("inherited GROWTH sources remain separate from current-run SALES evidence", () => {
+  const inherited = proposal();
+  inherited.evidence[0].sourceUrl = request().envelope.evidence.items[0].sourceUrl;
+  assert.throws(() => normalize(inherited), (error) => {
+    assert.equal(error.code, "model_only_source_rejected");
+    assert.equal(error.providerExecution.rejectionDiagnostics.matchesInheritedGrowthSource, true);
+    return true;
+  });
+});
+
+test("redirect and destination URLs are not treated as equivalent", () => {
+  const redirectOnly = response();
+  redirectOnly.output[0].action.sources = [{ url: "https://redirect.example/to-aisha", title: "Redirect" }];
+  assert.throws(() => normalizeCompletedOpenAISalesResponse({ response: redirectOnly, request: request(), requestedModel: "gpt-5.6-terra", serverReceivedAt: "2026-09-24T12:30:00.000Z" }), (error) => error.code === "model_only_source_rejected" && error.providerExecution.rejectionDiagnostics.redirectResolutionAttempted === false);
+});
+
+test("rejection diagnostics are bounded, hashed, and redact untrusted evidence identifiers and URL paths", () => {
+  const invalid = proposal();
+  invalid.evidence[0].id = "hostile-identifier-with-private-contact-name";
+  invalid.evidence[0].sourceUrl = "https://evidence.example/private/contact/path?token=not-returned";
+  const manySources = response(invalid);
+  manySources.output[0].action.sources = Array.from({ length: 30 }, (_, index) => ({ url: `https://native-${index}.example/path`, title: `Source ${index}` }));
+  assert.throws(() => normalizeCompletedOpenAISalesResponse({ response: manySources, request: request(), requestedModel: "gpt-5.6-terra", serverReceivedAt: "2026-09-24T12:30:00.000Z" }), (error) => {
+    const serialized = JSON.stringify(error.providerExecution.rejectionDiagnostics);
+    assert.equal(error.providerExecution.rejectionDiagnostics.nativeCanonicalUrlHashes.length, 20);
+    assert.equal(error.providerExecution.rejectionDiagnostics.nativeHashListTruncated, true);
+    assert.equal(error.providerExecution.rejectionDiagnostics.nativeActionSourceCount, 30);
+    assert.equal(error.providerExecution.rejectionDiagnostics.proposedHostname, "evidence.example");
+    assert.doesNotMatch(serialized, /private|contact|token|hostile-identifier|native-0\.example/);
+    return true;
+  });
 });
 
 test("contact and stakeholder-role ceilings fail visibly without truncation", () => {

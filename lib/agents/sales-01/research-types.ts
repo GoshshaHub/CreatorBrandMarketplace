@@ -33,6 +33,21 @@ export type SalesResearchUsage = {
   webSearchCalls: number;
 };
 
+export type SalesSourceRejectionDiagnostics = {
+  failureStage: "sales_evidence_native_reconciliation";
+  failingEvidenceOrdinal: number;
+  failingEvidenceIdSha256: string;
+  proposedCanonicalUrlSha256: string;
+  proposedHostname: string | null;
+  nativeActionSourceCount: number;
+  nativeAnnotationSourceCount: number;
+  nativeCanonicalSourceCount: number;
+  nativeCanonicalUrlHashes: string[];
+  nativeHashListTruncated: boolean;
+  matchesInheritedGrowthSource: boolean;
+  redirectResolutionAttempted: false;
+};
+
 export type SalesProviderExecutionMetadata = {
   provider: "openai";
   outcome: "accepted" | "provider_completed_local_rejection";
@@ -44,6 +59,7 @@ export type SalesProviderExecutionMetadata = {
   providerCompletedAt: string | null;
   serverReceivedAt: string;
   usage: SalesResearchUsage;
+  rejectionDiagnostics?: SalesSourceRejectionDiagnostics;
 };
 
 export type SalesEvidence = {
