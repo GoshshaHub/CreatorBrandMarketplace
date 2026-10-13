@@ -2,7 +2,7 @@ import { createHash } from "crypto";
 
 import { canonicalizeResearchUrl } from "../growth-01/research-schema";
 import { GOSHSHHA_CAPABILITY_FACTS } from "./research-prompt";
-import type { SalesClaim, SalesContact, SalesProviderExecutionMetadata, SalesResearchProposal, SalesResearchRejectionDiagnostics, SalesResearchRequest, SalesRightsRejectionDiagnostics, SalesSourceRejectionDiagnostics } from "./research-types";
+import type { SalesClaim, SalesClaimClassification, SalesClaimReferenceRejectionDiagnostics, SalesContact, SalesProviderExecutionMetadata, SalesResearchProposal, SalesResearchRejectionDiagnostics, SalesResearchRequest, SalesRightsRejectionDiagnostics, SalesSourceRejectionDiagnostics } from "./research-types";
 import { verifySalesEnvelopeIntegrity } from "./validation";
 import { APPROVED_SALES_CONTRACT_SHA256 } from "./contract";
 import { verifyCommercialPositioning } from "../commercial-positioning";
@@ -155,8 +155,8 @@ function isRightsUnknownText(value: string, originalUnknowns: string[]): boolean
 function classifyRightsClaim(statement: string, originalUnknowns: string[]): RightsSemanticCategory | null {
   const normalized = normalizedRightsText(statement);
   if (normalized === CONDITIONAL_RIGHTS_REQUIREMENT) return "conditional_requirement";
-  if (RIGHTS_ASSERTION.test(normalized)) return ATTRIBUTED_RIGHTS.test(normalized) ? "attributed_rights_statement" : "affirmative_assertion";
   if (isRightsUnknownText(normalized, originalUnknowns)) return "unknown_qualification";
+  if (RIGHTS_ASSERTION.test(normalized)) return ATTRIBUTED_RIGHTS.test(normalized) ? "attributed_rights_statement" : "affirmative_assertion";
   if (RIGHTS_TOPIC.test(normalized)) return ATTRIBUTED_RIGHTS.test(normalized) ? "attributed_rights_statement" : "ambiguous_rights_language";
   return null;
 }
@@ -223,7 +223,7 @@ function validateContacts(contacts: SalesContact[], selection: RawProposal["cont
       let canonicalRoute: string; try { canonicalRoute = canonicalizeResearchUrl(route.value); } catch { throw new SalesResearchError("contact_route_invalid", "Known contact routes must be exact public HTTP(S) pages, not raw or guessed contact details.", 422); }
       if (!route.evidenceIds.some((id: string) => evidenceById.get(id)?.canonicalUrl === canonicalRoute)) throw new SalesResearchError("contact_route_unverified", "A contact-route URL must exactly match its reconciled native source.", 422);
     }
-    if (contact.buyingAuthority === "supported" && (!contact.buyingAuthorityEvidenceIds?.length || contact.buyingAuthorityEvidenceIds.some((id) => !evidenceIds.has(id)))) throw new SalesResearchError("buying_authority_unsupported", "Buying authority requires explicit SALES evidence.", 422);
+    if (contact.buyingAuthority === "supported") throw new SalesResearchError("buying_authority_unsupported", "The current provider interface cannot establish purpose-specific buying-authority support; buying authority must remain unknown.", 422);
     if (contact.buyingAuthority === "unknown" && contact.buyingAuthorityEvidenceIds?.length) throw new SalesResearchError("buying_authority_state_invalid", "Unknown buying authority cannot carry affirmative evidence.", 422);
   }
   const best = contacts.filter((contact) => contact.strategicRoles.includes("Best First Contact"));
@@ -241,6 +241,45 @@ function validateContacts(contacts: SalesContact[], selection: RawProposal["cont
   }
 }
 
+function claimReferenceDiagnostics(params: { claim: SalesClaim; claimOrdinal: number; ref: SalesClaim["evidenceRefs"][number]; refOrdinal: number; growthIds: Set<string>; salesIds: Set<string>; compatibleKinds: Set<string> }): SalesClaimReferenceRejectionDiagnostics {
+  const capabilityIds = new Set(Object.keys(GOSHSHHA_CAPABILITY_FACTS));
+  const classifications = new Set<SalesClaimClassification>(["verified_fact", "attributed_brand_claim", "goshsha_capability", "reasonable_inference", "hypothesis", "unknown", "prohibited_unsupported"]);
+  const kind = ["growth_evidence", "sales_evidence", "goshsha_capability"].includes(params.ref?.kind) ? params.ref.kind : "invalid";
+  const id = typeof params.ref?.id === "string" ? params.ref.id : "";
+  const namespaceSets: Record<string, Set<string>> = { growth_evidence: params.growthIds, sales_evidence: params.salesIds, goshsha_capability: capabilityIds };
+  const current = kind === "invalid" ? new Set<string>() : namespaceSets[kind];
+  const existsInAnotherNamespace = Object.entries(namespaceSets).some(([candidateKind, ids]) => candidateKind !== kind && ids.has(id));
+  let failureCategory: SalesClaimReferenceRejectionDiagnostics["failureCategory"];
+  if (!params.compatibleKinds.has(kind)) failureCategory = "classification_kind_incompatible";
+  else if (existsInAnotherNamespace) failureCategory = "namespace_mismatch";
+  else if (kind === "growth_evidence") failureCategory = "missing_growth_evidence";
+  else if (kind === "sales_evidence") failureCategory = "missing_sales_evidence";
+  else failureCategory = "missing_goshsha_capability";
+  return {
+    failureStage: "sales_claim_reference_validation",
+    failingClaimOrdinal: Math.max(0, Math.min(params.claimOrdinal, 39)),
+    failingClaimIdSha256: sha256Diagnostic(typeof params.claim?.id === "string" ? params.claim.id : ""),
+    classification: classifications.has(params.claim?.classification) ? params.claim.classification : "invalid",
+    failingReferenceOrdinal: Math.max(0, Math.min(params.refOrdinal, 11)),
+    referenceKind: kind,
+    referenceIdSha256: sha256Diagnostic(id),
+    failureCategory,
+    existsInAnotherNamespace,
+    availableGrowthEvidenceCount: Math.min(params.growthIds.size, 1_000),
+    availableSalesEvidenceCount: Math.min(params.salesIds.size, 1_000),
+    availableCapabilityCount: Math.min(capabilityIds.size, 1_000),
+    rawClaimRetained: false,
+    rawReferenceIdRetained: false,
+  };
+}
+
+function compatibleReferenceKinds(classification: SalesClaimClassification): Set<string> {
+  if (classification === "goshsha_capability") return new Set(["goshsha_capability"]);
+  if (classification === "verified_fact" || classification === "attributed_brand_claim") return new Set(["growth_evidence", "sales_evidence"]);
+  if (classification === "unknown" || classification === "prohibited_unsupported") return new Set();
+  return new Set(["growth_evidence", "sales_evidence", "goshsha_capability"]);
+}
+
 function validateClaims(claims: SalesClaim[], growthIds: Set<string>, salesIds: Set<string>, rights: RawProposal["rights"], originalUnknowns: string[], inheritedUnknowns: RawProposal["inheritedUnknowns"]) {
   const claimIds = new Set<string>();
   const unknownState = rightsUnknownState(originalUnknowns, inheritedUnknowns);
@@ -254,20 +293,15 @@ function validateClaims(claims: SalesClaim[], growthIds: Set<string>, salesIds: 
       const unknownContext = rights?.status === "unknown" && Array.isArray(rights?.evidenceIds) && rights.evidenceIds.length === 0 && unknownState.present && unknownState.preserved;
       const unknownQualificationValid = rightsCategory === "unknown_qualification" && unknownContext && claim.classification === "unknown" && Array.isArray(claim.evidenceRefs) && claim.evidenceRefs.length === 0;
       const conditionalRequirementValid = rightsCategory === "conditional_requirement" && unknownContext && claim.classification === "goshsha_capability" && Array.isArray(claim.evidenceRefs) && claim.evidenceRefs.length === 1 && claim.evidenceRefs[0]?.kind === "goshsha_capability" && claim.evidenceRefs[0]?.id === "cap-free-first";
-      const affirmativeSupported = rightsCategory === "affirmative_assertion"
-        && rights?.status === "explicitly_supported"
-        && claim.classification === "verified_fact"
-        && Array.isArray(claim.evidenceRefs)
-        && claim.evidenceRefs.length > 0
-        && claim.evidenceRefs.every((ref) => ref.kind === "sales_evidence" && Array.isArray(rights.evidenceIds) && rights.evidenceIds.includes(ref.id));
-      if (!unknownQualificationValid && !conditionalRequirementValid && !affirmativeSupported) throw new SalesResearchError("rights_claim_unsupported", `Claim ${claim.id} has unsupported or incompatible content-rights semantics.`, 422, null, diagnostics);
+      if (!unknownQualificationValid && !conditionalRequirementValid) throw new SalesResearchError("rights_claim_unsupported", `Claim ${claim.id} has unsupported or incompatible content-rights semantics.`, 422, null, diagnostics);
     }
     if (UNSUPPORTED_COMMERCIAL_PROMISE.test(claim.statement) && claim.classification !== "prohibited_unsupported") throw new SalesResearchError("unsupported_commercial_promise", `Claim ${claim.id} introduces an unauthorized commercial promise.`, 422);
     if (UNSUPPORTED_AUDIENCE_CLAIM.test(claim.statement) && claim.classification !== "prohibited_unsupported") throw new SalesResearchError("unsupported_audience_claim", `Claim ${claim.id} contains an unsupported audience, reach, or performance assertion.`, 422);
     if (["verified_fact", "attributed_brand_claim"].includes(claim.classification) && !claim.evidenceRefs.length) throw new SalesResearchError("factual_claim_unlinked", `Claim ${claim.id} lacks evidence.`, 422);
-    for (const ref of claim.evidenceRefs) {
+    const compatibleKinds = compatibleReferenceKinds(claim.classification);
+    for (const [refOrdinal, ref] of claim.evidenceRefs.entries()) {
       const valid = ref.kind === "growth_evidence" ? growthIds.has(ref.id) : ref.kind === "sales_evidence" ? salesIds.has(ref.id) : ref.kind === "goshsha_capability" ? Object.hasOwn(GOSHSHHA_CAPABILITY_FACTS, ref.id) : false;
-      if (!valid) throw new SalesResearchError("claim_reference_invalid", `Claim ${claim.id} has an invalid evidence reference.`, 422);
+      if (!valid || !compatibleKinds.has(ref.kind)) throw new SalesResearchError("claim_reference_invalid", `Claim ${claim.id} has an invalid evidence reference.`, 422, null, claimReferenceDiagnostics({ claim, claimOrdinal, ref, refOrdinal, growthIds, salesIds, compatibleKinds }));
     }
   }
   return claimIds;
@@ -295,9 +329,11 @@ export function normalizeCompletedOpenAISalesResponse(params: { response: Record
     const originals = params.request.envelope.evidence.knownUnknowns;
     if (!Array.isArray(proposal.inheritedUnknowns) || proposal.inheritedUnknowns.length !== originals.length || originals.some((value) => !proposal.inheritedUnknowns.some((item: any) => item.originalText === value))) throw new SalesResearchError("inherited_unknown_missing", "Every inherited GROWTH unknown must survive verbatim.", 422);
     for (const item of proposal.inheritedUnknowns) if (item.status === "resolved_by_sales_evidence" && (!item.salesEvidenceIds?.length || item.salesEvidenceIds.some((id: string) => !salesIds.has(id)))) throw new SalesResearchError("unknown_resolution_unsupported", "Resolving an inherited unknown requires current SALES evidence.", 422);
-    const claimIds = validateClaims(proposal.claims, growthIds, salesIds, proposal.rights, originals, proposal.inheritedUnknowns);
-    if (proposal.rights.status === "explicitly_supported" && (!proposal.rights.evidenceIds.length || proposal.rights.evidenceIds.some((id: string) => !salesIds.has(id)))) throw new SalesResearchError("rights_evidence_missing", "Affirmative rights status requires explicit SALES evidence.", 422);
+    if (proposal.rights.status === "unknown" && proposal.rights.evidenceIds.length) throw new SalesResearchError("rights_unknown_evidence_invalid", "Unknown rights status must have no affirmative rights evidence.", 422);
+    if (proposal.rights.status === "unknown" && proposal.rights.conditionalRequirement !== CONDITIONAL_RIGHTS_REQUIREMENT) throw new SalesResearchError("rights_conditional_requirement_invalid", "Unknown rights status requires the exact approved conditional requirement.", 422);
+    if (proposal.rights.status === "explicitly_supported") throw new SalesResearchError("rights_evidence_purpose_unsupported", "The current provider interface cannot establish purpose-specific content-rights support; rights must remain unknown.", 422);
     if (params.request.envelope.boundarySnapshot.rightsStatus === "unknown" && proposal.rights.status === "not_applicable") throw new SalesResearchError("rights_unknown_dropped", "Inherited rights uncertainty cannot silently disappear.", 422);
+    const claimIds = validateClaims(proposal.claims, growthIds, salesIds, proposal.rights, originals, proposal.inheritedUnknowns);
     if (proposal.retailerIndependence.posture === "evidence_supported_dependency" && (!proposal.retailerIndependence.evidenceIds.length || proposal.retailerIndependence.evidenceIds.some((id: string) => !salesIds.has(id)))) throw new SalesResearchError("retailer_dependency_unsupported", "Retailer dependency requires explicit SALES evidence.", 422);
     const claimsById = new Map<string, SalesClaim>(proposal.claims.map((claim: SalesClaim) => [claim.id, claim]));
     for (const id of proposal.outreach.claimIds || []) {

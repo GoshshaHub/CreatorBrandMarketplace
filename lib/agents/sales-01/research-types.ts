@@ -63,7 +63,24 @@ export type SalesRightsRejectionDiagnostics = {
   rawClaimRetained: false;
 };
 
-export type SalesResearchRejectionDiagnostics = SalesSourceRejectionDiagnostics | SalesRightsRejectionDiagnostics;
+export type SalesClaimReferenceRejectionDiagnostics = {
+  failureStage: "sales_claim_reference_validation";
+  failingClaimOrdinal: number;
+  failingClaimIdSha256: string;
+  classification: SalesClaimClassification | "invalid";
+  failingReferenceOrdinal: number;
+  referenceKind: "growth_evidence" | "sales_evidence" | "goshsha_capability" | "invalid";
+  referenceIdSha256: string;
+  failureCategory: "missing_growth_evidence" | "missing_sales_evidence" | "missing_goshsha_capability" | "namespace_mismatch" | "classification_kind_incompatible";
+  existsInAnotherNamespace: boolean;
+  availableGrowthEvidenceCount: number;
+  availableSalesEvidenceCount: number;
+  availableCapabilityCount: number;
+  rawClaimRetained: false;
+  rawReferenceIdRetained: false;
+};
+
+export type SalesResearchRejectionDiagnostics = SalesSourceRejectionDiagnostics | SalesRightsRejectionDiagnostics | SalesClaimReferenceRejectionDiagnostics;
 
 export type SalesProviderExecutionMetadata = {
   provider: "openai";

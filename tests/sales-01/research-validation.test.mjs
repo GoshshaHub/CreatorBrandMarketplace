@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createSyntheticGrowthSalesExport, syntheticSalesContractMetadata } from "../../lib/agents/sales-01/fixtures.ts";
+import { createSyntheticGrowthSalesExport, createSyntheticValidatedGrowthRun, syntheticSalesContractMetadata } from "../../lib/agents/sales-01/fixtures.ts";
+import { createGrowthSalesExport } from "../../lib/agents/sales-01/export.ts";
+import { APPROVED_GROWTH_PROVIDER_PROJECTION_SHA256, GROWTH_PROVIDER_RESEARCH_PROJECTION_VERSION, PAIRED_FROZEN_GROWTH_CONTRACT_SHA256, PAIRED_FROZEN_GROWTH_CONTRACT_VERSION } from "../../lib/agents/growth-01/provider-research-contract.ts";
 import { normalizeCompletedOpenAISalesResponse, SalesResearchError, validateSalesResearchRequest } from "../../lib/agents/sales-01/research-schema.ts";
 import { validateSalesIntake } from "../../lib/agents/sales-01/validation.ts";
 
@@ -15,7 +17,7 @@ function proposal() { return {
   proofStrategy: "Confirm product/content readiness, then demonstrate the physical scan.",
   claims: [{ id: "claim-1", statement: "Aisha Joshi is publicly associated with Buff Beauty.", classification: "verified_fact", evidenceRefs: [{ kind: "sales_evidence", id: "sales-1" }] }, { id: "claim-2", statement: "Free First is a $0 proof mechanism.", classification: "goshsha_capability", evidenceRefs: [{ kind: "goshsha_capability", id: "cap-free-first" }] }],
   inheritedUnknowns: [{ originalText: "Brand interest and content rights remain unknown until verified.", status: "unresolved", resolution: null, salesEvidenceIds: [] }],
-  rights: { status: "unknown", evidenceIds: [], conditionalRequirement: "The Brand must supply or confirm properly licensed content." },
+  rights: { status: "unknown", evidenceIds: [], conditionalRequirement: "The Brand must later supply or confirm Brand-owned or properly licensed content." },
   retailerIndependence: { posture: "retailer_independent", description: "No evidence-supported retailer dependency exists.", evidenceIds: [] },
   objections: [{ objection: "What is required?", response: "One product and properly licensed video are required for the proof.", claimIds: ["claim-2"], escalate: false }],
   outreach: { recommendedChannel: "Public professional profile", objective: "Start a qualified conversation.", initialMessage: "Would you be open to seeing a product-level scan proof?", firstFollowUp: "I can show the physical scan proof point.", secondFollowUp: "The proof uses one product and properly licensed content.", closeTheLoop: null, claimIds: ["claim-2"] },
@@ -23,6 +25,26 @@ function proposal() { return {
 }; }
 function response(value = proposal()) { return { id: "resp_sales", model: "gpt-5.6-terra", status: "completed", output: [{ type: "web_search_call", action: { sources: [{ url: "https://example.com/aisha?utm_source=test", title: "Aisha" }] } }, { type: "message", content: [{ type: "output_text", text: JSON.stringify(value) }] }], usage: { input_tokens: 100, input_tokens_details: { cached_tokens: 10 }, output_tokens: 50, output_tokens_details: { reasoning_tokens: 5 }, total_tokens: 150 } }; }
 function normalize(value = proposal()) { return normalizeCompletedOpenAISalesResponse({ response: response(value), request: request(), requestedModel: "gpt-5.6-terra", serverReceivedAt: "2026-09-24T12:30:00.000Z" }); }
+
+function syntheticCymbiotikaRequest() {
+  const run = createSyntheticValidatedGrowthRun();
+  const candidate = run.candidates[0];
+  candidate.id = "synthetic-cymbiotika-whole-foods";
+  candidate.brand = "Cymbiotika";
+  candidate.productOrEvent = "Synthetic Whole Foods product-education opportunity";
+  candidate.trigger = "Synthetic fixture: a current physical-retail expansion.";
+  candidate.knownUnknowns = [
+    "Whether Cymbiotika owns or has obtained reuse rights for a specific video suitable for Goshsha activation.",
+    "Which retail-present SKU the Brand would prioritize for a first scan experience.",
+  ];
+  const replacements = new Map([["buff-retail", "CYM-E1"], ["buff-content", "CYM-E2"], ["buff-trigger", "CYM-E3"]]);
+  for (const evidence of candidate.evidence) { evidence.id = replacements.get(evidence.id); evidence.publisher = "Synthetic Cymbiotika fixture"; evidence.syntheticBenchmark = true; }
+  for (const claim of candidate.claims) claim.evidenceIds = claim.evidenceIds.map((id) => replacements.get(id));
+  const growthExport = createGrowthSalesExport({ validatedRun: run, providerProjection: { version: GROWTH_PROVIDER_RESEARCH_PROJECTION_VERSION, sha256: APPROVED_GROWTH_PROVIDER_PROJECTION_SHA256, pairedFrozenContractVersion: PAIRED_FROZEN_GROWTH_CONTRACT_VERSION, pairedFrozenContractSha256: PAIRED_FROZEN_GROWTH_CONTRACT_SHA256 }, exportedAt: "2026-10-13T10:00:00.000Z" });
+  const intake = validateSalesIntake({ input: { export: growthExport, candidateId: candidate.id, founderApproval: { approved: true, scope: "sales_preparation_only" } }, approvedByUid: "synthetic-founder", approvedAt: "2026-10-13T10:01:00.000Z", salesContract: syntheticSalesContractMetadata });
+  assert.equal(intake.status, "valid");
+  return { envelope: intake.envelope, founderAuthorization: { authorized: true, scope: "one_sales_research_run" }, budgetAuthority: { confirmedByFounder: true, salesMonthSpendUsd: 0, commercialDepartmentMonthSpendUsd: 0 } };
+}
 
 test("valid provider output becomes a nonpersistent, non-sending playbook and CRM preview", () => {
   const result = normalize();
@@ -33,6 +55,22 @@ test("valid provider output becomes a nonpersistent, non-sending playbook and CR
   assert.equal(result.playbook.positioningFoundation.schemaVersion, "goshsha-commercial-positioning-v1");
   assert.equal(result.playbook.positioningFoundation.audienceObjection.objection, "How many users does Goshsha have?");
   assert.equal(result.playbook.objections[0].objection, "How many users does Goshsha have?");
+});
+
+test("complete explicitly synthetic Cymbiotika-shaped proposal passes with unknown rights and buying authority", () => {
+  const cymRequest = syntheticCymbiotikaRequest();
+  const value = proposal();
+  value.contacts[0].name = "Synthetic Cymbiotika Contact";
+  value.contacts[0].company = "Cymbiotika";
+  value.claims[0] = { id: "claim-growth", statement: "Synthetic fixture: Cymbiotika has a physical-retail trigger.", classification: "verified_fact", evidenceRefs: [{ kind: "growth_evidence", id: "CYM-E1" }] };
+  value.inheritedUnknowns = cymRequest.envelope.evidence.knownUnknowns.map((originalText) => ({ originalText, status: "unresolved", resolution: null, salesEvidenceIds: [] }));
+  value.claims.push({ id: "rights-exact-unknown", statement: value.inheritedUnknowns[0].originalText, classification: "unknown", evidenceRefs: [] });
+  const result = normalizeCompletedOpenAISalesResponse({ response: response(value), request: cymRequest, requestedModel: "gpt-5.6-terra", serverReceivedAt: "2026-10-13T10:02:00.000Z" });
+  assert.equal(result.playbook.growthQualification.brand, "Cymbiotika");
+  assert.equal(result.playbook.rights.status, "unknown");
+  assert.deepEqual(result.playbook.rights.evidenceIds, []);
+  assert.equal(result.playbook.contacts[0].buyingAuthority, "unknown");
+  assert.equal(result.playbook.inheritedUnknowns.every((item) => item.status === "unresolved"), true);
 });
 
 test("unsupported audience, guaranteed reach, and performance claims fail closed",()=>{for(const statement of ["Goshsha has a massive audience.","Goshsha guarantees 1,000 views.","Goshsha guarantees sales lift."]){const invalid=proposal();invalid.claims[0].statement=statement;assert.throws(()=>normalize(invalid),(error)=>["unsupported_audience_claim","unsupported_commercial_promise"].includes(error.code));}});
@@ -146,7 +184,7 @@ test("contact and stakeholder-role ceilings fail visibly without truncation", ()
 });
 
 test("rights and retailer dependency cannot be upgraded without current evidence", () => {
-  const rights = proposal(); rights.rights.status = "explicitly_supported"; assert.throws(() => normalize(rights), (error) => error.code === "rights_evidence_missing");
+  const rights = proposal(); rights.rights.status = "explicitly_supported"; assert.throws(() => normalize(rights), (error) => error.code === "rights_evidence_purpose_unsupported");
   const retailer = proposal(); retailer.retailerIndependence.posture = "evidence_supported_dependency"; assert.throws(() => normalize(retailer), (error) => error.code === "retailer_dependency_unsupported");
 });
 
@@ -225,21 +263,79 @@ test("Creator activity evidence never becomes content-rights authority", () => {
   assert.equal(accepted.playbook.inheritedUnknowns[0].status, "unresolved");
 });
 
-test("affirmative rights require compatible verified-fact classification and the same explicit SALES rights evidence", () => {
+test("affirmative rights remain unknown because matching IDs cannot prove purpose-specific support", () => {
   const supported = proposal();
   supported.rights = { status: "explicitly_supported", evidenceIds: ["sales-1"], conditionalRequirement: "The evidenced specific content and reuse right are required for activation." };
   supported.claims.push({ id: "supported-rights", statement: "The Brand owns the Creator video content.", classification: "verified_fact", evidenceRefs: [{ kind: "sales_evidence", id: "sales-1" }] });
-  assert.equal(normalize(supported).playbook.rights.status, "explicitly_supported");
+  assert.throws(() => normalize(supported), (error) => error.code === "rights_evidence_purpose_unsupported");
 
   const misclassified = structuredClone(supported);
   misclassified.claims.at(-1).classification = "unknown";
   misclassified.claims.at(-1).evidenceRefs = [];
-  assert.throws(() => normalize(misclassified), (error) => error.code === "rights_claim_unsupported");
+  assert.throws(() => normalize(misclassified), (error) => error.code === "rights_evidence_purpose_unsupported");
 
   const attributed = structuredClone(supported);
   attributed.claims.at(-1).statement = "The Brand states that it owns the Creator video content.";
   attributed.claims.at(-1).classification = "attributed_brand_claim";
-  assert.throws(() => normalize(attributed), (error) => error.code === "rights_claim_unsupported");
+  assert.throws(() => normalize(attributed), (error) => error.code === "rights_evidence_purpose_unsupported");
+});
+
+test("claim reference namespaces are exact, classification-compatible, and diagnostically redacted", () => {
+  const cases = [
+    { name: "growth ID under SALES namespace", mutate: (value) => value.claims[0].evidenceRefs = [{ kind: "sales_evidence", id: "buff-content" }], category: "namespace_mismatch", other: true },
+    { name: "SALES ID under GROWTH namespace", mutate: (value) => value.claims[0].evidenceRefs = [{ kind: "growth_evidence", id: "sales-1" }], category: "namespace_mismatch", other: true },
+    { name: "unknown capability", mutate: (value) => value.claims[1].evidenceRefs = [{ kind: "goshsha_capability", id: "cap-private-invented" }], category: "missing_goshsha_capability", other: false },
+    { name: "capability used as Brand fact", mutate: (value) => value.claims[0].evidenceRefs = [{ kind: "goshsha_capability", id: "cap-free-first" }], category: "classification_kind_incompatible", other: false },
+  ];
+  for (const item of cases) {
+    const invalid = proposal(); item.mutate(invalid);
+    assert.throws(() => normalize(invalid), (error) => {
+      assert.equal(error.code, "claim_reference_invalid", item.name);
+      const diagnostics = error.providerExecution.rejectionDiagnostics;
+      assert.equal(diagnostics.failureStage, "sales_claim_reference_validation");
+      assert.equal(diagnostics.failureCategory, item.category);
+      assert.equal(diagnostics.existsInAnotherNamespace, item.other);
+      assert.equal(diagnostics.rawClaimRetained, false);
+      assert.equal(diagnostics.rawReferenceIdRetained, false);
+      assert.doesNotMatch(JSON.stringify(diagnostics), /buff-content|sales-1|cap-private-invented|Aisha|Free First/);
+      return true;
+    });
+  }
+});
+
+test("verbatim inherited rights uncertainty is accepted before assertion matching; altered or mixed wording fails", () => {
+  const exact = proposal();
+  exact.claims.push({ id: "rights-verbatim", statement: exact.inheritedUnknowns[0].originalText, classification: "unknown", evidenceRefs: [] });
+  assert.equal(normalize(exact).playbook.claims.at(-1).classification, "unknown");
+
+  for (const statement of [
+    `${exact.inheritedUnknowns[0].originalText} The Brand can reuse the Creator video.`,
+    "The Brand owns or may have obtained reusable content rights.",
+  ]) {
+    const invalid = proposal();
+    invalid.claims.push({ id: "rights-altered", statement, classification: "unknown", evidenceRefs: [] });
+    assert.throws(() => normalize(invalid), (error) => error.code === "rights_claim_unsupported");
+  }
+});
+
+test("unknown rights require empty evidence and the exact approved conditional requirement", () => {
+  const evidence = proposal(); evidence.rights.evidenceIds = ["sales-1"];
+  assert.throws(() => normalize(evidence), (error) => error.code === "rights_unknown_evidence_invalid");
+  const wording = proposal(); wording.rights.conditionalRequirement = "The Brand must supply licensed content.";
+  assert.throws(() => normalize(wording), (error) => error.code === "rights_conditional_requirement_invalid");
+});
+
+test("valid contact evidence and strategic recommendation never establish buying authority", () => {
+  assert.equal(normalize().playbook.contacts[0].buyingAuthority, "unknown");
+  const unrelated = proposal(); unrelated.contacts[0].buyingAuthority = "supported"; unrelated.contacts[0].buyingAuthorityEvidenceIds = ["sales-1"];
+  assert.throws(() => normalize(unrelated), (error) => error.code === "buying_authority_unsupported");
+});
+
+test("unknown and prohibited claims cannot carry evidence; outreach cannot use prohibited claims", () => {
+  const unknown = proposal(); unknown.claims.push({ id: "unknown-linked", statement: "Budget is unknown.", classification: "unknown", evidenceRefs: [{ kind: "sales_evidence", id: "sales-1" }] });
+  assert.throws(() => normalize(unknown), (error) => error.code === "claim_reference_invalid" && error.providerExecution.rejectionDiagnostics.failureCategory === "classification_kind_incompatible");
+  const prohibited = proposal(); prohibited.claims.push({ id: "prohibited", statement: "Goshsha guarantees ROI.", classification: "prohibited_unsupported", evidenceRefs: [] }); prohibited.outreach.claimIds.push("prohibited");
+  assert.throws(() => normalize(prohibited), (error) => error.code === "outreach_prohibited_claim");
 });
 
 test("outreach only uses approved claim IDs and retains safe completed-provider metadata on rejection", () => {

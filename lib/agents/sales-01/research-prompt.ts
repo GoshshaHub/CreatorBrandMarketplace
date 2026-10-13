@@ -39,6 +39,23 @@ export function buildSalesResearchInstructions(context: SalesResearchProviderCon
     }),
     "## Server-controlled capability facts",
     JSON.stringify(GOSHSHHA_CAPABILITY_FACTS),
+    "## Exact evidence-reference namespaces",
+    JSON.stringify({
+      growth_evidence: {
+        allowedIds: envelope.evidence.items.map((item) => item.id),
+        rule: "Use only for inherited facts supported by the immutable GROWTH evidence item with the exact same ID.",
+      },
+      sales_evidence: {
+        allowedIds: "Exactly the IDs you declare in this same output's evidence[] after researching current-run native sources.",
+        rule: "Use only for current-run SALES facts. An inherited GROWTH ID is invalid in this namespace.",
+      },
+      goshsha_capability: {
+        allowedIds: Object.keys(GOSHSHHA_CAPABILITY_FACTS),
+        rule: "Use only for exact server-controlled Goshsha capability facts. Capability IDs are not Brand or prospect evidence.",
+      },
+      crossNamespaceReuse: "prohibited",
+      idRepairOrSubstitution: "prohibited",
+    }),
     "Return only strict structured output. Do not copy or alter the GROWTH score/band. Every inherited unknown must appear verbatim in inheritedUnknowns. Outreach claimIds must identify claims in the claims ledger.",
   ].join("\n\n");
 }

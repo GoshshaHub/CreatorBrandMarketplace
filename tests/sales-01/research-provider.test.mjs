@@ -15,7 +15,7 @@ function envelope() {
 
 test("projection is paired to SALES V1.3 and one-byte changes fail closed", () => {
   const projection = verifySalesProviderIntelligenceProjection({ salesContractSha256: syntheticSalesContractMetadata.sha256 });
-  assert.equal(projection.version, "sales-01-provider-intelligence-v1.4");
+  assert.equal(projection.version, "sales-01-provider-intelligence-v1.5");
   assert.equal(projection.sha256, APPROVED_SALES_PROVIDER_INTELLIGENCE_SHA256);
   assert.throws(() => verifySalesProviderIntelligenceProjection({ salesContractSha256: `${projection.pairedSalesContractSha256[0] === "0" ? "1" : "0"}${projection.pairedSalesContractSha256.slice(1)}` }));
   assert.throws(() => verifySalesProviderIntelligenceProjection({ salesContractSha256: projection.pairedSalesContractSha256, projectionBody: `${projection.body}x` }));
@@ -32,11 +32,18 @@ test("provider projection preserves contact, claims, rights, unknown, and non-se
   assert.match(prompt, /Every inherited GROWTH unknown/i);
   assert.match(prompt, /evidence\[\] array is only for current-run SALES sources/i);
   assert.match(prompt, /Inherited GROWTH facts must use growth_evidence/i);
+  assert.match(prompt, /Exact evidence-reference namespaces/i);
+  assert.match(prompt, /"allowedIds":\["buff-retail","buff-content","buff-trigger"\]/i);
+  assert.match(prompt, /An inherited GROWTH ID is invalid in this namespace/i);
+  assert.match(prompt, /crossNamespaceReuse":"prohibited/i);
+  assert.match(prompt, /cap-free-first/);
+  assert.match(prompt, /capability reference cannot establish a Brand or prospect fact/i);
   assert.match(prompt, /Do not substitute redirect URLs/i);
   assert.match(prompt, /Creator activity.*does not establish content ownership or reusable Goshsha activation rights/i);
   assert.match(prompt, /posting, reposting, collaboration, sponsorship, Brand use, or Brand association does not establish/i);
   assert.match(prompt, /rights\.status to unknown/i);
   assert.match(prompt, /rights\.evidenceIds as an empty array/i);
+  assert.match(prompt, /current structured interface does not contain trustworthy purpose-specific evidence/i);
   assert.match(prompt, /The Brand must later supply or confirm Brand-owned or properly licensed content\./);
   assert.match(prompt, /conditional requirement is not a verified fact/i);
   assert.match(prompt, /do not combine an unknown or conditional statement with any affirmative ownership/i);
