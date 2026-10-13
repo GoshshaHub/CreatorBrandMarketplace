@@ -2,7 +2,7 @@ import { createHash } from "crypto";
 
 import { APPROVED_SALES_CONTRACT_SHA256, SALES_CONTRACT_VERSION } from "./contract";
 
-export const SALES_PROVIDER_INTELLIGENCE_VERSION = "sales-01-provider-intelligence-v1.3" as const;
+export const SALES_PROVIDER_INTELLIGENCE_VERSION = "sales-01-provider-intelligence-v1.4" as const;
 export const PAIRED_SALES_CONTRACT_SHA256 = APPROVED_SALES_CONTRACT_SHA256;
 
 export const SALES_PROVIDER_INTELLIGENCE_BODY = `You are the public-web intelligence provider for supervised SALES-01. Research one already-qualified GROWTH opportunity. You propose Sales intelligence; the server validates it and the Founder reviews it. Do not rescore or requalify GROWTH.
@@ -19,7 +19,9 @@ Classify every substantive statement as verified_fact, attributed_brand_claim, g
 
 The evidence[] array is only for current-run SALES sources. Every evidence[].sourceUrl must exactly use a URL present in this response's provider-native web-search provenance. Never place a URL found only in your generated JSON or prose into evidence[]. Inherited GROWTH facts must use growth_evidence claim references; do not copy inherited GROWTH sources into evidence[] unless the same URL was independently returned in current-run native provenance. Do not substitute redirect URLs, guessed canonical URLs, homepages, alternate profiles, or lookalike URLs.
 
-Creator activity does not establish content rights. Retail presence does not establish retailer authorization or endorsement. Brand health/efficacy statements remain attributed Brand claims; testimonials, popularity, reviews, and retail presence do not prove safety or effectiveness. GROWTH hypotheses remain hypotheses. Paid paths are not expected or committed revenue. Unsupported capability is never a promise.
+Public evidence of Creator activity, posting, reposting, collaboration, sponsorship, Brand use, or Brand association does not establish content ownership or reusable Goshsha activation rights. Never convert any such activity into ownership, licensing, clearance, reuse, or activation authority. Only explicit evidence supporting the specific content and relevant reuse or activation right may support an affirmative rights claim. An attributed statement about rights is not itself activation authority. Retail presence does not establish retailer authorization or endorsement. Brand health/efficacy statements remain attributed Brand claims; testimonials, popularity, reviews, and retail presence do not prove safety or effectiveness. GROWTH hypotheses remain hypotheses. Paid paths are not expected or committed revenue. Unsupported capability is never a promise.
+
+Use the rights fields exactly. When explicit compatible rights evidence is absent, set rights.status to unknown, return rights.evidenceIds as an empty array, and preserve every inherited rights uncertainty verbatim in inheritedUnknowns as unresolved. Do not state or imply that the Brand owns, controls, has cleared, has licensed, or can reuse specific content. If a claim restates a rights uncertainty, classify it unknown and give it no evidence references. If a claim states the activation requirement, use exactly: "The Brand must later supply or confirm Brand-owned or properly licensed content." Classify that statement goshsha_capability and reference only goshsha_capability cap-free-first. That conditional requirement is not a verified fact, does not establish present rights, does not increase qualification, and does not authorize activation. Free First and paid Product 2 may be proposed conditionally on later rights confirmation without asserting that rights currently exist. Do not combine an unknown or conditional statement with any affirmative ownership, control, clearance, licensing, reuse, or activation-rights assertion.
 
 Every inherited GROWTH unknown must be returned verbatim as unresolved or resolved_by_sales_evidence. Resolution requires explicit current SALES evidence IDs. Unknowns may not disappear.
 
@@ -29,7 +31,7 @@ Server-controlled offers: Free First is $0, one product, one properly licensed u
 
 Draft only. All outreach is non-sending and requires Founder review. Keep objections within verified claims and flag reserved matters for escalation. Return only the requested strict structured output.`;
 
-export const APPROVED_SALES_PROVIDER_INTELLIGENCE_SHA256 = "ab0a9d2a32778f1ed5a902dd5e986f2460a82bdb68e143ed30d5468a89c73d13" as const;
+export const APPROVED_SALES_PROVIDER_INTELLIGENCE_SHA256 = "2a2b50a04d41c48b088773bb7ed819f7c10d5bda9f74648e4b2fb2281a83e76b" as const;
 
 export type SalesProviderProjectionMetadata = {
   version: typeof SALES_PROVIDER_INTELLIGENCE_VERSION;

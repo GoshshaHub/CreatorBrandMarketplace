@@ -48,6 +48,23 @@ export type SalesSourceRejectionDiagnostics = {
   redirectResolutionAttempted: false;
 };
 
+export type SalesRightsRejectionDiagnostics = {
+  failureStage: "sales_claim_rights_validation";
+  failingClaimOrdinal: number;
+  failingClaimIdSha256: string;
+  statementSha256: string;
+  classification: SalesClaimClassification | "invalid";
+  rightsStatus: "unknown" | "explicitly_supported" | "not_applicable" | "invalid";
+  semanticCategory: "affirmative_assertion" | "unknown_qualification" | "conditional_requirement" | "attributed_rights_statement" | "ambiguous_rights_language";
+  evidenceReferenceCount: number;
+  rightsEvidenceCount: number;
+  inheritedRightsUnknownPresent: boolean;
+  inheritedRightsUnknownPreserved: boolean;
+  rawClaimRetained: false;
+};
+
+export type SalesResearchRejectionDiagnostics = SalesSourceRejectionDiagnostics | SalesRightsRejectionDiagnostics;
+
 export type SalesProviderExecutionMetadata = {
   provider: "openai";
   outcome: "accepted" | "provider_completed_local_rejection";
@@ -59,7 +76,7 @@ export type SalesProviderExecutionMetadata = {
   providerCompletedAt: string | null;
   serverReceivedAt: string;
   usage: SalesResearchUsage;
-  rejectionDiagnostics?: SalesSourceRejectionDiagnostics;
+  rejectionDiagnostics?: SalesResearchRejectionDiagnostics;
 };
 
 export type SalesEvidence = {

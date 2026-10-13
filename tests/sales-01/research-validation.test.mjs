@@ -156,6 +156,92 @@ test("health/efficacy claims, rights assertions, and unauthorized commercial pro
   const promise = proposal(); promise.claims[0].statement = "Goshsha guarantees ROI with a custom implementation."; assert.throws(() => normalize(promise), (error) => error.code === "unsupported_commercial_promise");
 });
 
+test("narrow rights unknowns and the exact conditional requirement remain uncertainty, not activation authority", () => {
+  const unknown = proposal();
+  unknown.claims.push({ id: "rights-unknown", statement: "Content rights remain unknown until verified.", classification: "unknown", evidenceRefs: [] });
+  const normalizedUnknown = normalize(unknown);
+  assert.equal(normalizedUnknown.playbook.claims.at(-1).statement, "Content rights remain unknown until verified.");
+  assert.equal(normalizedUnknown.playbook.rights.status, "unknown");
+  assert.deepEqual(normalizedUnknown.playbook.rights.evidenceIds, []);
+  assert.equal(normalizedUnknown.playbook.inheritedUnknowns[0].status, "unresolved");
+
+  const conditional = proposal();
+  conditional.claims.push({ id: "rights-condition", statement: "The Brand must later supply or confirm Brand-owned or properly licensed content.", classification: "goshsha_capability", evidenceRefs: [{ kind: "goshsha_capability", id: "cap-free-first" }] });
+  const normalizedConditional = normalize(conditional);
+  assert.equal(normalizedConditional.playbook.claims.at(-1).classification, "goshsha_capability");
+  assert.equal(normalizedConditional.playbook.rights.status, "unknown");
+});
+
+test("rights unknown and conditional language require compatible fields and preserved inherited uncertainty", () => {
+  const cases = [
+    { statement: "Content rights remain unknown until verified.", classification: "verified_fact", evidenceRefs: [{ kind: "sales_evidence", id: "sales-1" }] },
+    { statement: "The Brand must later supply or confirm Brand-owned or properly licensed content.", classification: "unknown", evidenceRefs: [] },
+    { statement: "The Brand must later supply or confirm Brand-owned or properly licensed content.", classification: "goshsha_capability", evidenceRefs: [] },
+  ];
+  for (const claim of cases) {
+    const invalid = proposal(); invalid.claims.push({ id: "rights-incompatible", ...claim });
+    assert.throws(() => normalize(invalid), (error) => error.code === "rights_claim_unsupported");
+  }
+  const missingPreservation = proposal();
+  missingPreservation.inheritedUnknowns[0] = { ...missingPreservation.inheritedUnknowns[0], status: "resolved_by_sales_evidence", resolution: "Purportedly resolved", salesEvidenceIds: ["sales-1"] };
+  missingPreservation.claims.push({ id: "rights-condition", statement: "The Brand must later supply or confirm Brand-owned or properly licensed content.", classification: "goshsha_capability", evidenceRefs: [{ kind: "goshsha_capability", id: "cap-free-first" }] });
+  assert.throws(() => normalize(missingPreservation), (error) => error.code === "rights_claim_unsupported");
+});
+
+test("affirmative, ambiguous, attributed, and adversarial mixed rights language still fails closed", () => {
+  const statements = [
+    ["The Brand owns the Creator video content.", "affirmative_assertion"],
+    ["The Brand may have usable Creator content.", "ambiguous_rights_language"],
+    ["The Brand states that it owns the Creator video content.", "attributed_rights_statement"],
+    ["The Brand must later supply properly licensed content, and it owns the Creator video.", "affirmative_assertion"],
+    ["Rights are not confirmed, but the Brand can reuse Creator content.", "affirmative_assertion"],
+    ["The Brand must later supply or confirm Brand-owned or properly licensed content, and may reuse its Creator video.", "affirmative_assertion"],
+  ];
+  for (const [statement, category] of statements) {
+    const invalid = proposal();
+    invalid.claims.push({ id: "private-rights-claim", statement, classification: "unknown", evidenceRefs: [] });
+    assert.throws(() => normalize(invalid), (error) => {
+      assert.equal(error.code, "rights_claim_unsupported");
+      const diagnostics = error.providerExecution.rejectionDiagnostics;
+      assert.equal(diagnostics.failureStage, "sales_claim_rights_validation");
+      assert.equal(diagnostics.semanticCategory, category);
+      assert.equal(diagnostics.rawClaimRetained, false);
+      assert.equal(diagnostics.rightsStatus, "unknown");
+      assert.equal(diagnostics.inheritedRightsUnknownPresent, true);
+      assert.equal(diagnostics.inheritedRightsUnknownPreserved, true);
+      const serialized = JSON.stringify(diagnostics);
+      assert.doesNotMatch(serialized, /private-rights-claim|Creator video|properly licensed|Brand can reuse/);
+      return true;
+    });
+  }
+});
+
+test("Creator activity evidence never becomes content-rights authority", () => {
+  const activity = proposal();
+  activity.claims.push({ id: "creator-activity", statement: "The Brand reposted a Creator collaboration.", classification: "verified_fact", evidenceRefs: [{ kind: "sales_evidence", id: "sales-1" }] });
+  const accepted = normalize(activity);
+  assert.equal(accepted.playbook.rights.status, "unknown");
+  assert.deepEqual(accepted.playbook.rights.evidenceIds, []);
+  assert.equal(accepted.playbook.inheritedUnknowns[0].status, "unresolved");
+});
+
+test("affirmative rights require compatible verified-fact classification and the same explicit SALES rights evidence", () => {
+  const supported = proposal();
+  supported.rights = { status: "explicitly_supported", evidenceIds: ["sales-1"], conditionalRequirement: "The evidenced specific content and reuse right are required for activation." };
+  supported.claims.push({ id: "supported-rights", statement: "The Brand owns the Creator video content.", classification: "verified_fact", evidenceRefs: [{ kind: "sales_evidence", id: "sales-1" }] });
+  assert.equal(normalize(supported).playbook.rights.status, "explicitly_supported");
+
+  const misclassified = structuredClone(supported);
+  misclassified.claims.at(-1).classification = "unknown";
+  misclassified.claims.at(-1).evidenceRefs = [];
+  assert.throws(() => normalize(misclassified), (error) => error.code === "rights_claim_unsupported");
+
+  const attributed = structuredClone(supported);
+  attributed.claims.at(-1).statement = "The Brand states that it owns the Creator video content.";
+  attributed.claims.at(-1).classification = "attributed_brand_claim";
+  assert.throws(() => normalize(attributed), (error) => error.code === "rights_claim_unsupported");
+});
+
 test("outreach only uses approved claim IDs and retains safe completed-provider metadata on rejection", () => {
   const invalid = proposal(); invalid.outreach.claimIds = ["missing"];
   assert.throws(() => normalize(invalid), (error) => { assert.equal(error.code, "outreach_claim_invalid"); assert.equal(error.providerExecution.outcome, "provider_completed_local_rejection"); assert.equal(error.providerExecution.usage.totalTokens, 150); assert.doesNotMatch(JSON.stringify(error.providerExecution), /Aisha|example\.com|initialMessage/); return true; });
