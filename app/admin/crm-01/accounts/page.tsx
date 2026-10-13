@@ -7,6 +7,7 @@ import { auth } from "../../../../lib/firebase";
 import type { CrmAccountListItem, CrmPage } from "../../../../lib/agents/crm-01/read-types";
 
 async function fetchAccounts(search: string, dnc: string, cursor?: string): Promise<CrmPage<CrmAccountListItem>> {
+  await auth.authStateReady();
   const user = auth.currentUser;
   if (!user) throw new Error("Admin session unavailable.");
   const query = new URLSearchParams({ limit: "25" });
