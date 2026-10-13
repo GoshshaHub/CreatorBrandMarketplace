@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 
 import ProtectedRoute from "../../../components/ProtectedRoute";
 import { auth } from "../../../lib/firebase";
-import type { SalesResearchResult } from "../../../lib/agents/sales-01/research-types";
+import type { SalesRejectedOutputDiagnostic, SalesResearchResult } from "../../../lib/agents/sales-01/research-types";
 import type { GrowthSalesExportV1, SalesIntakeResult } from "../../../lib/agents/sales-01/types";
 
 export default function SalesIntakePage() {
@@ -17,7 +17,7 @@ export default function SalesIntakePage() {
   const [departmentMonthSpend, setDepartmentMonthSpend] = useState("0");
   const [researchAuthorized, setResearchAuthorized] = useState(false);
   const [researching, setResearching] = useState(false);
-  const [researchResult, setResearchResult] = useState<(SalesResearchResult & { error?: string; code?: string; providerExecution?: unknown }) | null>(null);
+  const [researchResult, setResearchResult] = useState<(SalesResearchResult & { error?: string; code?: string; providerExecution?: unknown; rejectedOutputDiagnostic?: SalesRejectedOutputDiagnostic | null }) | null>(null);
 
   const parsed = useMemo(() => {
     if (!rawExport.trim()) return { value: null as GrowthSalesExportV1 | null, error: "" };
@@ -167,6 +167,15 @@ export default function SalesIntakePage() {
               {researchResult.crmExport && <div className="flex flex-wrap gap-3"><button type="button" onClick={() => void navigator.clipboard.writeText(JSON.stringify(researchResult.crmExport, null, 2))} className="rounded-lg border border-sky-400 px-4 py-2 text-sm font-semibold text-sky-200">Copy CRM export</button><button type="button" onClick={downloadCrmExport} className="rounded-lg bg-sky-400 px-4 py-2 text-sm font-bold text-slate-950">Download CRM export</button><span className="self-center text-xs text-slate-400">Export only · no CRM write · no downstream authority</span></div>}
             </>}
             {researchResult.providerExecution && <details><summary className="cursor-pointer font-semibold">Safe provider execution metadata</summary><pre className="mt-3 overflow-auto rounded-xl bg-slate-950 p-4 text-xs">{JSON.stringify(researchResult.providerExecution, null, 2)}</pre></details>}
+            {researchResult.rejectedOutputDiagnostic && <section className="space-y-3 rounded-xl border border-red-500 bg-red-950/50 p-4">
+              <h3 className="font-bold text-red-200">UNTRUSTED · REJECTED · NOT HANDOFF ELIGIBLE</h3>
+              <p className="text-sm text-red-100">Session-only diagnostic content. It is not a Sales Playbook, cannot be exported to CRM, and grants no downstream authority.</p>
+              <dl className="grid gap-2 text-xs sm:grid-cols-2"><div><dt className="text-slate-400">Exact-output SHA-256</dt><dd className="break-all font-mono">{researchResult.rejectedOutputDiagnostic.raw.sha256}</dd></div><div><dt className="text-slate-400">UTF-8 bytes</dt><dd>{researchResult.rejectedOutputDiagnostic.raw.byteLength}</dd></div></dl>
+              {researchResult.rejectedOutputDiagnostic.raw.content.availability === "included"
+                ? <details><summary className="cursor-pointer font-semibold">Exact rejected structured output — untrusted text</summary><pre className="mt-3 max-h-[50rem] overflow-auto whitespace-pre-wrap rounded-xl bg-slate-950 p-4 text-xs">{researchResult.rejectedOutputDiagnostic.raw.content.exactStructuredOutput}</pre></details>
+                : <p className="rounded-lg border border-amber-600 bg-amber-950/40 p-3 text-sm text-amber-100">Exact output omitted because it exceeded the diagnostic response size limit. The SHA-256 and byte length identify the omitted output; no truncated content is presented as exact.</p>}
+              <details><summary className="cursor-pointer font-semibold">Normalization and authority state</summary><pre className="mt-3 overflow-auto rounded-xl bg-slate-950 p-4 text-xs">{JSON.stringify({ normalization: researchResult.rejectedOutputDiagnostic.normalization, authority: researchResult.rejectedOutputDiagnostic.authority }, null, 2)}</pre></details>
+            </section>}
           </section>}
         </div>
       </main>

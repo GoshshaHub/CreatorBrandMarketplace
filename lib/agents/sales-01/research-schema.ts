@@ -2,7 +2,7 @@ import { createHash } from "crypto";
 
 import { canonicalizeResearchUrl } from "../growth-01/research-schema";
 import { GOSHSHHA_CAPABILITY_FACTS } from "./research-prompt";
-import type { SalesClaim, SalesClaimClassification, SalesClaimReferenceRejectionDiagnostics, SalesContact, SalesProviderExecutionMetadata, SalesResearchProposal, SalesResearchRejectionDiagnostics, SalesResearchRequest, SalesRightsRejectionDiagnostics, SalesSourceRejectionDiagnostics } from "./research-types";
+import type { SalesClaim, SalesClaimClassification, SalesClaimReferenceRejectionDiagnostics, SalesContact, SalesProviderExecutionMetadata, SalesRejectedOutputDiagnostic, SalesResearchProposal, SalesResearchRejectionDiagnostics, SalesResearchRequest, SalesRightsRejectionDiagnostics, SalesSourceRejectionDiagnostics } from "./research-types";
 import { verifySalesEnvelopeIntegrity } from "./validation";
 import { APPROVED_SALES_CONTRACT_SHA256 } from "./contract";
 import { verifyCommercialPositioning } from "../commercial-positioning";
@@ -14,14 +14,16 @@ export const MAX_SALES_RESEARCH_SOURCES = 30;
 export const MAX_SALES_WEB_SEARCH_CALLS = 6;
 export const MAX_SALES_PROVIDER_OUTPUT_TOKENS = 12_000;
 export const SALES_PROVIDER_TIMEOUT_MS = 150_000;
+export const MAX_REJECTED_OUTPUT_DIAGNOSTIC_BYTES = 256_000;
 
 export class SalesResearchError extends Error {
   code: string;
   httpStatus: number;
   providerExecution: SalesProviderExecutionMetadata | null;
   rejectionDiagnostics: SalesResearchRejectionDiagnostics | null;
+  rejectedOutputDiagnostic: SalesRejectedOutputDiagnostic | null;
   constructor(code: string, message: string, httpStatus = 502, execution: SalesProviderExecutionMetadata | null = null, diagnostics: SalesResearchRejectionDiagnostics | null = null) {
-    super(message); this.name = "SalesResearchError"; this.code = code; this.httpStatus = httpStatus; this.providerExecution = execution; this.rejectionDiagnostics = diagnostics;
+    super(message); this.name = "SalesResearchError"; this.code = code; this.httpStatus = httpStatus; this.providerExecution = execution; this.rejectionDiagnostics = diagnostics; this.rejectedOutputDiagnostic = null;
   }
 }
 
@@ -82,6 +84,24 @@ export function extractSalesProviderExecution(params: { response: Record<string,
 function outputText(response: Record<string, unknown>): string {
   if (typeof response.output_text === "string") return response.output_text;
   return (Array.isArray(response.output) ? response.output : []).flatMap((item: any) => Array.isArray(item?.content) ? item.content.filter((c: any) => c?.type === "output_text" && typeof c.text === "string").map((c: any) => c.text) : []).join("");
+}
+
+function rejectedOutputDiagnostic(raw: string): SalesRejectedOutputDiagnostic {
+  const byteLength = Buffer.byteLength(raw, "utf8");
+  return {
+    schemaVersion: "sales-01-rejected-output-diagnostic-v1",
+    trustStatus: "UNTRUSTED_REJECTED",
+    handoffEligible: false,
+    raw: {
+      sha256: createHash("sha256").update(raw).digest("hex"),
+      byteLength,
+      content: byteLength <= MAX_REJECTED_OUTPUT_DIAGNOSTIC_BYTES
+        ? { availability: "included", exactStructuredOutput: raw }
+        : { availability: "omitted_size_limit", exactStructuredOutput: null },
+    },
+    normalization: { completed: false, normalizedOutput: null },
+    authority: { crmExportAuthorized: false, crmWriteAuthorized: false, downstreamAuthorized: false, sendingAuthorized: false, persistence: false },
+  };
 }
 
 const MAX_REJECTION_NATIVE_HASHES = 20;
@@ -309,11 +329,12 @@ function validateClaims(claims: SalesClaim[], growthIds: Set<string>, salesIds: 
 
 export function normalizeCompletedOpenAISalesResponse(params: { response: Record<string, unknown>; request: SalesResearchRequest; requestedModel: string; serverReceivedAt: string }): SalesResearchProposal {
   const execution = extractSalesProviderExecution({ response: params.response, requestedModel: params.requestedModel, serverReceivedAt: params.serverReceivedAt, outcome: "accepted" });
+  let rawStructuredOutput = "";
   try {
     if (params.response.status !== "completed") throw new SalesResearchError("provider_incomplete", "Provider response did not complete.");
     if (execution.usage.webSearchCalls > MAX_SALES_WEB_SEARCH_CALLS) throw new SalesResearchError("web_search_limit_exceeded", "Provider exceeded the approved web-search limit.", 422);
-    const raw = outputText(params.response); if (!raw) throw new SalesResearchError("provider_output_missing", "Provider returned no structured output.");
-    let proposal: RawProposal; try { proposal = JSON.parse(raw); } catch { throw new SalesResearchError("provider_output_malformed", "Provider structured output was malformed."); }
+    rawStructuredOutput = outputText(params.response); if (!rawStructuredOutput) throw new SalesResearchError("provider_output_missing", "Provider returned no structured output.");
+    let proposal: RawProposal; try { proposal = JSON.parse(rawStructuredOutput); } catch { throw new SalesResearchError("provider_output_malformed", "Provider structured output was malformed."); }
     const accessDate = params.serverReceivedAt.slice(0, 10); const native = nativeSources(params.response, accessDate); if (!native.map.size) throw new SalesResearchError("native_source_provenance_missing", "Provider returned no native source provenance.", 422);
     const referenced = new Map<string, any>();
     const evidence = (proposal.evidence || []).map((item: any, evidenceOrdinal: number) => {
@@ -360,7 +381,10 @@ export function normalizeCompletedOpenAISalesResponse(params: { response: Record
       authority: { founderReviewed: false, sendingAuthorized: false, crmWriteAuthorized: false, persistence: false, revenueInvocationAuthorized: false, closerInvocationAuthorized: false, externalAction: false },
     } };
   } catch (error) {
-    if (error instanceof SalesResearchError && execution.providerStatus === "completed") error.providerExecution = { ...execution, outcome: "provider_completed_local_rejection", ...(error.rejectionDiagnostics ? { rejectionDiagnostics: error.rejectionDiagnostics } : {}) };
+    if (error instanceof SalesResearchError && execution.providerStatus === "completed") {
+      error.providerExecution = { ...execution, outcome: "provider_completed_local_rejection", ...(error.rejectionDiagnostics ? { rejectionDiagnostics: error.rejectionDiagnostics } : {}) };
+      if (rawStructuredOutput) error.rejectedOutputDiagnostic = rejectedOutputDiagnostic(rawStructuredOutput);
+    }
     throw error;
   }
 }

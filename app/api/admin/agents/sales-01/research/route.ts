@@ -14,14 +14,26 @@ import { verifyCommercialPositioning, CommercialPositioningIntegrityError } from
 export const runtime = "nodejs";
 export const maxDuration = 180;
 
-function errorResponse(status: number, code: string, message: string, providerExecution: unknown = null) {
-  return NextResponse.json({ error: message, code, providerExecution, persisted: false, crmWriteAuthorized: false, downstreamInvoked: false, externalAction: false }, { status, headers: { "Cache-Control": "no-store" } });
+function errorResponse(status: number, code: string, message: string, providerExecution: unknown = null, rejectedOutputDiagnostic: unknown = null) {
+  return NextResponse.json({ error: message, code, providerExecution, rejectedOutputDiagnostic, persisted: false, crmExportAuthorized: false, crmWriteAuthorized: false, downstreamInvoked: false, externalAction: false }, { status, headers: { "Cache-Control": "no-store" } });
+}
+
+type ResearchRouteTestDependencies = {
+  authorize: (request: Request) => Promise<void>;
+  createProvider: () => { research: OpenAIResponsesWebSalesProvider["research"] };
+};
+
+function testDependencies(): ResearchRouteTestDependencies | null {
+  if (process.env.NODE_ENV !== "test") return null;
+  return (globalThis as typeof globalThis & { __salesResearchRouteTestDependencies?: ResearchRouteTestDependencies }).__salesResearchRouteTestDependencies ?? null;
 }
 
 export async function POST(request: Request) {
   try {
     const length = Number(request.headers.get("content-length") || "0"); if (length > MAX_SALES_RESEARCH_REQUEST_BYTES) return errorResponse(413, "request_too_large", "SALES research request exceeds the approved size limit.");
-    await authorizeSalesAdmin(request, { verifyIdToken: (token) => adminAuth.verifyIdToken(token), loadUser: async (uid) => { const snapshot = await adminDb.collection("users").doc(uid).get(); return { exists: snapshot.exists, isAdmin: snapshot.data()?.isAdmin === true }; } });
+    const injected = testDependencies();
+    if (injected) await injected.authorize(request);
+    else await authorizeSalesAdmin(request, { verifyIdToken: (token) => adminAuth.verifyIdToken(token), loadUser: async (uid) => { const snapshot = await adminDb.collection("users").doc(uid).get(); return { exists: snapshot.exists, isAdmin: snapshot.data()?.isAdmin === true }; } });
     const raw = await request.text(); if (Buffer.byteLength(raw, "utf8") > MAX_SALES_RESEARCH_REQUEST_BYTES) return errorResponse(413, "request_too_large", "SALES research request exceeds the approved size limit.");
     let input: SalesResearchRequest; try { input = JSON.parse(raw) as SalesResearchRequest; } catch { return errorResponse(400, "invalid_json", "SALES research request must be valid JSON."); }
     const errors = validateSalesResearchRequest(input); if (errors.length) return errorResponse(422, "request_validation_failed", errors.join(" "));
@@ -30,7 +42,7 @@ export async function POST(request: Request) {
     const contract = await loadSalesContractMetadata();
     const providerProjection = verifySalesProviderIntelligenceProjection({ salesContractSha256: contract.sha256 });
     const commercialPositioning = verifyCommercialPositioning();
-    const provider = new OpenAIResponsesWebSalesProvider({ apiKey: process.env.OPENAI_API_KEY || "", model: process.env.OPENAI_SALES_MODEL || "gpt-5.6-terra" });
+    const provider = injected?.createProvider() ?? new OpenAIResponsesWebSalesProvider({ apiKey: process.env.OPENAI_API_KEY || "", model: process.env.OPENAI_SALES_MODEL || "gpt-5.6-terra" });
     const proposal = await provider.research(input, { salesContract: contract, providerProjection, envelope: input.envelope, commercialPositioning }, request.signal);
     const result: SalesResearchResult = { outcome: "accepted", envelope: input.envelope, providerProfile: { timeoutMs: 150_000, maximumWebSearchCalls: 6, maximumContacts: 6, maximumContactsPerRole: 2, maximumSources: 30, maximumOutputTokens: 12_000 }, contract, providerProjection, spendingAuthority, proposal };
     result.crmExport = buildCrmSalesIngestionExport(result);
@@ -38,7 +50,7 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof SalesAdminAuthError) return errorResponse(error.status, "authorization_failed", error.message);
     if (error instanceof SalesContractIntegrityError || error instanceof SalesProviderProjectionIntegrityError || error instanceof CommercialPositioningIntegrityError) return errorResponse(500, "contract_integrity_failed", error.message);
-    if (error instanceof SalesResearchError) return errorResponse(error.httpStatus, error.code, error.message, error.providerExecution);
+    if (error instanceof SalesResearchError) return errorResponse(error.httpStatus, error.code, error.message, error.providerExecution, error.rejectedOutputDiagnostic);
     console.error("SALES-01 research failed", error instanceof Error ? error.name : "unknown_error");
     return errorResponse(500, "sales_research_failed", "SALES research could not be completed. No data or downstream state was created.");
   }

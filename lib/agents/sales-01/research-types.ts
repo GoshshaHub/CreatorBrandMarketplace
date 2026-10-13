@@ -82,6 +82,25 @@ export type SalesClaimReferenceRejectionDiagnostics = {
 
 export type SalesResearchRejectionDiagnostics = SalesSourceRejectionDiagnostics | SalesRightsRejectionDiagnostics | SalesClaimReferenceRejectionDiagnostics;
 
+export type SalesRejectedOutputDiagnostic = {
+  schemaVersion: "sales-01-rejected-output-diagnostic-v1";
+  trustStatus: "UNTRUSTED_REJECTED";
+  handoffEligible: false;
+  raw: {
+    sha256: string;
+    byteLength: number;
+    content: { availability: "included"; exactStructuredOutput: string } | { availability: "omitted_size_limit"; exactStructuredOutput: null };
+  };
+  normalization: { completed: false; normalizedOutput: null };
+  authority: {
+    crmExportAuthorized: false;
+    crmWriteAuthorized: false;
+    downstreamAuthorized: false;
+    sendingAuthorized: false;
+    persistence: false;
+  };
+};
+
 export type SalesProviderExecutionMetadata = {
   provider: "openai";
   outcome: "accepted" | "provider_completed_local_rejection";
