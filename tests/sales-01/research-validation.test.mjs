@@ -195,6 +195,71 @@ test("health/efficacy claims, rights assertions, and unauthorized commercial pro
   const promise = proposal(); promise.claims[0].statement = "Goshsha guarantees ROI with a custom implementation."; assert.throws(() => normalize(promise), (error) => error.code === "unsupported_commercial_promise");
 });
 
+test("explicit commercial disclaimers and bounded conditions do not become promises", () => {
+  const observed = proposal();
+  const observedGrowthEvidenceId = request().envelope.evidence.items[0].id;
+  observed.claims.push({
+    id: "CL-11",
+    statement: "A Free First activation could determine whether a limited product-scan experience is operationally workable for one Cymbiotika retail SKU; it does not establish or guarantee reach, conversion, sales lift, ROI, or retailer authorization.",
+    classification: "hypothesis",
+    evidenceRefs: [{ kind: "growth_evidence", id: observedGrowthEvidenceId }, { kind: "goshsha_capability", id: "cap-free-first" }],
+  });
+  assert.equal(normalize(observed).playbook.claims.at(-1).id, "CL-11");
+
+  for (const statement of [
+    "Goshsha does not guarantee reach, conversion, sales lift, or ROI.",
+    "The standard offer does not include a discount or custom implementation.",
+    "A custom implementation would require separate Founder approval and is not authorized in this proposal.",
+    "Included qualified views are an entitlement ceiling, not guaranteed audience delivery.",
+    "Do not position the pilot as a guaranteed sales, conversion, ROI, or retail-velocity outcome.",
+  ]) {
+    const valid = proposal();
+    valid.claims.push({ id: "commercial-boundary", statement, classification: "hypothesis", evidenceRefs: [{ kind: "goshsha_capability", id: "cap-free-first" }] });
+    assert.equal(normalize(valid).playbook.claims.at(-1).statement, statement);
+  }
+
+  const canonicalOffer = proposal();
+  canonicalOffer.claims[1].statement = GOSHSHHA_CAPABILITY_FACTS["cap-free-first"];
+  assert.equal(normalize(canonicalOffer).playbook.claims[1].statement, GOSHSHHA_CAPABILITY_FACTS["cap-free-first"]);
+
+  const alteredOffer = proposal();
+  alteredOffer.claims[1].statement = "Free First is $0 and guarantees the first 250 qualified views.";
+  assert.throws(() => normalize(alteredOffer), (error) => error.code === "unsupported_commercial_promise" || error.code === "unsupported_audience_claim");
+});
+
+test("mixed, remote-negation, ambiguous, and affirmative commercial promises remain rejected", () => {
+  for (const statement of [
+    "Goshsha does not guarantee reach, but guarantees ROI.",
+    "The offer does not include a discount, yet it provides custom implementation.",
+    "Notably, Goshsha guarantees ROI.",
+    "Goshsha will not fail to guarantee results.",
+    "It is unclear whether Goshsha guarantees sales lift.",
+    "A discount may be available with approval.",
+    "The package includes a custom entitlement.",
+    "Goshsha promises sales lift.",
+    "The pilot will deliver ROI.",
+    "Do not position the pilot as guaranteed reach, but promise sales lift.",
+  ]) {
+    const invalid = proposal();
+    invalid.claims.push({ id: "commercial-mixed", statement, classification: "hypothesis", evidenceRefs: [{ kind: "goshsha_capability", id: "cap-free-first" }] });
+    assert.throws(() => normalize(invalid), (error) => error.code === "unsupported_commercial_promise" || error.code === "unsupported_audience_claim");
+  }
+});
+
+test("outreach and objection prose use the same commercial-promise semantics as claims", () => {
+  const disclaimer = proposal();
+  disclaimer.outreach.initialMessage = "This proof does not establish or guarantee reach, conversion, sales lift, or ROI.";
+  assert.equal(normalize(disclaimer).playbook.outreach.initialMessage, disclaimer.outreach.initialMessage);
+
+  const mixedOutreach = proposal();
+  mixedOutreach.outreach.initialMessage = "This proof does not guarantee reach, but guarantees ROI.";
+  assert.throws(() => normalize(mixedOutreach), (error) => error.code === "unsupported_commercial_promise");
+
+  const objectionPromise = proposal();
+  objectionPromise.objections[0].response = "We can provide a discount and custom implementation.";
+  assert.throws(() => normalize(objectionPromise), (error) => error.code === "unsupported_commercial_promise");
+});
+
 test("narrow rights unknowns and the exact conditional requirement remain uncertainty, not activation authority", () => {
   const unknown = proposal();
   unknown.claims.push({ id: "rights-unknown", statement: "Content rights remain unknown until verified.", classification: "unknown", evidenceRefs: [] });
