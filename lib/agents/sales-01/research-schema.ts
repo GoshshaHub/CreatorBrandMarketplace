@@ -58,8 +58,11 @@ const validDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value) && !Numbe
 const currentUtcDate = () => new Date().toISOString().slice(0, 10);
 const requiredText = (value: unknown, field: string) => { if (typeof value !== "string" || !value.trim()) throw new SalesResearchError("provider_output_invalid", `${field} must contain text.`, 422); return value.trim(); };
 const REGULATED_OR_EFFICACY = /\b(?:medical|therapeutic|treat(?:s|ment)?|prevent(?:s|ion)?|disease|efficacy|effective|safety|safe|dosage|dose|ingredient[- ]interaction|fda approved|clinically proven)\b/i;
-const RIGHTS_ASSERTION = /\b(?:owns?|controls?|has cleared|licensed|rights? to|can reuse)\b.*\b(?:content|video|creator|activation|reuse)\b/i;
-const RIGHTS_TOPIC = /\b(?:content rights?|activation rights?|reuse rights?|rights? to (?:use|reuse)|owns?|controls?|licensed content|creator content|creator video)\b/i;
+const RIGHTS_OBJECT = String.raw`(?:content(?!\s+(?:marketing|strategy|programs?|initiatives?|operations?|calendar|team|function|responsibilities?))|videos?|creator(?:\s+(?:content|videos?))?|(?:activation|reuse)\s+rights?)`;
+const OWNERSHIP_OR_CONTROL_RIGHTS_ASSERTION = new RegExp(String.raw`\b(?:owns?|controls?)\b(?:(?![.!?;]).){0,160}\b${RIGHTS_OBJECT}\b`, "i");
+const CLEARANCE_OR_REUSE_RIGHTS_ASSERTION = new RegExp(String.raw`\b(?:has\s+cleared|cleared|licenses?|licensed|can\s+reuse|may\s+reuse|rights?\s+to\s+(?:use|reuse))\b(?:(?![.!?;]).){0,160}\b${RIGHTS_OBJECT}\b`, "i");
+const RIGHTS_ASSERTION = { test: (value: string) => OWNERSHIP_OR_CONTROL_RIGHTS_ASSERTION.test(value) || CLEARANCE_OR_REUSE_RIGHTS_ASSERTION.test(value) };
+const RIGHTS_TOPIC = new RegExp(String.raw`\b(?:content\s+rights?|activation\s+rights?|reuse\s+rights?|rights?\s+to\s+(?:use|reuse)|licensed\s+content|creator\s+(?:content|videos?))\b`, "i");
 const ATTRIBUTED_RIGHTS = /\b(?:states?|claims?|reports?|says?|according to)\b/i;
 const CONDITIONAL_RIGHTS_REQUIREMENT = "The Brand must later supply or confirm Brand-owned or properly licensed content.";
 const UNKNOWN_RIGHTS_PATTERNS = [
@@ -177,7 +180,7 @@ function classifyRightsClaim(statement: string, originalUnknowns: string[]): Rig
   if (normalized === CONDITIONAL_RIGHTS_REQUIREMENT) return "conditional_requirement";
   if (isRightsUnknownText(normalized, originalUnknowns)) return "unknown_qualification";
   if (RIGHTS_ASSERTION.test(normalized)) return ATTRIBUTED_RIGHTS.test(normalized) ? "attributed_rights_statement" : "affirmative_assertion";
-  if (RIGHTS_TOPIC.test(normalized)) return ATTRIBUTED_RIGHTS.test(normalized) ? "attributed_rights_statement" : "ambiguous_rights_language";
+  if (RIGHTS_TOPIC.test(normalized) || OWNERSHIP_OR_CONTROL_RIGHTS_ASSERTION.test(normalized)) return ATTRIBUTED_RIGHTS.test(normalized) ? "attributed_rights_statement" : "ambiguous_rights_language";
   return null;
 }
 function rightsUnknownState(originalUnknowns: string[], inheritedUnknowns: any[]) {
@@ -313,7 +316,8 @@ function validateClaims(claims: SalesClaim[], growthIds: Set<string>, salesIds: 
       const unknownContext = rights?.status === "unknown" && Array.isArray(rights?.evidenceIds) && rights.evidenceIds.length === 0 && unknownState.present && unknownState.preserved;
       const unknownQualificationValid = rightsCategory === "unknown_qualification" && unknownContext && claim.classification === "unknown" && Array.isArray(claim.evidenceRefs) && claim.evidenceRefs.length === 0;
       const conditionalRequirementValid = rightsCategory === "conditional_requirement" && unknownContext && claim.classification === "goshsha_capability" && Array.isArray(claim.evidenceRefs) && claim.evidenceRefs.length === 1 && claim.evidenceRefs[0]?.kind === "goshsha_capability" && claim.evidenceRefs[0]?.id === "cap-free-first";
-      if (!unknownQualificationValid && !conditionalRequirementValid) throw new SalesResearchError("rights_claim_unsupported", `Claim ${claim.id} has unsupported or incompatible content-rights semantics.`, 422, null, diagnostics);
+      const exactFreeFirstCapabilityValid = claim.statement === GOSHSHHA_CAPABILITY_FACTS["cap-free-first"] && claim.classification === "goshsha_capability" && Array.isArray(claim.evidenceRefs) && claim.evidenceRefs.length === 1 && claim.evidenceRefs[0]?.kind === "goshsha_capability" && claim.evidenceRefs[0]?.id === "cap-free-first";
+      if (!unknownQualificationValid && !conditionalRequirementValid && !exactFreeFirstCapabilityValid) throw new SalesResearchError("rights_claim_unsupported", `Claim ${claim.id} has unsupported or incompatible content-rights semantics.`, 422, null, diagnostics);
     }
     if (UNSUPPORTED_COMMERCIAL_PROMISE.test(claim.statement) && claim.classification !== "prohibited_unsupported") throw new SalesResearchError("unsupported_commercial_promise", `Claim ${claim.id} introduces an unauthorized commercial promise.`, 422);
     if (UNSUPPORTED_AUDIENCE_CLAIM.test(claim.statement) && claim.classification !== "prohibited_unsupported") throw new SalesResearchError("unsupported_audience_claim", `Claim ${claim.id} contains an unsupported audience, reach, or performance assertion.`, 422);

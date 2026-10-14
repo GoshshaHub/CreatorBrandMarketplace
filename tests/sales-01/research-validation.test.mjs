@@ -5,6 +5,7 @@ import { createSyntheticGrowthSalesExport, createSyntheticValidatedGrowthRun, sy
 import { createGrowthSalesExport } from "../../lib/agents/sales-01/export.ts";
 import { APPROVED_GROWTH_PROVIDER_PROJECTION_SHA256, GROWTH_PROVIDER_RESEARCH_PROJECTION_VERSION, PAIRED_FROZEN_GROWTH_CONTRACT_SHA256, PAIRED_FROZEN_GROWTH_CONTRACT_VERSION } from "../../lib/agents/growth-01/provider-research-contract.ts";
 import { normalizeCompletedOpenAISalesResponse, SalesResearchError, validateSalesResearchRequest } from "../../lib/agents/sales-01/research-schema.ts";
+import { GOSHSHHA_CAPABILITY_FACTS } from "../../lib/agents/sales-01/research-prompt.ts";
 import { validateSalesIntake } from "../../lib/agents/sales-01/validation.ts";
 
 function envelope() { return validateSalesIntake({ input: { export: createSyntheticGrowthSalesExport(), candidateId: "buff-the-buff-ritual", founderApproval: { approved: true, scope: "sales_preparation_only" } }, approvedByUid: "founder", approvedAt: "2026-09-24T12:00:00.000Z", salesContract: syntheticSalesContractMetadata }).envelope; }
@@ -251,6 +252,46 @@ test("affirmative, ambiguous, attributed, and adversarial mixed rights language 
       assert.doesNotMatch(serialized, /private-rights-claim|Creator video|properly licensed|Brand can reuse/);
       return true;
     });
+  }
+});
+
+test("marketing-program ownership and job responsibilities do not become content-rights assertions", () => {
+  for (const statement of [
+    "Cymbiotika is recruiting a Director of Retail Marketing to own retailer-specific marketing programs across its omnichannel retail business, including shopper marketing, retail activation, educational initiatives, and retail-media integration.",
+    "The role owns content marketing programs and retail activation initiatives.",
+    "The Director controls marketing programs that include content strategy and retail activation.",
+  ]) {
+    const valid = proposal();
+    valid.claims.push({ id: "job-responsibility", statement, classification: "verified_fact", evidenceRefs: [{ kind: "sales_evidence", id: "sales-1" }] });
+    assert.equal(normalize(valid).playbook.claims.at(-1).statement, statement);
+  }
+});
+
+test("job-responsibility context cannot hide actual content ownership, clearance, or reuse assertions", () => {
+  for (const statement of [
+    "The Director owns retail activation programs, and the Brand owns Creator video content.",
+    "The role owns content marketing programs, and the Brand can reuse Creator videos.",
+    "The Director controls retail activation initiatives; the Brand has cleared Creator content.",
+    "The role owns marketing programs and controls the specific video content used for activation.",
+  ]) {
+    const invalid = proposal();
+    invalid.claims.push({ id: "mixed-job-rights", statement, classification: "verified_fact", evidenceRefs: [{ kind: "sales_evidence", id: "sales-1" }] });
+    assert.throws(() => normalize(invalid), (error) => error.code === "rights_claim_unsupported");
+  }
+});
+
+test("exact Free First capability states a licensing prerequisite without establishing present Brand rights", () => {
+  const exact = proposal();
+  exact.claims[1].statement = GOSHSHHA_CAPABILITY_FACTS["cap-free-first"];
+  assert.equal(normalize(exact).playbook.claims[1].classification, "goshsha_capability");
+
+  for (const statement of [
+    `${exact.claims[1].statement} The Brand owns the video.`,
+    "Free First is $0 and the Brand can reuse its Creator video.",
+  ]) {
+    const invalid = proposal();
+    invalid.claims[1].statement = statement;
+    assert.throws(() => normalize(invalid), (error) => error.code === "rights_claim_unsupported");
   }
 });
 
