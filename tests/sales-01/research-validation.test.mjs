@@ -47,6 +47,58 @@ function syntheticCymbiotikaRequest() {
   return { envelope: intake.envelope, founderAuthorization: { authorized: true, scope: "one_sales_research_run" }, budgetAuthority: { confirmedByFounder: true, salesMonthSpendUsd: 0, commercialDepartmentMonthSpendUsd: 0 } };
 }
 
+function completeSyntheticCymbiotikaProposal(cymRequest = syntheticCymbiotikaRequest()) {
+  const value = proposal();
+  const sourceUrl = "https://example.com/synthetic-cymbiotika-retail-role?utm_source=fixture";
+  value.strategy = {
+    ...value.strategy,
+    observedTrigger: "Synthetic fixture: a current physical-retail expansion.",
+    selectedEntryOffer: "Free First",
+    offerRationale: "Use the $0 proof mechanism before any conditional paid path.",
+    paidConversionHypothesis: "A paid offer remains conditional on proof and a later commercial decision.",
+  };
+  value.contacts = [{
+    id: "synthetic-contact-1", name: "Synthetic Retail Marketing Contact", currentTitle: "Director of Retail Marketing", company: "Cymbiotika",
+    identityEvidenceIds: ["SLS-E1"], currentRoleEvidenceIds: ["SLS-E1"], stakeholderFunction: "Retail marketing", problemOwnership: "direct",
+    functionalRelevance: "The evidenced current role owns retailer-specific marketing programs; buying authority remains unknown.", functionalRelevanceClassification: "sales_inference",
+    confidence: "Confirmed", freshness: "current", conflictingEvidenceIds: [], strategicRoles: ["Best First Contact"], strategicRoleRationale: "The evidenced remit is relevant to a retail proof conversation.",
+    buyingAuthority: "unknown", buyingAuthorityEvidenceIds: [], contactRoute: { type: "public_professional_profile", value: "https://example.com/synthetic-cymbiotika-retail-role", evidenceIds: ["SLS-E1"] }, evidenceIds: ["SLS-E1"],
+  }];
+  value.contactSelection = { status: "recommended", bestFirstContactId: "synthetic-contact-1", unavailableReason: null, smallestSufficientSetRationale: "One current, publicly evidenced role is sufficient for an initial Founder-reviewed approach." };
+  value.evidence = [{ id: "SLS-E1", publisher: "Explicitly synthetic professional profile", sourceUrl, supportedClaim: "Synthetic fixture: the current role owns retailer-specific marketing programs.", classification: "verified_fact" }];
+  value.inheritedUnknowns = cymRequest.envelope.evidence.knownUnknowns.map((originalText) => ({ originalText, status: "unresolved", resolution: null, salesEvidenceIds: [] }));
+  const rightsUnknown = value.inheritedUnknowns[0].originalText;
+  const rightsInner = rightsUnknown.replace(/^Whether\s+/, "").replace(/[.!?]+$/, "");
+  value.claims = [
+    { id: "CLM-JOB", statement: "The current role owns retailer-specific marketing programs and shopper engagement initiatives.", classification: "verified_fact", evidenceRefs: [{ kind: "sales_evidence", id: "SLS-E1" }] },
+    { id: "CLM-GROWTH", statement: "Synthetic fixture: Cymbiotika has a physical-retail trigger.", classification: "verified_fact", evidenceRefs: [{ kind: "growth_evidence", id: "CYM-E1" }] },
+    { id: "CLM-FREE", statement: GOSHSHHA_CAPABILITY_FACTS["cap-free-first"], classification: "goshsha_capability", evidenceRefs: [{ kind: "goshsha_capability", id: "cap-free-first" }] },
+    { id: "CLM-CONDITION", statement: "The Brand must later supply or confirm Brand-owned or properly licensed content.", classification: "goshsha_capability", evidenceRefs: [{ kind: "goshsha_capability", id: "cap-free-first" }] },
+    { id: "CLM-RIGHTS", statement: `Whether ${rightsInner} is unknown.`, classification: "unknown", evidenceRefs: [] },
+    { id: "CLM-NO-PROMISE", statement: "A Free First proof does not establish or guarantee reach, conversion, sales lift, or ROI.", classification: "hypothesis", evidenceRefs: [{ kind: "goshsha_capability", id: "cap-free-first" }] },
+  ];
+  value.rights = { status: "unknown", evidenceIds: [], conditionalRequirement: "The Brand must later supply or confirm Brand-owned or properly licensed content." };
+  value.outreach = { ...value.outreach, initialMessage: "Would you be open to reviewing one $0 product-level proof? It does not guarantee reach, conversion, sales lift, or ROI.", claimIds: ["CLM-JOB", "CLM-GROWTH", "CLM-FREE", "CLM-NO-PROMISE"] };
+  value.objections = [{ objection: "Can you use our existing Creator video?", response: "Content rights remain unknown. The Brand must later supply or confirm Brand-owned or properly licensed content.", claimIds: ["CLM-CONDITION", "CLM-RIGHTS"], escalate: true }];
+  return value;
+}
+
+function completeSyntheticCymbiotikaResponse(value, { includeActionSource = true, includeAnnotation = true } = {}) {
+  const source = { url: "https://example.com/synthetic-cymbiotika-retail-role?utm_source=fixture", title: "Explicitly synthetic professional profile" };
+  return {
+    id: "resp_synthetic_cymbiotika", model: "gpt-5.6-terra", status: "completed",
+    output: [
+      ...(includeActionSource ? [{ type: "web_search_call", action: { sources: [source] } }] : []),
+      { type: "message", content: [{ type: "output_text", text: JSON.stringify(value), ...(includeAnnotation ? { annotations: [{ type: "url_citation", ...source }] } : {}) }] },
+    ],
+    usage: { input_tokens: 400, input_tokens_details: { cached_tokens: 40 }, output_tokens: 300, output_tokens_details: { reasoning_tokens: 30 }, total_tokens: 700 },
+  };
+}
+
+function normalizeCompleteSyntheticCymbiotika(value, cymRequest, responseOptions) {
+  return normalizeCompletedOpenAISalesResponse({ response: completeSyntheticCymbiotikaResponse(value, responseOptions), request: cymRequest, requestedModel: "gpt-5.6-terra", serverReceivedAt: "2026-10-14T10:00:00.000Z" });
+}
+
 test("valid provider output becomes a nonpersistent, non-sending playbook and CRM preview", () => {
   const result = normalize();
   assert.equal(result.playbook.schemaVersion, "sales-playbook-v1.1"); assert.equal(result.playbook.growthQualification.score, 81); assert.equal(result.playbook.growthQualification.band, "Immediate Priority");
@@ -60,18 +112,108 @@ test("valid provider output becomes a nonpersistent, non-sending playbook and CR
 
 test("complete explicitly synthetic Cymbiotika-shaped proposal passes with unknown rights and buying authority", () => {
   const cymRequest = syntheticCymbiotikaRequest();
-  const value = proposal();
-  value.contacts[0].name = "Synthetic Cymbiotika Contact";
-  value.contacts[0].company = "Cymbiotika";
-  value.claims[0] = { id: "claim-growth", statement: "Synthetic fixture: Cymbiotika has a physical-retail trigger.", classification: "verified_fact", evidenceRefs: [{ kind: "growth_evidence", id: "CYM-E1" }] };
-  value.inheritedUnknowns = cymRequest.envelope.evidence.knownUnknowns.map((originalText) => ({ originalText, status: "unresolved", resolution: null, salesEvidenceIds: [] }));
-  value.claims.push({ id: "rights-exact-unknown", statement: value.inheritedUnknowns[0].originalText, classification: "unknown", evidenceRefs: [] });
-  const result = normalizeCompletedOpenAISalesResponse({ response: response(value), request: cymRequest, requestedModel: "gpt-5.6-terra", serverReceivedAt: "2026-10-13T10:02:00.000Z" });
+  const value = completeSyntheticCymbiotikaProposal(cymRequest);
+  const result = normalizeCompleteSyntheticCymbiotika(value, cymRequest);
   assert.equal(result.playbook.growthQualification.brand, "Cymbiotika");
   assert.equal(result.playbook.rights.status, "unknown");
   assert.deepEqual(result.playbook.rights.evidenceIds, []);
   assert.equal(result.playbook.contacts[0].buyingAuthority, "unknown");
   assert.equal(result.playbook.inheritedUnknowns.every((item) => item.status === "unresolved"), true);
+  assert.equal(result.playbook.evidence[0].canonicalUrl, "https://example.com/synthetic-cymbiotika-retail-role");
+  assert.equal(result.playbook.evidence[0].rawUrl, "https://example.com/synthetic-cymbiotika-retail-role?utm_source=fixture");
+  assert.equal(result.playbook.outreach.sendingAuthorized, false);
+  assert.equal(result.playbook.crmReadyPacket.crmWriteAuthorized, false);
+  assert.equal(result.playbook.authority.persistence, false);
+});
+
+test("complete synthetic pipeline fails closed across provenance, namespaces, rights, promises, contacts, and outreach", () => {
+  const cases = [
+    { name: "model-only source", mutate: () => {}, responseOptions: { includeActionSource: false, includeAnnotation: false }, code: "native_source_provenance_missing" },
+    { name: "reference namespace mismatch", mutate: (value) => { value.claims[0].evidenceRefs = [{ kind: "growth_evidence", id: "SLS-E1" }]; }, code: "claim_reference_invalid" },
+    { name: "job remit plus content ownership", mutate: (value) => { value.claims[0].statement += " The Brand owns the Creator video content."; }, code: "rights_claim_unsupported" },
+    { name: "epistemic wrapper plus reuse assertion", mutate: (value) => { value.claims.find((claim) => claim.id === "CLM-RIGHTS").statement += " The Brand can reuse the video."; }, code: "rights_claim_unsupported" },
+    { name: "altered conditional content requirement", mutate: (value) => { value.claims.find((claim) => claim.id === "CLM-CONDITION").statement = "The Brand should supply licensed content."; }, code: "rights_claim_unsupported" },
+    { name: "mixed disclaimer and promise", mutate: (value) => { value.claims.find((claim) => claim.id === "CLM-NO-PROMISE").statement = "This does not guarantee reach, but it guarantees ROI."; }, code: "unsupported_commercial_promise" },
+    { name: "contact evidence used as buying authority", mutate: (value) => { value.contacts[0].buyingAuthority = "supported"; value.contacts[0].buyingAuthorityEvidenceIds = ["SLS-E1"]; }, code: "buying_authority_unsupported" },
+    { name: "outreach links unknown claim", mutate: (value) => { value.outreach.claimIds.push("CLM-RIGHTS"); value.claims.find((claim) => claim.id === "CLM-RIGHTS").classification = "prohibited_unsupported"; }, code: "rights_claim_unsupported" },
+    { name: "outreach links missing claim", mutate: (value) => { value.outreach.claimIds.push("CLM-MISSING"); }, code: "outreach_claim_invalid" },
+  ];
+  for (const item of cases) {
+    const cymRequest = syntheticCymbiotikaRequest();
+    const value = completeSyntheticCymbiotikaProposal(cymRequest);
+    item.mutate(value);
+    assert.throws(() => normalizeCompleteSyntheticCymbiotika(value, cymRequest, item.responseOptions), (error) => {
+      assert.equal(error.code, item.code, item.name);
+      return true;
+    });
+  }
+});
+
+test("exact inherited rights unknown accepts only narrow epistemic wrappers with unchanged inner text", () => {
+  const cymRequest = syntheticCymbiotikaRequest();
+  const original = cymRequest.envelope.evidence.knownUnknowns[0];
+  const inner = original.replace(/^Whether\s+/, "").replace(/[.!?]+$/, "");
+  const acceptedStatements = [
+    original,
+    `Whether ${inner} is unknown.`,
+    `Whether ${inner} remains unknown.`,
+    `Whether ${inner} is unresolved.`,
+    `Whether ${inner} remains unresolved.`,
+    `It is unknown whether ${inner}.`,
+    `It remains unknown whether ${inner}.`,
+    `It is not known whether ${inner}.`,
+  ];
+  for (const statement of acceptedStatements) {
+    const value = proposal();
+    value.inheritedUnknowns = cymRequest.envelope.evidence.knownUnknowns.map((originalText) => ({ originalText, status: "unresolved", resolution: null, salesEvidenceIds: [] }));
+    value.claims.push({ id: "rights-epistemic-wrapper", statement, classification: "unknown", evidenceRefs: [] });
+    const result = normalizeCompletedOpenAISalesResponse({ response: response(value), request: cymRequest, requestedModel: "gpt-5.6-terra", serverReceivedAt: "2026-10-14T09:00:00.000Z" });
+    assert.equal(result.playbook.claims.at(-1).statement, statement);
+    assert.equal(result.playbook.rights.status, "unknown");
+    assert.deepEqual(result.playbook.rights.evidenceIds, []);
+    assert.equal(result.playbook.inheritedUnknowns[0].status, "unresolved");
+  }
+});
+
+test("epistemic rights wrappers reject altered assertions, mixed clauses, ambiguity, double negatives, and incompatible state", () => {
+  const cymRequest = syntheticCymbiotikaRequest();
+  const original = cymRequest.envelope.evidence.knownUnknowns[0];
+  const inner = original.replace(/^Whether\s+/, "").replace(/[.!?]+$/, "");
+  const rejectedStatements = [
+    `Whether ${inner} is unknown, but the Brand owns the video.`,
+    `Whether ${inner} is unknown and the Brand may reuse its Creator content.`,
+    `Whether ${inner} is not unknown.`,
+    `It is not unknown whether ${inner}.`,
+    `It may be unknown whether ${inner}.`,
+    `It is unknown whether ${inner} and whether the Brand can reuse Creator video.`,
+    `Whether Cymbiotika owns or has obtained reuse rights for any video suitable for Goshsha activation is unknown.`,
+  ];
+  for (const statement of rejectedStatements) {
+    const value = proposal();
+    value.inheritedUnknowns = cymRequest.envelope.evidence.knownUnknowns.map((originalText) => ({ originalText, status: "unresolved", resolution: null, salesEvidenceIds: [] }));
+    value.claims.push({ id: "rights-invalid-wrapper", statement, classification: "unknown", evidenceRefs: [] });
+    assert.throws(
+      () => normalizeCompletedOpenAISalesResponse({ response: response(value), request: cymRequest, requestedModel: "gpt-5.6-terra", serverReceivedAt: "2026-10-14T09:00:00.000Z" }),
+      (error) => error.code === "rights_claim_unsupported",
+    );
+  }
+
+  for (const mutate of [
+    (value) => { value.claims.at(-1).classification = "hypothesis"; },
+    (value) => { value.claims.at(-1).evidenceRefs = [{ kind: "growth_evidence", id: "CYM-E1" }]; },
+    (value) => { value.rights.status = "explicitly_supported"; },
+    (value) => { value.rights.evidenceIds = ["sales-1"]; },
+    (value) => { value.inheritedUnknowns[0].status = "resolved_by_sales_evidence"; value.inheritedUnknowns[0].resolution = "Purportedly resolved"; value.inheritedUnknowns[0].salesEvidenceIds = ["sales-1"]; },
+  ]) {
+    const value = proposal();
+    value.inheritedUnknowns = cymRequest.envelope.evidence.knownUnknowns.map((originalText) => ({ originalText, status: "unresolved", resolution: null, salesEvidenceIds: [] }));
+    value.claims.push({ id: "rights-incompatible-wrapper", statement: `Whether ${inner} is unknown.`, classification: "unknown", evidenceRefs: [] });
+    mutate(value);
+    assert.throws(
+      () => normalizeCompletedOpenAISalesResponse({ response: response(value), request: cymRequest, requestedModel: "gpt-5.6-terra", serverReceivedAt: "2026-10-14T09:00:00.000Z" }),
+      (error) => ["rights_claim_unsupported", "rights_evidence_purpose_unsupported", "rights_unknown_evidence_invalid", "unknown_resolution_unsupported"].includes(error.code),
+    );
+  }
 });
 
 test("unsupported audience, guaranteed reach, and performance claims fail closed",()=>{for(const statement of ["Goshsha has a massive audience.","Goshsha guarantees 1,000 views.","Goshsha guarantees sales lift."]){const invalid=proposal();invalid.claims[0].statement=statement;assert.throws(()=>normalize(invalid),(error)=>["unsupported_audience_claim","unsupported_commercial_promise"].includes(error.code));}});

@@ -211,9 +211,28 @@ function sourceRejectionDiagnostics(params: { evidenceItem: any; evidenceOrdinal
 
 type RightsSemanticCategory = SalesRightsRejectionDiagnostics["semanticCategory"];
 function normalizedRightsText(value: string): string { return value.trim().replace(/\s+/g, " "); }
+function withoutTerminalPunctuation(value: string): string { return value.replace(/[.!?]+$/, ""); }
+function inheritedRightsUnknownWrapperMatches(value: string, originalUnknowns: string[]): boolean {
+  const normalized = withoutTerminalPunctuation(normalizedRightsText(value));
+  return originalUnknowns.some((item) => {
+    if (!RIGHTS_TOPIC.test(item)) return false;
+    const original = withoutTerminalPunctuation(normalizedRightsText(item));
+    const whetherMatch = original.match(/^Whether\s+(.+)$/);
+    if (!whetherMatch) return false;
+    const exactQuestion = whetherMatch[1];
+    return normalized === `${original} is unknown`
+      || normalized === `${original} remains unknown`
+      || normalized === `${original} is unresolved`
+      || normalized === `${original} remains unresolved`
+      || normalized === `It is unknown whether ${exactQuestion}`
+      || normalized === `It remains unknown whether ${exactQuestion}`
+      || normalized === `It is not known whether ${exactQuestion}`;
+  });
+}
 function isRightsUnknownText(value: string, originalUnknowns: string[]): boolean {
   const normalized = normalizedRightsText(value);
   return originalUnknowns.some((item) => RIGHTS_TOPIC.test(item) && normalizedRightsText(item) === normalized)
+    || inheritedRightsUnknownWrapperMatches(normalized, originalUnknowns)
     || UNKNOWN_RIGHTS_PATTERNS.some((pattern) => pattern.test(normalized));
 }
 function classifyRightsClaim(statement: string, originalUnknowns: string[]): RightsSemanticCategory | null {
