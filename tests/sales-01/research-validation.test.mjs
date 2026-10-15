@@ -402,6 +402,83 @@ test("outreach and objection prose use the same commercial-promise semantics as 
   assert.throws(() => normalize(objectionPromise), (error) => error.code === "unsupported_commercial_promise");
 });
 
+test("complete synthetic Responses accept locally governed commercial boundaries across every generated prose family", () => {
+  const cymRequest = syntheticCymbiotikaRequest();
+  const value = completeSyntheticCymbiotikaProposal(cymRequest);
+  value.limitations = ["The fixture does not guarantee reach, conversion, sales lift, or ROI."];
+  value.salesPursuitRationale = "Use a proof mechanism rather than guaranteed audience delivery.";
+  value.strategy.observedTrigger = "The observed trigger is a retail expansion, not a reach or conversion guarantee.";
+  value.strategy.specificProblem = "The problem concerns product context rather than guaranteed sales lift.";
+  value.strategy.goshshaWedge = "Position the proof as product context; it should not be represented as causal sales attribution or guaranteed conversion.";
+  value.strategy.retailerIndependenceAssessment = "Retailer independence must not be represented as retailer endorsement or guaranteed audience delivery.";
+  value.strategy.offerRationale = "Free First is a proof mechanism, not a reach, sales, or conversion guarantee.";
+  value.strategy.physicalScanProofPoint = "Assess supported signals rather than guaranteed results.";
+  value.strategy.paidConversionHypothesis = "A possible paid path does not establish or guarantee conversion, sales lift, or ROI.";
+  value.strategy.desiredNextAction = "Request a conversation, not a discount or custom implementation.";
+  value.contacts[0].functionalRelevance = "The evidenced remit supports a conversation rather than guaranteed buying authority or results.";
+  value.contacts[0].strategicRoleRationale = "The role is relevant, but it should not be represented as guaranteed budget or conversion authority.";
+  value.contactSelection.smallestSufficientSetRationale = "One contact is sufficient for discovery rather than a guarantee of conversion.";
+  value.proofStrategy = "Frame the proof around supported product-scan and content-engagement signals, not shopper identity, retailer data, causal sales attribution, sales lift, conversion, ROI, or guaranteed audience delivery.";
+  value.claims.push({ id: "CLM-BOUNDARY", statement: "The proof does not establish or guarantee reach, conversion, sales lift, or ROI.", classification: "hypothesis", evidenceRefs: [{ kind: "goshsha_capability", id: "cap-free-first" }] });
+  value.retailerIndependence.description = "The posture should not be represented as retailer approval, guaranteed reach, or sales attribution.";
+  value.objections = [
+    { objection: "Will this guarantee ROI?", response: "No; it should not be represented as guaranteed conversion, sales lift, ROI, or audience delivery.", claimIds: ["CLM-BOUNDARY"], escalate: false },
+  ];
+  value.outreach.objective = "Request a proof discussion rather than promise sales lift.";
+  value.outreach.initialMessage = "This would be a proof mechanism, not a reach, sales, or conversion guarantee.";
+  value.outreach.firstFollowUp = "The proof should not be represented as guaranteed audience delivery.";
+  value.outreach.secondFollowUp = "Included qualified views are an entitlement ceiling rather than guaranteed delivered audience.";
+  value.outreach.closeTheLoop = "No discount, custom implementation, or guaranteed result is offered.";
+  value.outreach.claimIds.push("CLM-BOUNDARY");
+
+  const result = normalizeCompleteSyntheticCymbiotika(value, cymRequest);
+  assert.equal(result.playbook.authority.externalAction, false);
+  assert.equal(result.playbook.outreach.sendingAuthorized, false);
+  assert.equal(result.playbook.crmReadyPacket.crmWriteAuthorized, false);
+});
+
+test("complete synthetic Responses reject mixed, remote, ambiguous, double-negative, and appended assertions across prose families", () => {
+  const cymRequest = syntheticCymbiotikaRequest();
+  const value = completeSyntheticCymbiotikaProposal(cymRequest);
+  value.salesPursuitRationale = "The proof does not guarantee reach, but guarantees ROI.";
+  value.strategy.offerRationale = "This is not the objective, and Goshsha guarantees conversion.";
+  value.strategy.desiredNextAction = "A custom implementation would require separate Founder approval and is not authorized, and Goshsha guarantees ROI.";
+  value.proofStrategy = "It is unclear whether Goshsha guarantees sales lift.";
+  value.outreach.initialMessage = "Goshsha will not fail to guarantee results.";
+  value.objections[0].response = "Use a proof rather than guaranteed audience delivery, but promise sales lift.";
+
+  assert.throws(() => normalizeCompleteSyntheticCymbiotika(value, cymRequest), (error) => {
+    assert.equal(error.code, "unsupported_commercial_promise");
+    assert.equal(error.rejectionDiagnostics.failureStage, "sales_commercial_boundary_validation");
+    assert.equal(error.rejectionDiagnostics.rawProposalRetained, false);
+    assert.equal(error.rejectionDiagnostics.findingCount >= 6, true);
+    assert.deepEqual(new Set(error.rejectionDiagnostics.findings.map((finding) => finding.fieldPath)), new Set([
+      "salesPursuitRationale",
+      "strategy.offerRationale",
+      "strategy.desiredNextAction",
+      "proofStrategy",
+      "outreach.initialMessage",
+      "objections[0].response",
+    ]));
+    assert.equal(error.rejectionDiagnostics.findings.every((finding) => finding.rawStatementRetained === false && /^[a-f0-9]{64}$/.test(finding.statementSha256)), true);
+    const reasons = new Set(error.rejectionDiagnostics.findings.map((finding) => finding.reason));
+    assert.equal(reasons.has("mixed_clause"), true);
+    assert.equal(reasons.has("remote_negation"), true);
+    assert.equal(reasons.has("ambiguous_language"), true);
+    assert.equal(reasons.has("double_negative"), true);
+    return true;
+  });
+});
+
+test("attributed source evidence stays under evidence-to-claim rules rather than recommendation-prose scanning", () => {
+  const cymRequest = syntheticCymbiotikaRequest();
+  const value = completeSyntheticCymbiotikaProposal(cymRequest);
+  value.evidence[0].supportedClaim = "Synthetic source quotation: the employer seeks retail velocity and guarantees nothing about Goshsha.";
+  const result = normalizeCompleteSyntheticCymbiotika(value, cymRequest);
+  assert.match(result.playbook.evidence[0].supportedClaim, /Synthetic source quotation/);
+  assert.equal(result.playbook.outreach.sendingAuthorized, false);
+});
+
 test("narrow rights unknowns and the exact conditional requirement remain uncertainty, not activation authority", () => {
   const unknown = proposal();
   unknown.claims.push({ id: "rights-unknown", statement: "Content rights remain unknown until verified.", classification: "unknown", evidenceRefs: [] });

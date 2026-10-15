@@ -1,10 +1,28 @@
 import type { SalesResearchProviderContext } from "./research-types";
 import { verifyCommercialPositioning } from "../commercial-positioning";
+import { getCommercialOfferCatalog } from "../crm-01/commercial-offers";
+
+const offerCatalog = getCommercialOfferCatalog();
+const [freeFirst, retailMedia, creatorNetwork] = offerCatalog.offers;
+
+if (
+  freeFirst.id !== "free-first-irl-campaign" ||
+  retailMedia.id !== "irl-retail-media-product-2" ||
+  creatorNetwork.id !== "creator-network"
+) {
+  throw new Error("Canonical commercial offer ordering or identity changed");
+}
+
+export const SALES_CANONICAL_OFFER_FACTS = {
+  freeFirst: `$${freeFirst.priceUsd} / one product / one properly licensed uploaded video / ${freeFirst.terms.activationDays} days / first ${freeFirst.terms.qualifiedViews} qualified views / proof-acquisition only`,
+  irlRetailMedia: `$${retailMedia.priceUsd} / one product / one video / ${retailMedia.terms.activationDays} days / first ${retailMedia.terms.qualifiedViews.toLocaleString("en-US")} qualified views`,
+  creatorNetwork: `${creatorNetwork.terms.trialDays}-day trial with card / then $${creatorNetwork.priceUsd}/month`,
+} as const;
 
 export const GOSHSHHA_CAPABILITY_FACTS = {
-  "cap-free-first": "Free First is $0, one product, one properly licensed uploaded video, 30 days, first 250 qualified views, and is a proof/acquisition mechanism rather than revenue.",
-  "cap-retail-media": "IRL Retail Media is $99 for one product, one video, 90 days, and the first 1,000 qualified views.",
-  "cap-creator-network": "Creator Network has a 14-day trial with card and then costs $75/month.",
+  "cap-free-first": `Free First is $${freeFirst.priceUsd}, one product, one properly licensed uploaded video, ${freeFirst.terms.activationDays} days, first ${freeFirst.terms.qualifiedViews} qualified views, and is a proof/acquisition mechanism rather than revenue.`,
+  "cap-retail-media": `IRL Retail Media is $${retailMedia.priceUsd} for one product, one video, ${retailMedia.terms.activationDays} days, and the first ${retailMedia.terms.qualifiedViews.toLocaleString("en-US")} qualified views.`,
+  "cap-creator-network": `Creator Network has a ${creatorNetwork.terms.trialDays}-day trial with card and then costs $${creatorNetwork.priceUsd}/month.`,
   "cap-retailer-independent": "Goshsha is a consumer-initiated digital layer on the shopper's own device and does not require retailer participation unless a specific workflow depends on retailer-controlled infrastructure or authorization.",
 } as const;
 

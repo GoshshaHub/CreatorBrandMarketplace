@@ -80,7 +80,22 @@ export type SalesClaimReferenceRejectionDiagnostics = {
   rawReferenceIdRetained: false;
 };
 
-export type SalesResearchRejectionDiagnostics = SalesSourceRejectionDiagnostics | SalesRightsRejectionDiagnostics | SalesClaimReferenceRejectionDiagnostics;
+export type SalesCommercialBoundaryRejectionDiagnostics = {
+  failureStage: "sales_commercial_boundary_validation";
+  findings: Array<{
+    fieldPath: string;
+    boundary: "commercial_promise" | "audience_claim";
+    reason: "affirmative_promise" | "mixed_clause" | "remote_negation" | "ambiguous_language" | "double_negative";
+    matchedCategory: "guarantee" | "discount" | "custom_scope" | "performance" | "audience" | "attribution";
+    statementSha256: string;
+    rawStatementRetained: false;
+  }>;
+  findingCount: number;
+  findingListTruncated: boolean;
+  rawProposalRetained: false;
+};
+
+export type SalesResearchRejectionDiagnostics = SalesSourceRejectionDiagnostics | SalesRightsRejectionDiagnostics | SalesClaimReferenceRejectionDiagnostics | SalesCommercialBoundaryRejectionDiagnostics;
 
 export type SalesRejectedOutputDiagnostic = {
   schemaVersion: "sales-01-rejected-output-diagnostic-v1";
