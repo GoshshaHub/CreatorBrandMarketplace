@@ -1,19 +1,15 @@
-import {
-  APPROVED_GROWTH_PROVIDER_PROJECTION_SHA256,
-  GROWTH_PROVIDER_RESEARCH_PROJECTION_VERSION,
-  PAIRED_FROZEN_GROWTH_CONTRACT_SHA256,
-} from "../growth-01/provider-research-contract";
 import { scoreGrowthCandidate } from "../growth-01/scoring";
 import type { GrowthCandidateInput, ScoredCandidate, ValidationFinding } from "../growth-01/types";
 import { validateGrowthCandidate, validateGrowthRunRequest } from "../growth-01/validation";
 import { canonicalJson, sha256Canonical } from "./canonical";
-import { verifyGrowthContractIdentity } from "./contract";
+import { classifyGrowthHandoff, GrowthHandoffCompatibilityError, meetsCurrentSalesProspectingScore, verifyGrowthSourceCompatibility } from "./growth-handoff-compatibility";
 import type {
   GrowthSalesHandoffEnvelopeV1,
   SalesContractMetadata,
   SalesIntakeFinding,
   SalesIntakeRequest,
   SalesIntakeResult,
+  GrowthSourceCompatibility,
 } from "./types";
 
 export const MAX_SALES_INTAKE_BYTES = 500_000;
@@ -47,7 +43,16 @@ function envelopeHashInput(envelope: GrowthSalesHandoffEnvelopeV1): GrowthSalesH
 }
 
 export function verifySalesEnvelopeIntegrity(envelope: GrowthSalesHandoffEnvelopeV1): boolean {
-  return envelope.candidate.candidateSha256 === sha256Canonical(envelope.candidate.completeCandidate)
+  if (!envelope || !envelope.source) return false;
+  const hasCompatibility = Object.prototype.hasOwnProperty.call(envelope.source, "compatibility");
+  const schemaValid = envelope.schemaVersion === "growth-sales-handoff-v1"
+    ? !hasCompatibility
+    : envelope.schemaVersion === "growth-sales-handoff-v1.1"
+      && hasCompatibility
+      && Boolean(envelope.source.compatibility)
+      && verifyGrowthSourceCompatibility(envelope.source.compatibility!);
+  return schemaValid
+    && envelope.candidate.candidateSha256 === sha256Canonical(envelope.candidate.completeCandidate)
     && envelope.envelope.payloadSha256 === sha256Canonical(envelopeHashInput(envelope));
 }
 
@@ -61,6 +66,7 @@ export function validateSalesIntake(params: {
   const supplied = params.input as SalesIntakeRequest | null;
   const exported = supplied?.export;
   const run = exported?.validatedRun;
+  let compatibility: GrowthSourceCompatibility | null = null;
 
   if (!exported || exported.exportVersion !== "growth-sales-export-v1") {
     findings.push(finding("export_version_invalid", "A complete growth-sales-export-v1 packet is required.", "export.exportVersion"));
@@ -72,24 +78,11 @@ export function validateSalesIntake(params: {
     findings.push(finding("growth_authority_invalid", "The source must retain the supervised, nonpersistent, non-communicating GROWTH authority boundary.", "export.validatedRun.run"));
   }
   try {
-    if (run?.contract?.sha256) {
-      verifyGrowthContractIdentity(run.contract.sha256);
-      if (run.contract.name !== "GROWTH-01" || run.contract.version !== "V1.1" || run.contract.path !== "agents/growth-01/AGENT.md") {
-        findings.push(finding("growth_contract_metadata_invalid", "The supplied GROWTH contract metadata does not identify the approved frozen contract.", "export.validatedRun.contract"));
-      }
-    }
-    else findings.push(finding("growth_contract_missing", "The frozen GROWTH-01 contract identity is required.", "export.validatedRun.contract"));
+    if (!exported) throw new GrowthHandoffCompatibilityError("source_identity_mismatch", "A complete GROWTH export is required.");
+    compatibility = classifyGrowthHandoff(exported);
   } catch (error) {
-    findings.push(finding("growth_contract_mismatch", error instanceof Error ? error.message : "The GROWTH-01 contract identity is invalid.", "export.validatedRun.contract.sha256"));
-  }
-
-  if (exported?.providerProjection) {
-    const projection = exported.providerProjection;
-    if (projection.version !== GROWTH_PROVIDER_RESEARCH_PROJECTION_VERSION
-      || projection.sha256 !== APPROVED_GROWTH_PROVIDER_PROJECTION_SHA256
-      || projection.pairedFrozenContractSha256 !== PAIRED_FROZEN_GROWTH_CONTRACT_SHA256) {
-      findings.push(finding("provider_projection_mismatch", "The provider projection is not paired to the approved frozen GROWTH contract.", "export.providerProjection"));
-    }
+    const code = error instanceof GrowthHandoffCompatibilityError ? error.code : "source_identity_mismatch";
+    findings.push(finding(`growth_compatibility_${code}`, error instanceof Error ? error.message : "The GROWTH source compatibility check failed.", "export"));
   }
   if (!exported?.authority?.exportOnly || exported.authority.founderApprovedForSales !== false
     || exported.authority.salesInvoked !== false || exported.authority.persisted !== false
@@ -111,7 +104,7 @@ export function validateSalesIntake(params: {
   const context = exported?.candidateContexts?.find((item) => item?.candidateId === supplied?.candidateId);
   if (!context) findings.push(finding("candidate_context_missing", "The selected candidate requires explicit null/unknown and claims-boundary context.", "export.candidateContexts", supplied?.candidateId));
 
-  if (run) {
+  if (run && compatibility?.sourceKind === "current") {
     findings.push(...validateGrowthRunRequest({
       asOfDate: run.run.asOfDate,
       marketFocus: run.run.marketFocus,
@@ -127,12 +120,16 @@ export function validateSalesIntake(params: {
   if (candidate) {
     const result = scoreGrowthCandidate(candidateInput(candidate));
     rescored = result.candidate;
-    findings.push(...result.findings, ...validateGrowthCandidate(result.candidate).findings);
+    findings.push(...result.findings);
+    if (compatibility?.sourceKind === "current") findings.push(...validateGrowthCandidate(result.candidate).findings);
     if (canonicalJson(result.candidate.computed) !== canonicalJson(candidate.computed)
       || canonicalJson(result.candidate.scores) !== canonicalJson(candidate.scores)
       || canonicalJson(result.candidate.deductions || {}) !== canonicalJson(candidate.deductions || {})
       || canonicalJson(result.candidate.caps || []) !== canonicalJson(candidate.caps || [])) {
       findings.push(finding("growth_score_not_preserved", "Growth score, band, breakdown, deductions, or caps changed during SALES intake.", "candidate", candidate.id));
+    }
+    if (compatibility?.sourceKind === "historical_allowlisted" && !meetsCurrentSalesProspectingScore(candidate.computed.finalScore)) {
+      findings.push(finding("historical_candidate_below_current_prospecting_threshold", "The unchanged historical score does not meet the current SALES prospecting threshold; Founder policy review is required.", "candidate.computed.finalScore", candidate.id));
     }
     if (candidate.selectionStatus !== "qualified" || candidate.handoff !== "SALES-01") {
       findings.push(finding("candidate_not_sales_qualified", "Only a qualified GROWTH candidate recommended for SALES-01 may enter this workspace.", "candidate.selectionStatus", candidate.id));
@@ -191,14 +188,14 @@ export function validateSalesIntake(params: {
     }
   }
 
-  if (!candidate || !context || !rescored || findings.some((item) => item.severity === "error")) {
+  if (!candidate || !context || !rescored || !compatibility || findings.some((item) => item.severity === "error")) {
     return { status: "validation_failed", findings, envelope: null, summaryMarkdown: "# SALES-01 Intake\n\nValidation failed. No SALES workspace was created.\n" };
   }
 
   const candidateSha256 = sha256Canonical(candidate);
   const createdAt = params.approvedAt;
   const envelopeWithoutHash: GrowthSalesHandoffEnvelopeV1 = {
-    schemaVersion: "growth-sales-handoff-v1",
+    schemaVersion: "growth-sales-handoff-v1.1",
     envelope: {
       id: `sales-intake-${candidateSha256.slice(0, 16)}`,
       createdAt,
@@ -215,6 +212,7 @@ export function validateSalesIntake(params: {
       growthExternalCommunication: false,
       growthContract: run!.contract,
       providerProjection: exported!.providerProjection,
+      compatibility,
     },
     candidate: {
       candidateId: candidate.id,

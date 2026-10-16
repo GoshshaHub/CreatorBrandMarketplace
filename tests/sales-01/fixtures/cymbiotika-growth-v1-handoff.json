@@ -1,0 +1,556 @@
+{
+  "exportVersion": "growth-sales-export-v1",
+  "exportedAt": "2026-10-13T02:20:14.487Z",
+  "validatedRun": {
+    "run": {
+      "id": "0c774c2b-8237-4dc9-ba62-19a4769a626f",
+      "requestedByUid": "S6xTvfZqs2h46reQGc6kEqHfuOq2",
+      "requestedAt": "2026-10-13T01:43:24.774Z",
+      "asOfDate": "2026-10-13",
+      "marketFocus": [
+        "supplements",
+        "vitamins",
+        "wellness_supplements",
+        "skincare",
+        "haircare",
+        "oral_care",
+        "beauty",
+        "makeup"
+      ],
+      "status": "valid",
+      "candidateCount": 3,
+      "qualifiedCount": 2,
+      "providerProposedQualifiedCount": 2,
+      "authority": "founder_supervised_preview_only",
+      "persistence": false,
+      "externalCommunication": false
+    },
+    "contract": {
+      "name": "GROWTH-01",
+      "version": "V1",
+      "path": "agents/growth-01/AGENT.md",
+      "sha256": "618b895eb97479db83edc668a32bc4db93a222429b27e2a8f6cbadc2bbb7e860",
+      "byteLength": 21864,
+      "loadedAt": "2026-10-13T01:43:24.771Z",
+      "repositoryCommit": "40269bcd2afba5fbc33786f071cbabb033d1ec96"
+    },
+    "candidates": [
+      {
+        "id": "G01-20261013-CYMBIOTIKA-WHOLEFOODS",
+        "brand": "Cymbiotika",
+        "productOrEvent": "Expansion into select Whole Foods Market stores, following recent Ulta Beauty and Target launches; proposed initial product focus: Liposomal Vitamin C or Liquid Colostrum packets.",
+        "opportunityType": "Timely Trigger",
+        "executiveSummary": "Cymbiotika has a verified multi-retailer supplement footprint and a recent Whole Foods Market expansion. Its public first-party ecosystem includes a substantial official TikTok Shop video catalog and shoppable product education, while the Brand’s Whole Foods page explains liposomal delivery and packet formats. A product scan can bridge this existing education to the physical supplement aisle with a Brand-supplied, rights-cleared explainer or routine-oriented video. The strongest commercial hypothesis is a Free First proof activation followed by multiple paid IRL Retail Media activations across an expandable retail assortment, potentially paired with Creator Network if the Brand wants to operationalize collaborators.",
+        "trigger": "A May 2026 launch into select Whole Foods Market stores extended Cymbiotika’s retail presence after recent Ulta Beauty and Target launches.",
+        "whyNow": "The retail expansion is still current as of the October 13, 2026 research date, and the Brand’s public Whole Foods destination presents product-specific education around liposomal delivery and individual packet products. This creates a timely physical discovery moment rather than a purely ecommerce use case.",
+        "retailRelevance": "Verified retail expansion includes select Whole Foods Market stores, with the Brand stating it had also recently launched at Ulta Beauty and Target. The Brand maintains a Whole Foods landing page with an in-store assortment and store-locator workflow.",
+        "creatorActivity": "Verified first-party digital-content activity is strong: Cymbiotika’s official TikTok Shop profile publicly displays 2,711 videos, and the Brand hosts shoppable live educational streams for named products including Liposomal Advanced Creatine and Liposomal Brain Complex. This verifies active product-content production; it does not verify reuse rights for any particular video.",
+        "shelfNeed": "The shelf need is material. Cymbiotika’s own Whole Foods page explains its liposomal delivery approach, packet format, and product-specific use contexts. It is a reasonable inference that an in-aisle shopper may benefit from concise format and product-context education before choosing among a multi-SKU supplement assortment; no health outcome is being independently verified or endorsed.",
+        "goshshaWedge": "Cymbiotika already produces product education and shoppable live/video content, but that context is separated from the physical Whole Foods, Target, and Ulta shopping moment. At shelf, a shopper sees a packet or carton but may not receive the Brand’s existing explanation of liposomal delivery, format, or intended routine. Goshsha can use current physically verified scanning, Product Identity v5, canonical publication, and a master playlist to place a Brand-supplied, rights-cleared product explainer on the scanned product without changing the package or requiring retailer systems.",
+        "retailerAssessment": {
+          "posture": "retailer_independent",
+          "dependencyDescription": null,
+          "evidenceIds": [
+            "CYM-E1",
+            "CYM-E2"
+          ]
+        },
+        "currentFit": "Clear current-capability fit: a shopper scans a verified physical Cymbiotika packet or carton in the iOS app and receives one or more Brand-supplied, properly licensed videos through the product’s master playlist. The proposed experience requires no unvalidated health, retail-media-network, shelf-signage, or retailer-integration capability.",
+        "recommendedOffering": "Combined",
+        "freeFirst": {
+          "recommendation": "Recommended",
+          "intendedLearningOrProofPoint": "Validate whether a concise Brand-approved explainer for one retail SKU improves the Brand’s understanding of the physical scan-and-experience moment and reveals a credible basis to extend to additional packets or formulas.",
+          "paidConversionHypothesis": "Combined path",
+          "scoreContribution": 0
+        },
+        "fastestRevenuePath": "IRL Creator Network + IRL Retail Media",
+        "revenuePathRationale": "The Brand has verified high-volume first-party video activity and a multi-product retail assortment. After a Free First proof scan, the fastest plausible paid route is one $99 IRL Retail Media activation for a second SKU or retail context plus a $75/month Creator Network trial-to-subscription if the Brand needs structured Brand/Creator collaboration. This is a commercial hypothesis, not a revenue forecast.",
+        "commercialHypothesis": "Begin with one retail-present packet SKU and a Brand-owned or properly licensed explanatory video. If the physical product scan validates the shelf-to-content bridge, expand paid activations across product-specific formulas and retail contexts; offer Creator Network only where the Brand has a real collaboration workflow to manage.",
+        "founderStagePursuitFeasibility": "Medium",
+        "feasibilityRationale": "A small, product-level pilot is technically straightforward and retailer-independent, with a clear physical retail footprint and existing content operation. However, Cymbiotika’s broad retail distribution and sophisticated content commerce presence may introduce internal brand, legal, and marketing approvals that make a near-term founder-led sale less simple than an emerging brand pilot.",
+        "confidence": "High",
+        "nextAction": "Founder-review a one-SKU outreach hypothesis centered on the Whole Foods retail expansion and a conditional Free First activation; request only a Brand-owned or properly licensed existing explainer after interest is established.",
+        "handoff": "SALES-01",
+        "knownUnknowns": [
+          "Whether Cymbiotika owns or has obtained reuse rights for a specific video suitable for Goshsha activation.",
+          "Which retail-present SKU the Brand would prioritize for a first scan experience.",
+          "Whether Brand approvals permit a pilot on products sold through Whole Foods, Target, or Ulta.",
+          "Whether Creator Network solves an active operational need rather than being an optional future product."
+        ],
+        "evidence": [
+          {
+            "id": "CYM-E1",
+            "publisher": "Cymbiotika",
+            "sourceUrl": "https://www.prnewswire.com/news-releases/cymbiotika-launches-at-select-whole-foods-market-stores-nationwide-bringing-premium-liposomal-supplements-to-the-grocery-aisle-302778553.html",
+            "sourceType": "official_brand",
+            "supportedClaim": "Cymbiotika announced its launch at select Whole Foods Market stores nationwide and stated that this followed recent launches at Ulta Beauty and Target.",
+            "classification": "verified_fact",
+            "reliability": "high",
+            "publicationDate": null,
+            "accessDate": "2026-10-13"
+          },
+          {
+            "id": "CYM-E2",
+            "publisher": "Cymbiotika",
+            "sourceUrl": "https://cymbiotika.com/pages/whole-foods",
+            "sourceType": "official_brand",
+            "supportedClaim": "Cymbiotika’s Whole Foods landing page presents an in-store assortment, a store locator, and Brand messaging explaining liposomal delivery and packet-format products.",
+            "classification": "verified_fact",
+            "reliability": "high",
+            "publicationDate": null,
+            "accessDate": "2026-10-13"
+          },
+          {
+            "id": "CYM-E3",
+            "publisher": "TikTok Shop",
+            "sourceUrl": "https://shop.tiktok.com/us/store/cymbiotika/7495203896053368882",
+            "sourceType": "direct_observation",
+            "supportedClaim": "The official Cymbiotika TikTok Shop profile publicly displays 2,711 videos and product listings for multiple Cymbiotika supplement formulas.",
+            "classification": "verified_fact",
+            "reliability": "high",
+            "publicationDate": null,
+            "accessDate": "2026-10-13"
+          },
+          {
+            "id": "CYM-E4",
+            "publisher": "Cymbiotika",
+            "sourceUrl": "https://cymbiotika.com/pages/live",
+            "sourceType": "official_brand",
+            "supportedClaim": "Cymbiotika hosts shoppable live educational content for named products, including Liposomal Advanced Creatine and Liposomal Brain Complex.",
+            "classification": "verified_fact",
+            "reliability": "high",
+            "publicationDate": null,
+            "accessDate": "2026-10-13"
+          },
+          {
+            "id": "CYM-E5",
+            "publisher": "Goshsha research assessment",
+            "sourceUrl": "https://cymbiotika.com/pages/whole-foods",
+            "sourceType": "direct_observation",
+            "supportedClaim": "It is a reasonable inference that scan-accessible product-format education could bridge a gap between Cymbiotika’s existing digital explanations and the physical supplement shelf.",
+            "classification": "reasonable_inference",
+            "reliability": "medium",
+            "publicationDate": null,
+            "accessDate": "2026-10-13"
+          }
+        ],
+        "claims": [
+          {
+            "id": "CYM-C1",
+            "claim": "Cymbiotika has a verified current physical-retail expansion opportunity across Whole Foods Market, Target, and Ulta Beauty.",
+            "material": true,
+            "evidenceIds": [
+              "CYM-E1",
+              "CYM-E2"
+            ]
+          },
+          {
+            "id": "CYM-C2",
+            "claim": "Cymbiotika has verified active first-party product-video and live-commerce activity that could provide a conditional content source for a future activation.",
+            "material": true,
+            "evidenceIds": [
+              "CYM-E3",
+              "CYM-E4"
+            ]
+          },
+          {
+            "id": "CYM-C3",
+            "claim": "A scan-based explanation of liposomal delivery and packet-format product context is an evidence-supported Goshsha wedge, subject to Brand content-rights confirmation.",
+            "material": true,
+            "evidenceIds": [
+              "CYM-E2",
+              "CYM-E5"
+            ]
+          }
+        ],
+        "scores": {
+          "physicalRetailRelevance": 18,
+          "currentTimelyTrigger": 8,
+          "creatorContentActivity": 15,
+          "shelfEducationNeed": 15,
+          "currentGoshshaFit": 12,
+          "commercialRepeatablePotential": 10,
+          "practicalActionability": 4,
+          "evidenceQualityCompleteness": 9
+        },
+        "deductions": {
+          "unresolvedRightsAssumption": 10
+        },
+        "caps": [],
+        "claimedGrossScore": 91,
+        "claimedFinalScore": 81,
+        "claimedBand": "Immediate Priority",
+        "selectionStatus": "qualified",
+        "benchmarkFixture": false,
+        "computed": {
+          "grossScore": 91,
+          "deductionTotal": 10,
+          "scoreBeforeCap": 81,
+          "applicableCap": null,
+          "finalScore": 81,
+          "band": "Immediate Priority"
+        }
+      },
+      {
+        "id": "G01-20261013-CONCRET-TARGET-CVS",
+        "brand": "CON-CRĒT",
+        "productOrEvent": "September 2026 expansion of CON-CRĒT Creatine HCl capsules and powder into most Target and CVS stores; proposed initial product focus: CON-CRĒT HCl Capsules or Pineapple-flavored HCl Powder.",
+        "opportunityType": "Timely Trigger",
+        "executiveSummary": "CON-CRĒT’s recent expansion to Target and CVS is a current physical-retail trigger with a specifically articulated shelf-education problem: the Brand says consumers may not understand differences between creatine forms. A Goshsha scan can conditionally surface a short, Brand-supplied comparison or usage-format explainer on the exact physical product, without package changes or retailer infrastructure. The immediate paid destination is a $99 IRL Retail Media activation after a Free First proof, with later multi-SKU expansion possible if product-specific content and rights are confirmed.",
+        "trigger": "CON-CRĒT announced a major September 2026 retail rollout into most Target and CVS stores, including a specified Target assortment.",
+        "whyNow": "The expansion occurred within weeks of the October 13, 2026 research date and explicitly pairs widened accessibility with a stated need to educate mainstream shoppers about product-form differences.",
+        "retailRelevance": "The Brand announced availability in most Target and CVS stores, including Target distribution for HCl Capsules in 785 stores and a flavored powder assortment. This is specific physical-retail presence and a named product use case.",
+        "creatorActivity": "Public evidence supports a limited generic score only: CON-CRĒT’s retail-expansion release directs audiences to Brand Instagram and TikTok accounts. Sustained product-specific posting or a Creator program was not independently verified from a first-party content library in this research.",
+        "shelfNeed": "The Brand itself frames consumer understanding of different creatine forms as a retail-education issue. It is a reasonable inference that a product scan could offer a concise, Brand-approved format explainer at the moment a shopper encounters capsules or powder on shelf. This does not independently validate any product, performance, dosage, or health claim.",
+        "goshshaWedge": "CON-CRĒT’s current retail launch moves a historically performance-associated format into mainstream Target and CVS discovery, while the Brand says shoppers may not understand differences between forms. Existing package presence alone cannot deliver a concise digital explainer or visual product-format context at the moment of selection. Goshsha can connect the physical capsule or powder product to a Brand-supplied, rights-cleared video using target-image OCR, Product Identity v5, canonical publication, and physically verified production scanning—without shelf changes, store-system access, or retailer participation.",
+        "retailerAssessment": {
+          "posture": "retailer_independent",
+          "dependencyDescription": null,
+          "evidenceIds": [
+            "CON-E1"
+          ]
+        },
+        "currentFit": "Specific current-capability fit: activate one Brand-owned or properly licensed explainer video on one physical CON-CRĒT HCl SKU. The product is already in a current physical-retail rollout, and the proposal does not depend on unimplemented health advice, package modification, retailer media inventory, or retail API access.",
+        "recommendedOffering": "IRL Retail Media",
+        "freeFirst": {
+          "recommendation": "Recommended",
+          "intendedLearningOrProofPoint": "Validate whether shoppers and the Brand see value in a scan-triggered, concise explanation of the exact HCl capsule or powder format at the new mass-retail shelf moment.",
+          "paidConversionHypothesis": "Product 2",
+          "scoreContribution": 0
+        },
+        "fastestRevenuePath": "$99 IRL Retail Media activation",
+        "revenuePathRationale": "The narrowest commercial next step is one paid, 90-day activation on a second product or a first paid SKU after Free First validates the scan experience. Public evidence supports a specific capsule/powder retail use case but does not establish an existing Creator-collaboration operation that would make Creator Network the fastest path.",
+        "commercialHypothesis": "Use a Free First scan experience for either HCl Capsules or Pineapple HCl Powder with a Brand-supplied, rights-cleared format explainer. If the Brand validates the shelf use, convert the next SKU or product-format explainer into a $99 IRL Retail Media activation.",
+        "founderStagePursuitFeasibility": "Medium",
+        "feasibilityRationale": "The narrow product-level activation is operationally simple and does not require retailer integration. The recent expansion provides an immediate conversation anchor, but distribution across Target and CVS and Brand claims/legal review around a supplement education video may create meaningful approval friction.",
+        "confidence": "Medium",
+        "nextAction": "Founder-review a single-SKU, conditional Free First proposal framed strictly as consumer orientation to the product format; do not repeat, validate, or expand health/performance claims. Obtain confirmation of a Brand-owned or properly licensed video only after interest is established.",
+        "handoff": "SALES-01",
+        "knownUnknowns": [
+          "Whether CON-CRĒT has Brand-owned or properly licensed product-format video content eligible for Goshsha activation.",
+          "Whether the Brand’s current social accounts contain suitable product-specific education rather than only general promotional content.",
+          "Which current Target or CVS SKU has the highest priority for a first pilot.",
+          "Whether legal/marketing approval would allow a concise comparison-oriented retail explainer."
+        ],
+        "evidence": [
+          {
+            "id": "CON-E1",
+            "publisher": "CON-CRĒT",
+            "sourceUrl": "https://www.prnewswire.com/news-releases/con-crt-creatine-hcl-rolls-out-major-retail-expansion-into-target-and-cvs-302887005.html",
+            "sourceType": "official_brand",
+            "supportedClaim": "CON-CRĒT announced a September 2026 expansion into most Target and CVS stores, with Target HCl Capsule distribution in 785 stores and a flavored HCl powder product.",
+            "classification": "verified_fact",
+            "reliability": "high",
+            "publicationDate": null,
+            "accessDate": "2026-10-13"
+          },
+          {
+            "id": "CON-E2",
+            "publisher": "CON-CRĒT",
+            "sourceUrl": "https://www.prnewswire.com/news-releases/con-crt-creatine-hcl-rolls-out-major-retail-expansion-into-target-and-cvs-302887005.html",
+            "sourceType": "official_brand",
+            "supportedClaim": "CON-CRĒT stated that consumers may not realize that different forms of creatine exist and described the expansion as an opportunity to educate consumers.",
+            "classification": "verified_fact",
+            "reliability": "high",
+            "publicationDate": null,
+            "accessDate": "2026-10-13"
+          },
+          {
+            "id": "CON-E3",
+            "publisher": "CON-CRĒT",
+            "sourceUrl": "https://www.prnewswire.com/news-releases/con-crt-creatine-hcl-rolls-out-major-retail-expansion-into-target-and-cvs-302887005.html",
+            "sourceType": "official_brand",
+            "supportedClaim": "The retail-expansion release directs audiences to CON-CRĒT’s Instagram and TikTok accounts.",
+            "classification": "verified_fact",
+            "reliability": "medium",
+            "publicationDate": null,
+            "accessDate": "2026-10-13"
+          },
+          {
+            "id": "CON-E4",
+            "publisher": "Goshsha research assessment",
+            "sourceUrl": "https://www.prnewswire.com/news-releases/con-crt-creatine-hcl-rolls-out-major-retail-expansion-into-target-and-cvs-302887005.html",
+            "sourceType": "direct_observation",
+            "supportedClaim": "It is a reasonable inference that a scan-accessible Brand explainer can address the stated form-difference education gap at the shelf, provided the Brand supplies or clears the content.",
+            "classification": "reasonable_inference",
+            "reliability": "medium",
+            "publicationDate": null,
+            "accessDate": "2026-10-13"
+          }
+        ],
+        "claims": [
+          {
+            "id": "CON-C1",
+            "claim": "CON-CRĒT has a very recent, verified physical-retail expansion with named Target and CVS product use cases.",
+            "material": true,
+            "evidenceIds": [
+              "CON-E1"
+            ]
+          },
+          {
+            "id": "CON-C2",
+            "claim": "The Brand’s own retail-launch messaging identifies a consumer education gap around creatine forms.",
+            "material": true,
+            "evidenceIds": [
+              "CON-E2"
+            ]
+          },
+          {
+            "id": "CON-C3",
+            "claim": "A one-product scan activation is a current-capability, retailer-independent response to that education gap, conditional on content-rights confirmation.",
+            "material": true,
+            "evidenceIds": [
+              "CON-E1",
+              "CON-E2",
+              "CON-E4"
+            ]
+          }
+        ],
+        "scores": {
+          "physicalRetailRelevance": 14,
+          "currentTimelyTrigger": 15,
+          "creatorContentActivity": 4,
+          "shelfEducationNeed": 15,
+          "currentGoshshaFit": 12,
+          "commercialRepeatablePotential": 6,
+          "practicalActionability": 4,
+          "evidenceQualityCompleteness": 7
+        },
+        "deductions": {
+          "unresolvedRightsAssumption": 10
+        },
+        "caps": [],
+        "claimedGrossScore": 77,
+        "claimedFinalScore": 67,
+        "claimedBand": "Strong Opportunity",
+        "selectionStatus": "qualified",
+        "benchmarkFixture": false,
+        "computed": {
+          "grossScore": 77,
+          "deductionTotal": 10,
+          "scoreBeforeCap": 67,
+          "applicableCap": null,
+          "finalScore": 67,
+          "band": "Strong Opportunity"
+        }
+      },
+      {
+        "id": "G01-20261013-K2O-TARGET",
+        "brand": "k2o",
+        "productOrEvent": "August 2026 nationwide Target launch of Advanced Skin Hydration Mix in Strawberry Lychee, Peach, Watermelon Lime, and Variety Pack formats.",
+        "opportunityType": "Timely Trigger",
+        "executiveSummary": "k2o’s first brick-and-mortar partnership is a current nationwide Target launch for a new beauty-wellness hydration-mix product. The Brand’s official product page frames the format through a simple “mix, sip, glow” routine and points to the @drinkk2o social presence. A Goshsha scan could conditionally play a short Brand-supplied preparation and product-context video at the physical package. The opportunity is watch-status rather than qualified because public evidence of sustained product-specific video production and rights-cleared reusable content is incomplete.",
+        "trigger": "k2o’s first in-store retail partnership launched at Target nationwide in late August 2026.",
+        "whyNow": "The debut is recent relative to the October 13, 2026 research date, is explicitly the Brand’s first brick-and-mortar retail partnership, and brings a new product format from digital commerce into an in-store discovery context.",
+        "retailRelevance": "k2o announced that Advanced Skin Hydration Mix is available at most Target stores nationwide and on Target.com. The launch includes multiple flavors and a variety pack, giving a specific physical-product use case.",
+        "creatorActivity": "Limited first-party digital activity is verified: k2o’s official product page includes the @drinkk2o social handle and a routine-oriented product presentation. However, this research did not verify sustained creator partnerships, a first-party video library, or reusable content rights for a particular asset.",
+        "shelfNeed": "The mix format requires a shopper to connect a small hydration stick pack to an at-home preparation and daily-routine concept. It is a reasonable inference that a short visual preparation/context video could aid product understanding at shelf. The Brand’s ingredient and benefit language is treated only as attributed Brand messaging, not independently validated.",
+        "goshshaWedge": "k2o is moving a digitally native, routine-led hydration/beauty concept into Target for the first time. The physical packet communicates less than a video demonstration can about mixing, flavor choice, and the Brand’s intended routine. Goshsha can make a Brand-supplied, rights-cleared preparation or routine video scan-accessible from the exact product, using existing-product matching, Product Identity v5, canonical publication, and the master playlist, while leaving the package and retailer environment unchanged.",
+        "retailerAssessment": {
+          "posture": "retailer_independent",
+          "dependencyDescription": null,
+          "evidenceIds": [
+            "K2O-E1",
+            "K2O-E2"
+          ]
+        },
+        "currentFit": "Clear technical fit for a one-product, one-video activation on the retail-present mix. Commercial fit remains provisional because specific Brand-owned or licensed video availability has not been verified.",
+        "recommendedOffering": "Free First IRL Campaign",
+        "freeFirst": {
+          "recommendation": "Recommended",
+          "intendedLearningOrProofPoint": "Validate whether a scan-triggered mix/preparation or routine video makes the new Target shelf product more understandable to the Brand at its first in-store retail moment.",
+          "paidConversionHypothesis": "Product 2",
+          "scoreContribution": 0
+        },
+        "fastestRevenuePath": "$99 IRL Retail Media activation",
+        "revenuePathRationale": "If the Brand has an eligible preparation or routine video, the simplest paid follow-on is a $99 activation for another flavor, variety pack, or refreshed product-specific video. Public evidence does not yet support Creator Network as the fastest route.",
+        "commercialHypothesis": "Use a conditional Free First activation on one Target-present flavor or variety pack. If Brand scanning validates the new shelf-to-routine bridge, convert a second flavor, a second retail SKU, or an updated routine video into paid IRL Retail Media.",
+        "founderStagePursuitFeasibility": "Medium",
+        "feasibilityRationale": "The first retail launch and one-SKU pilot create a focused entry point without retailer integration. However, the Brand’s high-profile founder association, new-brand operating model, and unverified content-rights position could create internal approval and access friction.",
+        "confidence": "Medium",
+        "nextAction": "Keep in Watch until public or Brand-supplied evidence confirms an eligible Brand-owned or properly licensed product-preparation/routine video and a practical small-pilot approval path; then rescore creator activity, evidence completeness, and rights deduction.",
+        "handoff": "Watch",
+        "knownUnknowns": [
+          "Whether k2o has a specific Brand-owned or properly licensed video that may be activated on Goshsha.",
+          "Whether the Brand runs a sustained creator or influencer program around Advanced Skin Hydration Mix.",
+          "Which flavor or variety pack is physically available in the highest-priority Target locations.",
+          "Whether a small pilot can be approved independently of the broader Target launch campaign."
+        ],
+        "evidence": [
+          {
+            "id": "K2O-E1",
+            "publisher": "k2o",
+            "sourceUrl": "https://www.prnewswire.com/news-releases/k2o-launches-at-target-nationwide-marking-the-brands-first-brick-and-mortar-retail-partnership-302860661.html",
+            "sourceType": "official_brand",
+            "supportedClaim": "k2o announced its first brick-and-mortar retail partnership at Target, with Advanced Skin Hydration Mix available at most Target stores nationwide in multiple flavors and a variety pack.",
+            "classification": "verified_fact",
+            "reliability": "high",
+            "publicationDate": null,
+            "accessDate": "2026-10-13"
+          },
+          {
+            "id": "K2O-E2",
+            "publisher": "k2o",
+            "sourceUrl": "https://k2o.com/pages/drinkable-skincare",
+            "sourceType": "official_brand",
+            "supportedClaim": "k2o’s official product page presents a routine-oriented “mix, sip, glow” framing for the hydration mix and identifies the @drinkk2o social handle.",
+            "classification": "verified_fact",
+            "reliability": "high",
+            "publicationDate": null,
+            "accessDate": "2026-10-13"
+          },
+          {
+            "id": "K2O-E3",
+            "publisher": "Goshsha research assessment",
+            "sourceUrl": "https://k2o.com/pages/drinkable-skincare",
+            "sourceType": "direct_observation",
+            "supportedClaim": "It is a reasonable inference that a scan-accessible preparation or routine video could bridge the physical stick-pack format and the Brand’s intended product-use context, subject to rights confirmation.",
+            "classification": "reasonable_inference",
+            "reliability": "medium",
+            "publicationDate": null,
+            "accessDate": "2026-10-13"
+          }
+        ],
+        "claims": [
+          {
+            "id": "K2O-C1",
+            "claim": "k2o has a current and verified nationwide physical-retail entry at Target for a specific hydration-mix product.",
+            "material": true,
+            "evidenceIds": [
+              "K2O-E1"
+            ]
+          },
+          {
+            "id": "K2O-C2",
+            "claim": "The product has a routine-oriented digital presentation that creates a plausible shelf-to-video context gap.",
+            "material": true,
+            "evidenceIds": [
+              "K2O-E2",
+              "K2O-E3"
+            ]
+          },
+          {
+            "id": "K2O-C3",
+            "claim": "A current-capability Goshsha pilot is technically plausible but requires later confirmation of a specific eligible video and rights.",
+            "material": true,
+            "evidenceIds": [
+              "K2O-E1",
+              "K2O-E3"
+            ]
+          }
+        ],
+        "scores": {
+          "physicalRetailRelevance": 14,
+          "currentTimelyTrigger": 12,
+          "creatorContentActivity": 4,
+          "shelfEducationNeed": 12,
+          "currentGoshshaFit": 12,
+          "commercialRepeatablePotential": 6,
+          "practicalActionability": 4,
+          "evidenceQualityCompleteness": 7
+        },
+        "deductions": {
+          "unresolvedRightsAssumption": 10
+        },
+        "caps": [],
+        "claimedGrossScore": 71,
+        "claimedFinalScore": 61,
+        "claimedBand": "Watch",
+        "selectionStatus": "watch",
+        "benchmarkFixture": false,
+        "computed": {
+          "grossScore": 71,
+          "deductionTotal": 10,
+          "scoreBeforeCap": 61,
+          "applicableCap": null,
+          "finalScore": 61,
+          "band": "Watch"
+        }
+      }
+    ],
+    "findings": [],
+    "dailyBriefMarkdown": "# GROWTH-01 Daily Brief — 2026-10-13\n\n**Validation status:** Valid\n**Qualified / Immediate / Strong / Structural / Watch:** 2 / 1 / 1 / 0 / 1\n**Founder decisions:** Review qualified opportunities for SALES-01 handoff\n**Market pattern:** Recent U.S. supplement and wellness retail entries at Target, CVS, and Whole Foods create shelf-discovery moments where format, routine, and product-selection context can be lost between a Brand’s existing digital education and an in-store package scan. The strongest current pattern is a retail-expanding Brand with an explainable product format and observable first-party digital education—not merely social reach.\n\n### Cymbiotika — Expansion into select Whole Foods Market stores, following recent Ulta Beauty and Target launches; proposed initial product focus: Liposomal Vitamin C or Liquid Colostrum packets.\n\n**Score/Band/Confidence:** 81/100 / Immediate Priority / High\n**Founder-Stage Pursuit Feasibility:** Medium\n**Feasibility rationale:** A small, product-level pilot is technically straightforward and retailer-independent, with a clear physical retail footprint and existing content operation. However, Cymbiotika’s broad retail distribution and sophisticated content commerce presence may introduce internal brand, legal, and marketing approvals that make a near-term founder-led sale less simple than an emerging brand pilot.\n**Opportunity type:** Timely Trigger\n**Trigger:** A May 2026 launch into select Whole Foods Market stores extended Cymbiotika’s retail presence after recent Ulta Beauty and Target launches.\n**Why now:** The retail expansion is still current as of the October 13, 2026 research date, and the Brand’s public Whole Foods destination presents product-specific education around liposomal delivery and individual packet products. This creates a timely physical discovery moment rather than a purely ecommerce use case.\n**Goshsha Wedge:** Cymbiotika already produces product education and shoppable live/video content, but that context is separated from the physical Whole Foods, Target, and Ulta shopping moment. At shelf, a shopper sees a packet or carton but may not receive the Brand’s existing explanation of liposomal delivery, format, or intended routine. Goshsha can use current physically verified scanning, Product Identity v5, canonical publication, and a master playlist to place a Brand-supplied, rights-cleared product explainer on the scanned product without changing the package or requiring retailer systems.\n**Retailer independence / Evidence-supported dependency:** Retailer-independent\n**Recommended offering:** Combined\n**Free First acquisition role:** Recommended\n**Intended learning or proof point:** Validate whether a concise Brand-approved explainer for one retail SKU improves the Brand’s understanding of the physical scan-and-experience moment and reveals a credible basis to extend to additional packets or formulas.\n**Paid conversion hypothesis:** Combined path\n**Fastest Revenue Path:** IRL Creator Network + IRL Retail Media\n**Revenue-path rationale:** The Brand has verified high-volume first-party video activity and a multi-product retail assortment. After a Free First proof scan, the fastest plausible paid route is one $99 IRL Retail Media activation for a second SKU or retail context plus a $75/month Creator Network trial-to-subscription if the Brand needs structured Brand/Creator collaboration. This is a commercial hypothesis, not a revenue forecast.\n**Evidence strength / Known gap:** High; Whether Cymbiotika owns or has obtained reuse rights for a specific video suitable for Goshsha activation.; Which retail-present SKU the Brand would prioritize for a first scan experience.; Whether Brand approvals permit a pilot on products sold through Whole Foods, Target, or Ulta.; Whether Creator Network solves an active operational need rather than being an optional future product.\n**Next action / Handoff:** SALES-01 — Founder-review a one-SKU outreach hypothesis centered on the Whole Foods retail expansion and a conditional Free First activation; request only a Brand-owned or properly licensed existing explainer after interest is established.\n**Scoring:** gross 91; deductions 10; cap none; final 81\n**Key sources:**\n- Cymbiotika — Published: Unknown — Accessed: 2026-10-13 — Cymbiotika announced its launch at select Whole Foods Market stores nationwide and stated that this followed recent launches at Ulta Beauty and Target. — https://www.prnewswire.com/news-releases/cymbiotika-launches-at-select-whole-foods-market-stores-nationwide-bringing-premium-liposomal-supplements-to-the-grocery-aisle-302778553.html\n- Cymbiotika — Published: Unknown — Accessed: 2026-10-13 — Cymbiotika’s Whole Foods landing page presents an in-store assortment, a store locator, and Brand messaging explaining liposomal delivery and packet-format products. — https://cymbiotika.com/pages/whole-foods\n- TikTok Shop — Published: Unknown — Accessed: 2026-10-13 — The official Cymbiotika TikTok Shop profile publicly displays 2,711 videos and product listings for multiple Cymbiotika supplement formulas. — https://shop.tiktok.com/us/store/cymbiotika/7495203896053368882\n- Cymbiotika — Published: Unknown — Accessed: 2026-10-13 — Cymbiotika hosts shoppable live educational content for named products, including Liposomal Advanced Creatine and Liposomal Brain Complex. — https://cymbiotika.com/pages/live\n- Goshsha research assessment — Published: Unknown — Accessed: 2026-10-13 — It is a reasonable inference that scan-accessible product-format education could bridge a gap between Cymbiotika’s existing digital explanations and the physical supplement shelf. — https://cymbiotika.com/pages/whole-foods\n\n### CON-CRĒT — September 2026 expansion of CON-CRĒT Creatine HCl capsules and powder into most Target and CVS stores; proposed initial product focus: CON-CRĒT HCl Capsules or Pineapple-flavored HCl Powder.\n\n**Score/Band/Confidence:** 67/100 / Strong Opportunity / Medium\n**Founder-Stage Pursuit Feasibility:** Medium\n**Feasibility rationale:** The narrow product-level activation is operationally simple and does not require retailer integration. The recent expansion provides an immediate conversation anchor, but distribution across Target and CVS and Brand claims/legal review around a supplement education video may create meaningful approval friction.\n**Opportunity type:** Timely Trigger\n**Trigger:** CON-CRĒT announced a major September 2026 retail rollout into most Target and CVS stores, including a specified Target assortment.\n**Why now:** The expansion occurred within weeks of the October 13, 2026 research date and explicitly pairs widened accessibility with a stated need to educate mainstream shoppers about product-form differences.\n**Goshsha Wedge:** CON-CRĒT’s current retail launch moves a historically performance-associated format into mainstream Target and CVS discovery, while the Brand says shoppers may not understand differences between forms. Existing package presence alone cannot deliver a concise digital explainer or visual product-format context at the moment of selection. Goshsha can connect the physical capsule or powder product to a Brand-supplied, rights-cleared video using target-image OCR, Product Identity v5, canonical publication, and physically verified production scanning—without shelf changes, store-system access, or retailer participation.\n**Retailer independence / Evidence-supported dependency:** Retailer-independent\n**Recommended offering:** IRL Retail Media\n**Free First acquisition role:** Recommended\n**Intended learning or proof point:** Validate whether shoppers and the Brand see value in a scan-triggered, concise explanation of the exact HCl capsule or powder format at the new mass-retail shelf moment.\n**Paid conversion hypothesis:** Product 2\n**Fastest Revenue Path:** $99 IRL Retail Media activation\n**Revenue-path rationale:** The narrowest commercial next step is one paid, 90-day activation on a second product or a first paid SKU after Free First validates the scan experience. Public evidence supports a specific capsule/powder retail use case but does not establish an existing Creator-collaboration operation that would make Creator Network the fastest path.\n**Evidence strength / Known gap:** Medium; Whether CON-CRĒT has Brand-owned or properly licensed product-format video content eligible for Goshsha activation.; Whether the Brand’s current social accounts contain suitable product-specific education rather than only general promotional content.; Which current Target or CVS SKU has the highest priority for a first pilot.; Whether legal/marketing approval would allow a concise comparison-oriented retail explainer.\n**Next action / Handoff:** SALES-01 — Founder-review a single-SKU, conditional Free First proposal framed strictly as consumer orientation to the product format; do not repeat, validate, or expand health/performance claims. Obtain confirmation of a Brand-owned or properly licensed video only after interest is established.\n**Scoring:** gross 77; deductions 10; cap none; final 67\n**Key sources:**\n- CON-CRĒT — Published: Unknown — Accessed: 2026-10-13 — CON-CRĒT announced a September 2026 expansion into most Target and CVS stores, with Target HCl Capsule distribution in 785 stores and a flavored HCl powder product. — https://www.prnewswire.com/news-releases/con-crt-creatine-hcl-rolls-out-major-retail-expansion-into-target-and-cvs-302887005.html\n- CON-CRĒT — Published: Unknown — Accessed: 2026-10-13 — CON-CRĒT stated that consumers may not realize that different forms of creatine exist and described the expansion as an opportunity to educate consumers. — https://www.prnewswire.com/news-releases/con-crt-creatine-hcl-rolls-out-major-retail-expansion-into-target-and-cvs-302887005.html\n- CON-CRĒT — Published: Unknown — Accessed: 2026-10-13 — The retail-expansion release directs audiences to CON-CRĒT’s Instagram and TikTok accounts. — https://www.prnewswire.com/news-releases/con-crt-creatine-hcl-rolls-out-major-retail-expansion-into-target-and-cvs-302887005.html\n- Goshsha research assessment — Published: Unknown — Accessed: 2026-10-13 — It is a reasonable inference that a scan-accessible Brand explainer can address the stated form-difference education gap at the shelf, provided the Brand supplies or clears the content. — https://www.prnewswire.com/news-releases/con-crt-creatine-hcl-rolls-out-major-retail-expansion-into-target-and-cvs-302887005.html\n\n## Watch / Rescore\n- k2o — August 2026 nationwide Target launch of Advanced Skin Hydration Mix in Strawberry Lychee, Peach, Watermelon Lime, and Variety Pack formats.: Keep in Watch until public or Brand-supplied evidence confirms an eligible Brand-owned or properly licensed product-preparation/routine video and a practical small-pilot approval path; then rescore creator activity, evidence completeness, and rights deduction.\n"
+  },
+  "providerProjection": {
+    "version": "growth-01-provider-research-v2.1",
+    "sha256": "97fc50693bfb4b99c10642042512d91b27885525ebc373c29ff06990b79d0280",
+    "pairedFrozenContractVersion": "V1",
+    "pairedFrozenContractSha256": "618b895eb97479db83edc668a32bc4db93a222429b27e2a8f6cbadc2bbb7e860"
+  },
+  "candidateContexts": [
+    {
+      "candidateId": "G01-20261013-CYMBIOTIKA-WHOLEFOODS",
+      "triggerDate": {
+        "value": null,
+        "provenance": "unknown"
+      },
+      "physicalScanExperience": {
+        "value": null,
+        "provenance": "unknown"
+      },
+      "boundarySnapshot": {
+        "rightsStatus": "unknown",
+        "rightsEvidenceIds": [],
+        "regulatedClaims": [],
+        "retailerAuthorizationClaimed": false,
+        "buyerAuthorityKnown": false,
+        "budgetKnown": false,
+        "purchaseIntentKnown": false,
+        "timingCommitmentKnown": false,
+        "unsupportedCapabilityIntroduced": false
+      }
+    },
+    {
+      "candidateId": "G01-20261013-CONCRET-TARGET-CVS",
+      "triggerDate": {
+        "value": null,
+        "provenance": "unknown"
+      },
+      "physicalScanExperience": {
+        "value": null,
+        "provenance": "unknown"
+      },
+      "boundarySnapshot": {
+        "rightsStatus": "unknown",
+        "rightsEvidenceIds": [],
+        "regulatedClaims": [],
+        "retailerAuthorizationClaimed": false,
+        "buyerAuthorityKnown": false,
+        "budgetKnown": false,
+        "purchaseIntentKnown": false,
+        "timingCommitmentKnown": false,
+        "unsupportedCapabilityIntroduced": false
+      }
+    },
+    {
+      "candidateId": "G01-20261013-K2O-TARGET",
+      "triggerDate": {
+        "value": null,
+        "provenance": "unknown"
+      },
+      "physicalScanExperience": {
+        "value": null,
+        "provenance": "unknown"
+      },
+      "boundarySnapshot": {
+        "rightsStatus": "unknown",
+        "rightsEvidenceIds": [],
+        "regulatedClaims": [],
+        "retailerAuthorizationClaimed": false,
+        "buyerAuthorityKnown": false,
+        "budgetKnown": false,
+        "purchaseIntentKnown": false,
+        "timingCommitmentKnown": false,
+        "unsupportedCapabilityIntroduced": false
+      }
+    }
+  ],
+  "authority": {
+    "exportOnly": true,
+    "founderApprovedForSales": false,
+    "salesInvoked": false,
+    "persisted": false,
+    "downstreamInvoked": false,
+    "externalAction": false
+  }
+}

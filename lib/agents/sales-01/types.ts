@@ -68,6 +68,16 @@ export type GrowthSalesExportV1 = {
   };
 };
 
+export type GrowthSourceCompatibility = {
+  policyVersion: "sales-01-growth-handoff-intake-policy-v1";
+  policySha256: string;
+  sourceKind: "current" | "historical_allowlisted";
+  reviewedSourceFileIdentitySha256: string | null;
+  submittedCanonicalSha256: string;
+  historicalSemanticsPreserved: boolean;
+  currentProspectingEligibilityEvaluated: true;
+};
+
 export type SalesIntakeRequest = {
   export: GrowthSalesExportV1;
   candidateId: string;
@@ -80,7 +90,7 @@ export type SalesIntakeRequest = {
 export type SalesIntakeFinding = ValidationFinding;
 
 export type GrowthSalesHandoffEnvelopeV1 = Readonly<{
-  schemaVersion: "growth-sales-handoff-v1";
+  schemaVersion: "growth-sales-handoff-v1" | "growth-sales-handoff-v1.1";
   envelope: {
     id: string;
     createdAt: string;
@@ -97,6 +107,7 @@ export type GrowthSalesHandoffEnvelopeV1 = Readonly<{
     growthExternalCommunication: false;
     growthContract: ContractMetadata;
     providerProjection: GrowthProviderProjectionMetadata | null;
+    compatibility?: GrowthSourceCompatibility;
   };
   candidate: {
     candidateId: string;

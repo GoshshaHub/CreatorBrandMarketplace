@@ -233,6 +233,7 @@ export function validateSalesResearchRequest(value: unknown): string[] {
   const input = value as Partial<SalesResearchRequest>; const errors: string[] = [];
   if (input.founderAuthorization?.authorized !== true || input.founderAuthorization.scope !== "one_sales_research_run") errors.push("Separate Founder authorization for one SALES research run is required.");
   if (!input.envelope || !verifySalesEnvelopeIntegrity(input.envelope) || input.envelope.authority.salesPreparationAuthorized !== true) errors.push("A current valid Phase 1A envelope is required.");
+  if (input.envelope?.schemaVersion !== "growth-sales-handoff-v1.1") errors.push("New SALES research requires a growth-sales-handoff-v1.1 envelope with current compatibility metadata; legacy v1 envelopes are read-only.");
   if (input.envelope?.salesContract?.sha256 !== APPROVED_SALES_CONTRACT_SHA256 || input.envelope?.salesContract?.version !== "V1.4") errors.push("The Phase 1A envelope is not paired to SALES V1.4.");
   if (input.budgetAuthority?.confirmedByFounder !== true) errors.push("Founder spending confirmation is required.");
   if (!Number.isFinite(input.budgetAuthority?.salesMonthSpendUsd) || Number(input.budgetAuthority?.salesMonthSpendUsd) < 0) errors.push("Current SALES calendar-month spend is required.");
