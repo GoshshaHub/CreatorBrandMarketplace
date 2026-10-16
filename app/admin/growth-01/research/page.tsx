@@ -143,9 +143,9 @@ export default function GrowthLiveResearchPage() {
     const packet = createGrowthSalesExport({
       validatedRun: validation as ValidatedGrowthRun,
       providerProjection: research?.providerProjection ? ({
-        version: research.providerProjection.version as "growth-01-provider-research-v2.1",
+        version: research.providerProjection.version as "growth-01-provider-research-v2.2",
         sha256: research.providerProjection.sha256,
-        pairedFrozenContractVersion: research.providerProjection.pairedFrozenContractVersion as "V1",
+        pairedFrozenContractVersion: research.providerProjection.pairedFrozenContractVersion as "V1.1",
         pairedFrozenContractSha256: research.providerProjection.pairedFrozenContractSha256,
       } as GrowthProviderProjectionMetadata) : null,
     });

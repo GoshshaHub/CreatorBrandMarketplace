@@ -9,10 +9,10 @@ import {
   verifySalesContractContents,
 } from "../../lib/agents/sales-01/contract.ts";
 
-test("SALES V1.3 contract is pinned and contains the approved positioning, claims, and contact discipline", async () => {
+test("SALES V1.4 contract is pinned and separates prospecting from fulfillment", async () => {
   const metadata = await loadSalesContractMetadata(new Date("2026-09-24T12:00:00.000Z"));
   const contract = await readFile("agents/sales-01/AGENT.md", "utf8");
-  assert.equal(metadata.version, "V1.3");
+  assert.equal(metadata.version, "V1.4");
   assert.equal(metadata.sha256, APPROVED_SALES_CONTRACT_SHA256);
   assert.match(contract, /must not independently originate, verify, endorse, or adopt as Goshsha claims any medical, therapeutic/);
   assert.match(contract, /Creator testimonials, reviews, popularity, retail presence, Creator activity, sponsorship, or Brand use do not establish product efficacy, safety, or regulatory compliance/);
@@ -25,6 +25,7 @@ test("SALES V1.3 contract is pinned and contains the approved positioning, claim
   assert.match(contract, /goshsha-commercial-positioning-v1/);
   assert.match(contract, /How many users does Goshsha have/);
   assert.match(contract, /qualified-view entitlement as guaranteed delivered audience/);
+  assert.match(contract, /content rights, asset selection, upload, publication, and activation readiness unknown/);
 });
 
 test("empty or one-byte-mutated SALES contracts fail closed", async () => {

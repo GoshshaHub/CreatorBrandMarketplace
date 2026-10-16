@@ -15,7 +15,7 @@ export async function loadGrowthContractMetadata(now = new Date()): Promise<Cont
 
   return {
     name: "GROWTH-01",
-    version: "V1",
+    version: "V1.1",
     path: GROWTH_CONTRACT_PATH,
     sha256: createHash("sha256").update(contents).digest("hex"),
     byteLength: contents.length,

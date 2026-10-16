@@ -8,7 +8,7 @@ import { SCORE_CATEGORY_LIMITS } from "../../lib/agents/growth-01/scoring.ts";
 test("the frozen GROWTH-01 contract is loaded and hashed at execution time", async () => {
   const metadata = await loadGrowthContractMetadata(new Date("2026-09-14T00:00:00.000Z"));
   assert.equal(metadata.path, "agents/growth-01/AGENT.md");
-  assert.equal(metadata.version, "V1");
+  assert.equal(metadata.version, "V1.1");
   assert.match(metadata.sha256, /^[a-f0-9]{64}$/);
   assert.ok(metadata.byteLength > 0);
 });

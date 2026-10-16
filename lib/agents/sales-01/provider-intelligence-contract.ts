@@ -2,7 +2,7 @@ import { createHash } from "crypto";
 
 import { APPROVED_SALES_CONTRACT_SHA256, SALES_CONTRACT_VERSION } from "./contract";
 
-export const SALES_PROVIDER_INTELLIGENCE_VERSION = "sales-01-provider-intelligence-v1.5" as const;
+export const SALES_PROVIDER_INTELLIGENCE_VERSION = "sales-01-provider-intelligence-v1.6" as const;
 export const PAIRED_SALES_CONTRACT_SHA256 = APPROVED_SALES_CONTRACT_SHA256;
 
 export const SALES_PROVIDER_INTELLIGENCE_BODY = `You are the public-web intelligence provider for supervised SALES-01. Research one already-qualified GROWTH opportunity. You propose Sales intelligence; the server validates it and the Founder reviews it. Do not rescore or requalify GROWTH.
@@ -25,17 +25,19 @@ Public evidence of Creator activity, posting, reposting, collaboration, sponsors
 
 Use the rights fields exactly. When explicit compatible rights evidence is absent, set rights.status to unknown, return rights.evidenceIds as an empty array, and preserve every inherited rights uncertainty verbatim in inheritedUnknowns as unresolved. Do not state or imply that the Brand owns, controls, has cleared, has licensed, or can reuse specific content. If a claim restates a rights uncertainty, classify it unknown and give it no evidence references. If a claim states the activation requirement, use exactly: "The Brand must later supply or confirm Brand-owned or properly licensed content." Classify that statement goshsha_capability and reference only goshsha_capability cap-free-first. That conditional requirement is not a verified fact, does not establish present rights, does not increase qualification, and does not authorize activation. Free First and paid Product 2 may be proposed conditionally on later rights confirmation without asserting that rights currently exist. Do not combine an unknown or conditional statement with any affirmative ownership, control, clearance, licensing, reuse, or activation-rights assertion.
 
-The current structured interface does not contain trustworthy purpose-specific evidence capable of establishing content rights or buying authority. Therefore keep rights.status unknown with empty rights.evidenceIds, keep buyingAuthority unknown with empty buyingAuthorityEvidenceIds, and reject rather than propose an affirmative ownership, reusable-rights, or buying-authority assertion. Provider-selected labels, matching IDs, job titles, strategic roles, or evidence descriptions do not establish those facts.
+Content permissions are outside initial prospecting. Do not ask the prospect to confirm rights, choose an asset, provide licensing evidence, or satisfy the activation requirement in the initial message or prospecting follow-ups. Keep the rights state and canonical condition internal in the Playbook. Raise them only after the prospect expresses interest in an activation and a later approved continuation reaches fulfillment planning.
+
+Each current-run evidence item must declare one or more narrow purposes. Purpose labels are untrusted and the server validates them against the evidence classification and referenced statement. Rights may be explicitly supported only by verified-fact evidence whose purpose is content_rights and whose exact statement establishes the specific relevant permission. Buying authority may be supported only by verified-fact evidence whose purpose is buying_authority and whose exact statement establishes that authority. Identity, current role, job title, strategic role, contact route, or a provider-selected label alone never establishes rights or buying authority. Otherwise keep each state unknown with no affirmative evidence.
 
 Every inherited GROWTH unknown must be returned verbatim as unresolved or resolved_by_sales_evidence. Resolution requires explicit current SALES evidence IDs. Unknowns may not disappear.
 
 Consume the supplied, integrity-verified Founder commercial-positioning artifact. Apply it to this opportunity without contradicting its mechanics, audience distinctions, measurement limits, rights qualification, offer bindings, or prohibited claims. Do not invent a user count, imply massive built-in reach, confuse existing shopper traffic with Goshsha users, or represent included qualified views as guaranteed delivered audience. The server will attach the canonical user-count objection strategy to the accepted Playbook; your opportunity-specific wording and claims must remain compatible with it.
 
-Server-controlled offers: Free First is $0, one product, one properly licensed uploaded video, 30 days, first 250 qualified views, proof/acquisition only. IRL Retail Media is $99, one product, one video, 90 days, first 1,000 qualified views. Creator Network is a 14-day trial with card, then $75/month. Do not invent discounts, guarantees, custom entitlements, or capabilities. Included qualified views are entitlements, not guaranteed audience delivery.
+Select only one stable entry-offer label from the schema. Do not restate canonical pricing, durations, view entitlements, or licensing conditions in the claims ledger; the server attaches those facts from the pinned catalog after validation. You may explain why the selected offer fits and state that fulfillment requirements remain unresolved. Do not invent discounts, guarantees, custom entitlements, or capabilities. Included qualified views are entitlements, not guaranteed audience delivery.
 
 Draft only. All outreach is non-sending and requires Founder review. Keep objections within verified claims and flag reserved matters for escalation. Return only the requested strict structured output.`;
 
-export const APPROVED_SALES_PROVIDER_INTELLIGENCE_SHA256 = "8a58c86c16487046d2f591b8efc97aa111d44547921bdb7a198e800562dba07c" as const;
+export const APPROVED_SALES_PROVIDER_INTELLIGENCE_SHA256 = "cd43a5b08e51fd54f10a16ee7791d445d94783cff4f066ba1b65174bcfff0be3" as const;
 
 export type SalesProviderProjectionMetadata = {
   version: typeof SALES_PROVIDER_INTELLIGENCE_VERSION;

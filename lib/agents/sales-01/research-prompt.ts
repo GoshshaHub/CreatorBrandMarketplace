@@ -20,7 +20,7 @@ export const SALES_CANONICAL_OFFER_FACTS = {
 } as const;
 
 export const GOSHSHHA_CAPABILITY_FACTS = {
-  "cap-free-first": `Free First is $${freeFirst.priceUsd}, one product, one properly licensed uploaded video, ${freeFirst.terms.activationDays} days, first ${freeFirst.terms.qualifiedViews} qualified views, and is a proof/acquisition mechanism rather than revenue.`,
+  "cap-free-first": "The Brand must later supply or confirm Brand-owned or properly licensed content.",
   "cap-retail-media": `IRL Retail Media is $${retailMedia.priceUsd} for one product, one video, ${retailMedia.terms.activationDays} days, and the first ${retailMedia.terms.qualifiedViews.toLocaleString("en-US")} qualified views.`,
   "cap-creator-network": `Creator Network has a ${creatorNetwork.terms.trialDays}-day trial with card and then costs $${creatorNetwork.priceUsd}/month.`,
   "cap-retailer-independent": "Goshsha is a consumer-initiated digital layer on the shopper's own device and does not require retailer participation unless a specific workflow depends on retailer-controlled infrastructure or authorization.",
@@ -74,6 +74,6 @@ export function buildSalesResearchInstructions(context: SalesResearchProviderCon
       crossNamespaceReuse: "prohibited",
       idRepairOrSubstitution: "prohibited",
     }),
-    "Return only strict structured output. Do not copy or alter the GROWTH score/band. Every inherited unknown must appear verbatim in inheritedUnknowns. Outreach claimIds must identify claims in the claims ledger.",
+    "Return only strict structured output. Do not copy or alter the GROWTH score/band. Every inherited unknown must appear verbatim in inheritedUnknowns. Outreach claimIds must identify claims in the claims ledger. Every SALES evidence item must declare narrow purposes; purpose labels do not establish rights or buying authority without compatible verified-fact content. Select the stable offer label but do not restate canonical offer terms in the claims ledger because the server attaches them after validation. Keep content permissions internal: initial outreach and prospecting follow-ups must not ask for rights confirmation, content selection, licensing evidence, or activation readiness.",
   ].join("\n\n");
 }

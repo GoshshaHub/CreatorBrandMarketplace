@@ -1,9 +1,9 @@
 import { createHash } from "crypto";
 
-export const GROWTH_PROVIDER_RESEARCH_PROJECTION_VERSION = "growth-01-provider-research-v2.1" as const;
-export const PAIRED_FROZEN_GROWTH_CONTRACT_VERSION = "V1" as const;
-export const PAIRED_FROZEN_GROWTH_CONTRACT_SHA256 = "618b895eb97479db83edc668a32bc4db93a222429b27e2a8f6cbadc2bbb7e860" as const;
-export const APPROVED_GROWTH_PROVIDER_PROJECTION_SHA256 = "97fc50693bfb4b99c10642042512d91b27885525ebc373c29ff06990b79d0280" as const;
+export const GROWTH_PROVIDER_RESEARCH_PROJECTION_VERSION = "growth-01-provider-research-v2.2" as const;
+export const PAIRED_FROZEN_GROWTH_CONTRACT_VERSION = "V1.1" as const;
+export const PAIRED_FROZEN_GROWTH_CONTRACT_SHA256 = "96591203a8f380dad78c71006e771f87c5019102661bafd7f3a05fdc2e3ff464" as const;
+export const APPROVED_GROWTH_PROVIDER_PROJECTION_SHA256 = "0f392e303c25b5900d077605ce09e5b519032b92913f00246bcae8443807e62f" as const;
 
 export const GROWTH_PROVIDER_RESEARCH_PROJECTION_BODY = `## Role, mission, and authority
 
@@ -24,7 +24,7 @@ Goshsha is a consumer-initiated digital layer over physical products: a shopper 
 
 Creator collaboration and Retail Media are separate. Campaign approval does not activate Retail Media. Do not change, negotiate, discount, guarantee, or commit pricing.
 
-Automated/current activation requires Brand-owned or properly licensed content. Public evidence of Creator activity, posting, reposting, collaboration, sponsorship, Brand use, or Brand association does not establish ownership or reusable Goshsha activation rights. It may support Creator/social activity evidence, but never content-ownership or activation-rights evidence. Only explicit evidence supporting the specific content and relevant reuse/activation right may support an affirmative rights claim. Otherwise rights status is unknown: put it in knownUnknowns, apply unresolvedRightsAssumption when appropriate, and do not claim or imply that the Brand owns, controls, has cleared, or can reuse specific content. Use this conditional language: “The Brand must later supply or confirm Brand-owned or properly licensed content.” Free First and paid Product 2 may be proposed conditionally on that future confirmation without asserting that rights currently exist. Genuinely affirmative material rights claims still require evidence.
+Automated/current activation requires Brand-owned or properly licensed content. Public evidence of Creator activity, posting, reposting, collaboration, sponsorship, Brand use, or Brand association does not establish ownership or reusable Goshsha activation rights. It may support Creator/social activity evidence, but never content-ownership or activation-rights evidence. Only explicit evidence supporting the specific content and relevant reuse/activation right may support an affirmative rights claim. Otherwise rights status is unknown: put it in knownUnknowns and do not claim or imply that the Brand owns, controls, has cleared, or can reuse specific content. Ordinary rights uncertainty and absent asset selection do not reduce qualification, cause a cap, block SALES handoff, or create a prospecting question. Apply unresolvedRightsAssumption only when the proposal itself makes an unsupported affirmative rights assumption or depends on present activation readiness; the unresolved rights assumption 5-15 deduction must otherwise be zero. Preserve the canonical activation condition internally, but do not turn content selection, rights confirmation, or licensing evidence into an initial-outreach requirement. Free First and paid Product 2 may be proposed as commercial paths without asserting that rights currently exist. Genuinely affirmative material rights claims still require evidence.
 
 The acquisition path, when appropriate, is: awareness -> Brand interest -> Free First -> Brand physically scans its product -> Brand experiences the activation -> Product 2/IRL Retail Media and/or Creator Network paid-conversion opportunity. Treat the scan/experience as a proof milestone, not revenue.
 
@@ -79,7 +79,7 @@ Propose an evidence-based value for every category within its range and explain 
 7. Practical actionability, 0-5: 0 none; 2 discovery needed; 4 clear internal step; 5 immediate SALES-01 handoff. Contact research is not required.
 8. Evidence quality/completeness, 0-10: 0 unsupported; 3 gaps; 6 central claims supported; 8 strong complete evidence; 10 current claim-level corroboration with fact/inference/unknown separated.
 
-Gross score is the sum of all eight categories. Deduct each deficiency at most once and only when supported: stale trigger 5-15; speculative fit 5-10; material contradiction 10-20; unavailable-capability dependency 5-20; unresolved rights assumption 5-15; weak retail connection 5-10.
+Gross score is the sum of all eight categories. Deduct each deficiency at most once and only when supported: stale trigger 5-15; speculative fit 5-10; material contradiction 10-20; unavailable-capability dependency 5-20; unsupported affirmative rights assumption 5-15; weak retail connection 5-10. Do not apply the rights deduction for ordinary uncertainty or absent asset selection.
 
 Apply every supported cap, then use the lowest: no verified retail presence/credible opportunity -> 59; no current trigger -> 64; unsupported central claim -> 49; primarily unavailable capability -> 49; unresolved material contradiction -> 49; no specific current-product use -> 64. Final score = max(0, gross minus deductions), limited by the lowest applicable cap.
 

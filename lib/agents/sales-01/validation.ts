@@ -74,7 +74,7 @@ export function validateSalesIntake(params: {
   try {
     if (run?.contract?.sha256) {
       verifyGrowthContractIdentity(run.contract.sha256);
-      if (run.contract.name !== "GROWTH-01" || run.contract.version !== "V1" || run.contract.path !== "agents/growth-01/AGENT.md") {
+      if (run.contract.name !== "GROWTH-01" || run.contract.version !== "V1.1" || run.contract.path !== "agents/growth-01/AGENT.md") {
         findings.push(finding("growth_contract_metadata_invalid", "The supplied GROWTH contract metadata does not identify the approved frozen contract.", "export.validatedRun.contract"));
       }
     }

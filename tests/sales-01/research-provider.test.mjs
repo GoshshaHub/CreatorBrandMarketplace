@@ -13,9 +13,9 @@ function envelope() {
   return validateSalesIntake({ input: { export: createSyntheticGrowthSalesExport(), candidateId: "buff-the-buff-ritual", founderApproval: { approved: true, scope: "sales_preparation_only" } }, approvedByUid: "founder", approvedAt: "2026-09-24T12:00:00.000Z", salesContract: syntheticSalesContractMetadata }).envelope;
 }
 
-test("projection is paired to SALES V1.3 and one-byte changes fail closed", () => {
+test("projection is paired to SALES V1.4 and one-byte changes fail closed", () => {
   const projection = verifySalesProviderIntelligenceProjection({ salesContractSha256: syntheticSalesContractMetadata.sha256 });
-  assert.equal(projection.version, "sales-01-provider-intelligence-v1.5");
+  assert.equal(projection.version, "sales-01-provider-intelligence-v1.6");
   assert.equal(projection.sha256, APPROVED_SALES_PROVIDER_INTELLIGENCE_SHA256);
   assert.throws(() => verifySalesProviderIntelligenceProjection({ salesContractSha256: `${projection.pairedSalesContractSha256[0] === "0" ? "1" : "0"}${projection.pairedSalesContractSha256.slice(1)}` }));
   assert.throws(() => verifySalesProviderIntelligenceProjection({ salesContractSha256: projection.pairedSalesContractSha256, projectionBody: `${projection.body}x` }));
@@ -43,11 +43,15 @@ test("provider projection preserves contact, claims, rights, unknown, and non-se
   assert.match(prompt, /posting, reposting, collaboration, sponsorship, Brand use, or Brand association does not establish/i);
   assert.match(prompt, /rights\.status to unknown/i);
   assert.match(prompt, /rights\.evidenceIds as an empty array/i);
-  assert.match(prompt, /current structured interface does not contain trustworthy purpose-specific evidence/i);
+  assert.match(prompt, /Each current-run evidence item must declare one or more narrow purposes/i);
+  assert.match(prompt, /Purpose labels are untrusted and the server validates them/i);
   assert.match(prompt, /The Brand must later supply or confirm Brand-owned or properly licensed content\./);
   assert.match(prompt, /conditional requirement is not a verified fact/i);
+  assert.match(prompt, /Content permissions are outside initial prospecting/i);
+  assert.match(prompt, /initial outreach and prospecting follow-ups must not ask for rights confirmation/i);
   assert.match(prompt, /do not combine an unknown or conditional statement with any affirmative ownership/i);
   assert.match(prompt, /All outreach is non-sending/i);
+  assert.match(prompt, /server attaches those facts from the pinned catalog/i);
   assert.match(prompt, /goshsha-commercial-positioning-v1/);
   assert.match(prompt, /How many users does Goshsha have/);
   assert.match(prompt, /not automatically Goshsha traffic/);

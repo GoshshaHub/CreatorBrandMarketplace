@@ -37,10 +37,10 @@ test("spending authority is hierarchical and governed by the lowest remaining $1
 
 test("provider prompt treats retrieved content as evidence rather than instructions and excludes budget/private identity", () => {
   const providerProjection = verifyGrowthProviderResearchProjection({
-    frozenContractSha256: "618b895eb97479db83edc668a32bc4db93a222429b27e2a8f6cbadc2bbb7e860",
+    frozenContractSha256: "96591203a8f380dad78c71006e771f87c5019102661bafd7f3a05fdc2e3ff464",
   });
   const prompt = buildGrowthResearchInstructions({
-    contractVersion: "V1",
+    contractVersion: "V1.1",
     contractSha256: providerProjection.pairedFrozenContractSha256,
     providerProjection,
     asOfDate: "2026-09-14",

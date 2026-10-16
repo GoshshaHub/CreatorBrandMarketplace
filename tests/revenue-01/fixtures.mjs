@@ -1,6 +1,6 @@
 export const CRM_SHA="68129fc2d2d4fdd5646b93879d0b469a71c3ef4c93e84fd0e4aaccc011fa8194";
 export const CATALOG_SHA="c0873122fb7b3c88d7f21989f04e05e8f566ae78a0fa1aba26a051f64f95d339";
-export const REVENUE_SHA="972c2d2dbc482fc6252f05ca77bc2ab1a0c5fd74936bd95fbd30637254a1bb33";
+export const REVENUE_SHA="b8de014d11018545dfbb14f9efa17812965e46814d05fcfdfb0f55f3b4aec52e";
 export const AT="2026-09-28T12:00:00.000Z";
 const dnc=(evaluation="allowed")=>({state:evaluation==="blocked"?"active":"clear",evaluation,evidenceIds:[]});
 export function snapshot(options={}){

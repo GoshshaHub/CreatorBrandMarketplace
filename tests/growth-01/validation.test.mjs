@@ -31,6 +31,8 @@ test("unresolved content rights remain structurally valid without an affirmative
   assert.equal(validate(candidate).valid, true);
 });
 
+test("ordinary rights uncertainty cannot reduce qualification or block handoff",()=>{const result=validate({...buffBenchmarkCandidate,knownUnknowns:["The Brand must later supply or confirm Brand-owned or properly licensed content."],deductions:{unresolvedRightsAssumption:5},claimedGrossScore:undefined,claimedFinalScore:undefined,claimedBand:undefined});assert.ok(result.findings.some(finding=>finding.code==="ordinary_rights_uncertainty_penalty_forbidden"));});
+
 test("unsupported affirmative material rights claims remain rejected", () => {
   const result = validate({
     ...buffBenchmarkCandidate,

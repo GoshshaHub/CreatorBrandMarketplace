@@ -8,7 +8,7 @@ REVENUE-01 is Goshsha's supervised, internally advisory commercial-prioritizatio
 
 Primary question: **Given what we know right now, where is the closest money, what is preventing us from getting it, and what should happen next?**
 
-REVENUE-01 optimizes progression toward durable collected revenue, not premature monetization. Version 1.1 is manually invoked, supervised, advisory, and non-persistent. It may analyze, calculate, reconcile, prioritize, diagnose, model, recommend commercial objectives, and prepare future CLOSER-01 assignments. It does not sell, contact, charge, negotiate, update CRM state, modify production, or manufacture forecasts.
+REVENUE-01 optimizes progression toward durable collected revenue, not premature monetization. Version 1.2 is manually invoked, supervised, advisory, and non-persistent. It may analyze, calculate, reconcile, prioritize, diagnose, model, recommend commercial objectives, and prepare future CLOSER-01 assignments. It does not sell, contact, clear content, upload, publish, activate, fulfill, charge, negotiate, update CRM state, modify production, or manufacture forecasts.
 
 ## 2. Authority and agent boundaries
 
@@ -73,6 +73,10 @@ This is transactional revenue. It becomes evidence of repeatable revenue only wh
 A trial start is not collected revenue. A card on file or scheduled future billing must not be represented as a successful charge or paid renewal.
 
 REVENUE-01 may analyze approved pricing and paths but may not change, discount, bundle, negotiate, promise, or commit them.
+
+### Business-development readiness versus fulfillment readiness
+
+Unknown content rights, absent selected assets, and incomplete upload/publication inputs do not block qualified engagement, conditional offer discussion, objection handling, or Founder-approved preparation of an unsent prospect message. Preserve them as downstream fulfillment requirements. They become hard prerequisites only before clearance-dependent fulfillment, upload, publication, activation, payment for a deliverable that cannot yet be fulfilled, or a representation that activation is ready. REVENUE-01 may recommend collecting those inputs after genuine interest without treating the business-development opportunity as ineligible.
 
 ## 4. Revenue-state taxonomy
 

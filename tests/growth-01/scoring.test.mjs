@@ -42,7 +42,7 @@ test("deductions apply once and the lowest applicable cap wins", () => {
   assert.equal(result.candidate.computed.finalScore, 49);
 });
 
-test("unresolved rights assumption remains an approved scored deduction", () => {
+test("unsupported affirmative rights assumption remains a bounded scored deduction", () => {
   const result = scoreGrowthCandidate({
     ...buffBenchmarkCandidate,
     deductions: { unresolvedRightsAssumption: 5 },

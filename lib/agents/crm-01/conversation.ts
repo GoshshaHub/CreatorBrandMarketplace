@@ -45,6 +45,14 @@ export const canonicalConversationId = (accountId: string, pursuitId: string) =>
 export const participantKey = (participant: CrmConversationParticipant) => `${participant.type}:${participant.id}`;
 const uniqueBy = <T>(items: T[], key: (item: T) => string) => [...new Map(items.map((item) => [key(item), item])).values()];
 
+export function initializeCanonicalConversation(params: { accountId: string; pursuitId: string; participants: CrmConversationParticipant[]; recordedAt: string; actorUid: string }): CrmCanonicalConversationV1 {
+  if (CRM_CONVERSATION_CONTRACT_SHA256 !== APPROVED_CRM_CONVERSATION_CONTRACT_SHA256) throw new Error("Canonical conversation contract integrity failed.");
+  const participants = uniqueBy(params.participants, participantKey).sort((a,b)=>participantKey(a).localeCompare(participantKey(b)));
+  if (!participants.length) throw new Error("Canonical conversation initialization requires explicit participants.");
+  const body = { schemaVersion: CRM_CONVERSATION_SCHEMA, version: CRM_CONVERSATION_VERSION, canonicalizationVersion: CRM_CONVERSATION_CANONICALIZATION, contractSha256: CRM_CONVERSATION_CONTRACT_SHA256, conversationId: canonicalConversationId(params.accountId,params.pursuitId), accountId:params.accountId, pursuitId:params.pursuitId, revision:1, lifecycle:"active" as const, origin:{type:"founder_supervised_crm_mutation" as const,createdAt:params.recordedAt,createdByUid:params.actorUid}, participants, interactionReferences:[] as CrmConversationInteractionReference[], providerReferences:[] as CrmProviderReference[], evidenceIds:[] as string[], updatedAt:params.recordedAt, communicationAuthority:false as const, executionAuthorized:false as const };
+  return {...body,revisionSha256:crmSha256(body)};
+}
+
 export function buildCanonicalConversation(params: { accountId: string; pursuitId: string; input: CrmConversationInput; interactionId: string; occurredAt: string; recordedAt: string; actorUid: string; prior: CrmCanonicalConversationV1 | null }): CrmCanonicalConversationV1 {
   if (CRM_CONVERSATION_CONTRACT_SHA256 !== APPROVED_CRM_CONVERSATION_CONTRACT_SHA256) throw new Error("Canonical conversation contract integrity failed.");
   const conversationId = canonicalConversationId(params.accountId, params.pursuitId);

@@ -5,6 +5,25 @@ import { createSyntheticGrowthSalesExport, createSyntheticValidatedGrowthRun, sy
 import { createGrowthSalesExport } from "../../lib/agents/sales-01/export.ts";
 import { APPROVED_GROWTH_PROVIDER_PROJECTION_SHA256, GROWTH_PROVIDER_RESEARCH_PROJECTION_VERSION, PAIRED_FROZEN_GROWTH_CONTRACT_SHA256, PAIRED_FROZEN_GROWTH_CONTRACT_VERSION } from "../../lib/agents/growth-01/provider-research-contract.ts";
 import { normalizeCompletedOpenAISalesResponse, SalesResearchError, validateSalesResearchRequest } from "../../lib/agents/sales-01/research-schema.ts";
+import { buildCrmSalesIngestionExport } from "../../lib/agents/sales-01/crm-export.ts";
+import { buildCrmIngestionPlan } from "../../lib/agents/crm-01/planner.ts";
+import { buildCrmMutationPlan, crmRecordPath } from "../../lib/agents/crm-01/mutation-planner.ts";
+import { constructMutationPacket, validateMutationClientRequest } from "../../lib/agents/crm-01/mutation-validation.ts";
+import { buildCrmRevenueSnapshot } from "../../lib/agents/crm-01/revenue-snapshot.ts";
+import { projectCurrentSalesPlaybook } from "../../lib/agents/crm-01/sales-playbook-artifact.ts";
+import { buildRevenueRecommendation } from "../../lib/agents/revenue-01/recommendation.ts";
+import { buildApprovedActionPackage } from "../../lib/agents/revenue-01/approved-action.ts";
+import { COMMERCIAL_GOAL_BODY, COMMERCIAL_GOAL_SHA256 } from "../../lib/agents/revenue-01/commercial-goals.ts";
+import { createWorkforceRoutingPreview } from "../../lib/agents/workforce/handoff.ts";
+import { assembleConversationIntelligencePacket, APPROVED_CLOSER_PACKET_CONTRACT_SHA256 } from "../../lib/agents/closer-01/conversation-intelligence.ts";
+import { APPROVED_CLOSER_CONTRACT_SHA256 } from "../../lib/agents/closer-01/contract.ts";
+import { buildFounderSimulationAuthority } from "../../lib/agents/closer-01/simulation-authority.ts";
+import { InMemoryAtomicSimulationConsumptionCoordinator, createSharedInMemorySimulationReceiptStore } from "../../lib/agents/closer-01/simulation-consumption.ts";
+import { DeterministicFixtureSimulationGenerator } from "../../lib/agents/closer-01/simulation-generator.ts";
+import { executeFounderReviewedSimulation } from "../../lib/agents/closer-01/simulation.ts";
+import { APPROVED_REVENUE_CONTRACT_SHA256 } from "../../lib/agents/revenue-01/contract.ts";
+import { APPROVED_CRM_CONTRACT_SHA256 } from "../../lib/agents/crm-01/contract.ts";
+import { APPROVED_SALES_PROVIDER_INTELLIGENCE_SHA256, SALES_PROVIDER_INTELLIGENCE_VERSION } from "../../lib/agents/sales-01/provider-intelligence-contract.ts";
 import { GOSHSHHA_CAPABILITY_FACTS } from "../../lib/agents/sales-01/research-prompt.ts";
 import { validateSalesIntake } from "../../lib/agents/sales-01/validation.ts";
 
@@ -15,13 +34,13 @@ function proposal() { return {
   strategy: { observedTrigger: "The validated Growth trigger remains current.", specificProblem: "The shelf moment lacks the online product context.", goshshaWedge: "Bring the validated product story to the physical scan.", retailerIndependenceAssessment: "No retailer-controlled dependency is evidenced.", selectedEntryOffer: "Free First", offerRationale: "Use proof before the paid path.", physicalScanProofPoint: "Brand scans its own product and sees the experience.", paidConversionHypothesis: "$99 IRL Retail Media after proof.", desiredNextAction: "Seek a short exploratory conversation." },
   contacts: [{ id: "contact-1", name: "Aisha Joshi", currentTitle: "Founder", company: "Buff Beauty", identityEvidenceIds: ["sales-1"], currentRoleEvidenceIds: ["sales-1"], stakeholderFunction: "Brand leadership", problemOwnership: "direct", functionalRelevance: "The evidenced Brand leadership remit directly owns the identified product-story problem.", functionalRelevanceClassification: "sales_inference", confidence: "Confirmed", freshness: "current", conflictingEvidenceIds: [], strategicRoles: ["Best First Contact"], strategicRoleRationale: "Small-company accessibility and direct Brand context.", buyingAuthority: "unknown", buyingAuthorityEvidenceIds: [], contactRoute: { type: "public_professional_profile", value: "https://example.com/aisha", evidenceIds: ["sales-1"] }, evidenceIds: ["sales-1"] }],
   contactSelection: { status: "recommended", bestFirstContactId: "contact-1", unavailableReason: null, smallestSufficientSetRationale: "One evidenced contact is sufficient for this Founder-stage conversation." },
-  proofStrategy: "Confirm product/content readiness, then demonstrate the physical scan.",
+  proofStrategy: "Start with the business problem and demonstrate the physical scan concept after interest.",
   claims: [{ id: "claim-1", statement: "Aisha Joshi is publicly associated with Buff Beauty.", classification: "verified_fact", evidenceRefs: [{ kind: "sales_evidence", id: "sales-1" }] }, { id: "claim-2", statement: "Free First is a $0 proof mechanism.", classification: "goshsha_capability", evidenceRefs: [{ kind: "goshsha_capability", id: "cap-free-first" }] }],
   inheritedUnknowns: [{ originalText: "Brand interest and content rights remain unknown until verified.", status: "unresolved", resolution: null, salesEvidenceIds: [] }],
   rights: { status: "unknown", evidenceIds: [], conditionalRequirement: "The Brand must later supply or confirm Brand-owned or properly licensed content." },
   retailerIndependence: { posture: "retailer_independent", description: "No evidence-supported retailer dependency exists.", evidenceIds: [] },
   objections: [{ objection: "What is required?", response: "One product and properly licensed video are required for the proof.", claimIds: ["claim-2"], escalate: false }],
-  outreach: { recommendedChannel: "Public professional profile", objective: "Start a qualified conversation.", initialMessage: "Would you be open to seeing a product-level scan proof?", firstFollowUp: "I can show the physical scan proof point.", secondFollowUp: "The proof uses one product and properly licensed content.", closeTheLoop: null, claimIds: ["claim-2"] },
+  outreach: { recommendedChannel: "Public professional profile", objective: "Start a qualified conversation.", initialMessage: "Would you be open to seeing a product-level scan proof?", firstFollowUp: "I can show the physical scan proof point.", secondFollowUp: "Happy to share a concise example if useful.", closeTheLoop: null, claimIds: ["claim-2"] },
   evidence: [{ id: "sales-1", publisher: "Public professional page", sourceUrl: "https://example.com/aisha?utm_source=test", supportedClaim: "Aisha Joshi is publicly associated with Buff Beauty.", classification: "verified_fact" }],
 }; }
 function response(value = proposal()) { return { id: "resp_sales", model: "gpt-5.6-terra", status: "completed", output: [{ type: "web_search_call", action: { sources: [{ url: "https://example.com/aisha?utm_source=test", title: "Aisha" }] } }, { type: "message", content: [{ type: "output_text", text: JSON.stringify(value) }] }], usage: { input_tokens: 100, input_tokens_details: { cached_tokens: 10 }, output_tokens: 50, output_tokens_details: { reasoning_tokens: 5 }, total_tokens: 150 } }; }
@@ -101,8 +120,10 @@ function normalizeCompleteSyntheticCymbiotika(value, cymRequest, responseOptions
 
 test("valid provider output becomes a nonpersistent, non-sending playbook and CRM preview", () => {
   const result = normalize();
-  assert.equal(result.playbook.schemaVersion, "sales-playbook-v1.1"); assert.equal(result.playbook.growthQualification.score, 81); assert.equal(result.playbook.growthQualification.band, "Immediate Priority");
+  assert.equal(result.playbook.schemaVersion, "sales-playbook-v1.2"); assert.equal(result.playbook.growthQualification.score, 81); assert.equal(result.playbook.growthQualification.band, "Immediate Priority");
+  assert.equal(result.playbook.readiness.businessDevelopment, "ready"); assert.equal(result.playbook.readiness.fulfillment, "requirements_unresolved");
   assert.equal(result.playbook.outreach.sendingAuthorized, false); assert.equal(result.playbook.crmReadyPacket.schemaVersion, "sales-crm-ready-v1"); assert.equal(result.playbook.crmReadyPacket.crmWriteAuthorized, false); assert.equal(result.playbook.authority.persistence, false);
+  assert.doesNotMatch([result.playbook.outreach.initialMessage, result.playbook.outreach.firstFollowUp, result.playbook.outreach.secondFollowUp, result.playbook.outreach.closeTheLoop].filter(Boolean).join(" "), /rights?|licens|clearance|select(?:ed)? content/i);
   assert.equal(result.playbook.opportunityStrategy.offerFacts.irlRetailMedia, "$99 / one product / one video / 90 days / first 1,000 qualified views");
   assert.equal(result.playbook.evidence[0].canonicalUrl, "https://example.com/aisha"); assert.equal(result.playbook.evidence[0].rawUrl, "https://example.com/aisha?utm_source=test");
   assert.equal(result.playbook.positioningFoundation.schemaVersion, "goshsha-commercial-positioning-v1");
@@ -126,6 +147,48 @@ test("complete explicitly synthetic Cymbiotika-shaped proposal passes with unkno
   assert.equal(result.playbook.authority.persistence, false);
 });
 
+test("one generated-output chain reaches one Founder-reviewed unsent opening without rights or prior correspondence", async () => {
+  const salesRequest = syntheticCymbiotikaRequest();
+  const generatedSales = normalizeCompleteSyntheticCymbiotika(completeSyntheticCymbiotikaProposal(salesRequest), salesRequest);
+  const salesResult = { outcome:"accepted", envelope:salesRequest.envelope, contract:syntheticSalesContractMetadata, providerProjection:{version:SALES_PROVIDER_INTELLIGENCE_VERSION,sha256:APPROVED_SALES_PROVIDER_INTELLIGENCE_SHA256,pairedSalesContractVersion:"V1.4",pairedSalesContractSha256:syntheticSalesContractMetadata.sha256}, proposal:generatedSales, spendingAuthority:{}, providerProfile:{} };
+  const crmExport = buildCrmSalesIngestionExport(salesResult);
+  const crmPlan = buildCrmIngestionPlan({artifact:crmExport,snapshot:{records:{},identityKeys:{},possibleAccountMatches:[],possibleContactMatches:[],completedReceipt:null},crmContractSha256:APPROVED_CRM_CONTRACT_SHA256,at:"2026-10-14T10:01:00.000Z"});
+  const account=crmPlan.creates.find(x=>x.entityType==="account").record, pursuit=crmPlan.creates.find(x=>x.entityType==="salesPursuit").record, contact=crmPlan.creates.find(x=>x.entityType==="contact").record;
+  account.data.dnc={status:"inactive"};account.data.dncEvaluation="allowed";contact.data.dnc={status:"inactive"};contact.data.dncEvaluation="allowed";
+  const baseRecords=crmPlan.creates.filter(x=>x.entityType!=="interaction").map(x=>x.record),recordMap=Object.fromEntries(baseRecords.map(record=>[crmRecordPath(record.entityType,record.id),record]));
+  const initRequest=validateMutationClientRequest({idempotencyKey:"synthetic_initial_outreach_conversation",expectedRevisions:{[crmRecordPath("account",account.id)]:account.revision,[crmRecordPath("salesPursuit",pursuit.id)]:pursuit.revision,[crmRecordPath("contact",contact.id)]:contact.revision},mutation:{kind:"initialize_conversation",accountId:account.id,pursuitId:pursuit.id,participants:[{type:"crm_contact",id:contact.id},{type:"goshsha_internal",id:"goshsha_founder"}],channelContext:"email",evidence:[{id:"founder_participant_selection",classification:"founder_provided_information",source:"Synthetic Founder fixture",statement:"The Founder selected this exact current Contact for initial outreach preparation.",observedAt:"2026-10-14T10:02:00.000Z",evidenceUrl:null}]}});
+  const initPacket=constructMutationPacket(initRequest,"founder","2026-10-14T10:02:00.000Z"),initPlan=buildCrmMutationPlan({packet:initPacket,records:recordMap,crmContractSha256:APPROVED_CRM_CONTRACT_SHA256}),initializedPursuit=initPlan.operations[0].after,conversation=initializedPursuit.data.canonicalConversation;
+  const records=baseRecords.map(record=>record.id===pursuit.id?initializedPursuit:record);
+  const crmSnapshot=buildCrmRevenueSnapshot({accountId:account.id,pursuitId:pursuit.id,records,truncatedCollections:[],generatedAt:"2026-10-14T10:03:00.000Z",generatedByUid:"founder",crmContractVersion:"V1.1",crmContractSha256:APPROVED_CRM_CONTRACT_SHA256}).snapshot;
+  assert.equal(crmSnapshot.interactions.length,0);assert.equal(crmSnapshot.pursuit.rightsState.status,"unknown");
+  const recommendation=buildRevenueRecommendation({snapshot:crmSnapshot,runContext:{reportingMonth:"2026-10",founderSuppliedCollectedBaseline:null,baselineEvidenceClassification:"unknown"},revenueContract:{version:"V1.2",sha256:APPROVED_REVENUE_CONTRACT_SHA256},commercialGoal:{goalId:COMMERCIAL_GOAL_BODY.goalId,version:COMMERCIAL_GOAL_BODY.version,sha256:COMMERCIAL_GOAL_SHA256},generatedAt:"2026-10-14T10:04:00.000Z"});
+  assert.equal(recommendation.recommendation.family,"establish_qualified_engagement");
+  const approvedPackage=buildApprovedActionPackage({recommendation,selectedFamily:recommendation.recommendation.family,displayedRecommendationId:recommendation.identity.recommendationId,expectedRevisionSetSha256:recommendation.binding.crmRevisionSetSha256,approvedByUid:"founder",approvedAt:"2026-10-14T10:05:00.000Z"});
+  const routing=createWorkforceRoutingPreview({package:approvedPackage,currentBinding:{accountId:account.id,pursuitId:pursuit.id,crmRevisionSetSha256:crmSnapshot.revisionBinding.revisionSetSha256},createdAt:"2026-10-14T10:05:30.000Z"});
+  const artifact=crmPlan.infrastructureOperations.find(x=>x.kind==="create_immutable_artifact").value,reference=crmPlan.infrastructureOperations.find(x=>x.kind==="set_current_reference").value,playbook=projectCurrentSalesPlaybook({artifact,reference,accountId:account.id,pursuitId:pursuit.id});
+  const packet=assembleConversationIntelligencePacket({generatedAt:"2026-10-14T10:06:00.000Z",accountId:account.id,pursuitId:pursuit.id,closerContract:{version:"V1",sha256:APPROVED_CLOSER_CONTRACT_SHA256},growthContract:{version:"V1.1",sha256:salesRequest.envelope.source.growthContract.sha256},salesContract:{version:"V1.4",sha256:syntheticSalesContractMetadata.sha256},crmContract:{version:"V1.1",sha256:APPROVED_CRM_CONTRACT_SHA256},revenueContract:{version:"V1.2",sha256:APPROVED_REVENUE_CONTRACT_SHA256},growth:{sourceEnvelopeId:salesRequest.envelope.envelope.id,sourceEnvelopeSha256:salesRequest.envelope.envelope.payloadSha256,candidateSha256:salesRequest.envelope.candidate.candidateSha256,sourceVersion:"growth-sales-handoff-v1",score:salesRequest.envelope.qualification.score,band:salesRequest.envelope.qualification.band,confidence:salesRequest.envelope.qualification.confidence,feasibility:salesRequest.envelope.qualification.founderStagePursuitFeasibility,brand:salesRequest.envelope.opportunity.brand,productOrEvent:salesRequest.envelope.opportunity.productOrEvent,wedge:salesRequest.envelope.opportunity.goshshaWedge,retailerIndependence:salesRequest.envelope.opportunity.retailerAssessment,unknowns:salesRequest.envelope.evidence.knownUnknowns},sales:{artifactSha256:artifact.artifactSha256,playbookId:artifact.artifactId,playbookVersion:artifact.playbookSchemaVersion,playbookSuperseded:false,pursuitDecision:playbook.pursuitDecision,contacts:[{contactId:contact.id,title:contact.data.currentTitle,strategicRoles:contact.data.strategicRoles,classification:"sales_inference",buyingAuthority:contact.data.buyingAuthority,freshness:contact.data.freshness,conflicts:[]}],bestFirstContactId:contact.id,positioning:playbook.positioning,approvedClaims:playbook.approvedClaims,platformClaims:playbook.platformClaims,positioningArtifact:playbook.positioningArtifact,mechanicsQualifications:playbook.mechanicsQualifications,audienceObjection:playbook.audienceObjection,prohibitedClaims:playbook.prohibitedClaims,offerContext:playbook.offerContext,objections:playbook.objections,escalationBoundaries:playbook.escalationBoundaries},crm:{revisionSetSha256:crmSnapshot.revisionBinding.revisionSetSha256,conversationThreadId:conversation.conversationId,participants:[{contactId:contact.id,title:contact.data.currentTitle}],interactions:[],dnc:crmSnapshot.relationshipSafety,stage:crmSnapshot.pursuit.stage,rightsState:crmSnapshot.pursuit.rightsState,selectedEntryOfferId:crmSnapshot.pursuit.selectedEntryOfferId,offerCatalog:crmSnapshot.offerCatalog,milestones:crmSnapshot.commercialEvidence.milestones,nextAction:crmSnapshot.nextAction,freshness:{...crmSnapshot.freshness,unknownFreshnessFields:[],staleFields:[]}},revenue:{approvedPackage,routingPreview:routing,priority:recommendation.economics.priority,timing:recommendation.economics.timing,proofState:recommendation.observedState.proofState},authority:{authorityId:"packet-authority",version:"v1",scope:"tier0_packet_readiness",approvedByUid:"founder",effectiveAt:"2026-10-14T10:05:00.000Z",expiresAt:"2026-10-14T10:20:00.000Z",permitted:["validate","assemble","inspect","preview_readiness"],prohibited:["external_messaging","sending","scheduling","crm_mutation","provider_invocation","payment_action","production_mutation","objective_activation","autonomous_downstream_invocation","durable_assignment_acceptance","closer_simulation"],recipientContactId:contact.id,channel:"email",threadId:conversation.conversationId,executionAuthorized:false,closerInvoked:false,persisted:false}});
+  assert.equal(packet.readiness,"ready_to_simulate");assert.equal(packet.packetContractSha256,APPROVED_CLOSER_PACKET_CONTRACT_SHA256);
+  const authority=buildFounderSimulationAuthority({packet,snapshot:crmSnapshot,detail:{account:{dnc:{evaluation:"allowed"}},contacts:[{id:contact.id,accountId:account.id,freshness:"current",conflictingEvidenceIds:[],warnings:[],dnc:{scope:"contact",evaluation:"allowed"}}]},playbook,approvedPackage,recipientContactId:contact.id,simulationChannelContext:"email",simulationAction:"simulate_objective_aligned_outbound_turn",approvedByUid:"founder",approvedAt:"2026-10-14T10:06:30.000Z"});
+  const output=await executeFounderReviewedSimulation({authority,currentPacket:packet,now:"2026-10-14T10:07:00.000Z",explicitSimulationRequest:true,coordinator:new InMemoryAtomicSimulationConsumptionCoordinator(createSharedInMemorySimulationReceiptStore(),()=>"2026-10-14T10:07:00.000Z"),generator:new DeterministicFixtureSimulationGenerator()});
+  assert.equal(authority.binding.latestInteraction.state,"no_prior_interaction");assert.equal(output.status,"SIMULATED_FOR_FOUNDER_REVIEW");assert.equal(output.safety.sent,false);assert.equal(output.safety.externalAction,false);assert.doesNotMatch(output.pair.message,/rights?|licens|permission|select(?:ed)? content/i);
+});
+
+test("rights remain internal and cannot become an initial-prospecting checklist", () => {
+  const allowed = proposal();
+  allowed.objections = [{ objection: "What would activation require later?", response: "The Brand must later supply or confirm Brand-owned or properly licensed content.", claimIds: ["claim-2"], escalate: true }];
+  assert.doesNotThrow(() => normalize(allowed));
+  for (const statement of [
+    "Can you confirm that you have rights to the video?",
+    "Please provide licensing evidence for the content.",
+    "Would you select an asset for activation before we talk?",
+    "Do you have permission to reuse Creator content?",
+  ]) {
+    const blocked = proposal();
+    blocked.outreach.initialMessage = statement;
+    assert.throws(() => normalize(blocked), (error) => error.code === "prospecting_rights_checklist_forbidden");
+  }
+});
+
 test("complete synthetic pipeline fails closed across provenance, namespaces, rights, promises, contacts, and outreach", () => {
   const cases = [
     { name: "model-only source", mutate: () => {}, responseOptions: { includeActionSource: false, includeAnnotation: false }, code: "native_source_provenance_missing" },
@@ -136,6 +199,7 @@ test("complete synthetic pipeline fails closed across provenance, namespaces, ri
     { name: "mixed disclaimer and promise", mutate: (value) => { value.claims.find((claim) => claim.id === "CLM-NO-PROMISE").statement = "This does not guarantee reach, but it guarantees ROI."; }, code: "unsupported_commercial_promise" },
     { name: "contact evidence used as buying authority", mutate: (value) => { value.contacts[0].buyingAuthority = "supported"; value.contacts[0].buyingAuthorityEvidenceIds = ["SLS-E1"]; }, code: "buying_authority_unsupported" },
     { name: "outreach links unknown claim", mutate: (value) => { value.outreach.claimIds.push("CLM-RIGHTS"); value.claims.find((claim) => claim.id === "CLM-RIGHTS").classification = "prohibited_unsupported"; }, code: "rights_claim_unsupported" },
+    { name: "initial outreach asks for licensing evidence", mutate: (value) => { value.outreach.initialMessage = "Please provide licensing evidence for the selected video."; }, code: "prospecting_rights_checklist_forbidden" },
     { name: "outreach links missing claim", mutate: (value) => { value.outreach.claimIds.push("CLM-MISSING"); }, code: "outreach_claim_invalid" },
   ];
   for (const item of cases) {

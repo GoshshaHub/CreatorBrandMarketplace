@@ -13,7 +13,7 @@ import { APPROVED_GROWTH_CONTRACT_SHA256, APPROVED_SALES_CONTRACT_SHA256 } from 
 
 export const syntheticSalesContractMetadata: SalesContractMetadata = {
   name: "SALES-01",
-  version: "V1.3",
+  version: "V1.4",
   path: "agents/sales-01/AGENT.md",
   sha256: APPROVED_SALES_CONTRACT_SHA256,
   byteLength: 1,
@@ -39,7 +39,7 @@ export function createSyntheticValidatedGrowthRun(): ValidatedGrowthRun {
     },
     contract: {
       name: "GROWTH-01",
-      version: "V1",
+      version: "V1.1",
       path: "agents/growth-01/AGENT.md",
       sha256: APPROVED_GROWTH_CONTRACT_SHA256,
       byteLength: 1,

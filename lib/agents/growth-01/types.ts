@@ -172,7 +172,7 @@ export type GrowthRunRequest = {
 
 export type ContractMetadata = {
   name: "GROWTH-01";
-  version: "V1";
+  version: "V1.1";
   path: "agents/growth-01/AGENT.md";
   sha256: string;
   byteLength: number;

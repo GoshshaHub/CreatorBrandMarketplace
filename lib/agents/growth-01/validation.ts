@@ -83,6 +83,10 @@ export function validateGrowthCandidate(candidate: ScoredCandidate): CandidateVa
   }
 
   const evidenceById = new Map(candidate.evidence.map((item) => [item.id, item]));
+  const unsupportedAffirmativeRightsAssumption = candidate.claims.some((claim) => /\b(?:owns?|controls?|cleared|licensed|can reuse|may reuse|rights? to (?:use|reuse))\b.*\b(?:content|video|creator|reuse|activation rights?)\b/i.test(claim.claim));
+  if (candidate.deductions?.unresolvedRightsAssumption && !unsupportedAffirmativeRightsAssumption) {
+    findings.push({ code: "ordinary_rights_uncertainty_penalty_forbidden", severity: "error", candidateId: candidate.id, field: "deductions.unresolvedRightsAssumption", message: "Ordinary unknown rights or absent asset selection cannot reduce prospect qualification; this deduction requires an unsupported affirmative rights assumption." });
+  }
   for (const evidence of candidate.evidence) {
     if (!evidence.id || !nonEmpty(evidence.publisher) || !nonEmpty(evidence.supportedClaim)) {
       findings.push({ code: "evidence_incomplete", severity: "error", candidateId: candidate.id, field: `evidence.${evidence.id || "unknown"}`, message: "Evidence requires an ID, publisher, and supported claim." });

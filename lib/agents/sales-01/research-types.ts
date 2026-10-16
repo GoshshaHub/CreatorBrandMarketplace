@@ -140,6 +140,7 @@ export type SalesEvidence = {
   accessDate: string;
   supportedClaim: string;
   classification: "verified_fact" | "attributed_brand_claim" | "reasonable_inference" | "hypothesis" | "unknown";
+  purposes: Array<"brand_fact" | "identity" | "current_role" | "contact_route" | "buying_authority" | "content_rights">;
 };
 
 export type SalesClaimClassification =
@@ -185,7 +186,7 @@ export type SalesContact = {
 };
 
 export type SalesPlaybookV1 = {
-  schemaVersion: "sales-playbook-v1.1";
+  schemaVersion: "sales-playbook-v1.2";
   createdAt: string;
   growthQualification: {
     candidateId: string;
@@ -242,6 +243,7 @@ export type SalesPlaybookV1 = {
     salesEvidenceIds: string[];
   }>;
   rights: { status: "unknown" | "explicitly_supported" | "not_applicable"; evidenceIds: string[]; conditionalRequirement: string };
+  readiness: { businessDevelopment: "ready"; fulfillment: "requirements_unresolved" | "ready"; unresolvedRequirements: string[]; doesNotAuthorizeFulfillment: true };
   retailerIndependence: { posture: "retailer_independent" | "evidence_supported_dependency"; description: string; evidenceIds: string[] };
   objections: Array<{ objection: string; response: string; claimIds: string[]; escalate: boolean }>;
   outreach: {

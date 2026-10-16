@@ -1,6 +1,6 @@
 import type { CrmEntityType, CrmProvenance, CrmStage, CrmStoredRecord } from "./types";
 
-export const CRM_MUTATION_KINDS = ["correct_record", "add_evidence", "record_interaction", "record_founder_decision", "transition_pursuit", "update_dnc", "set_next_action", "create_attention_item", "transition_attention_item", "record_milestone"] as const;
+export const CRM_MUTATION_KINDS = ["correct_record", "add_evidence", "initialize_conversation", "record_interaction", "record_founder_decision", "transition_pursuit", "update_dnc", "set_next_action", "create_attention_item", "transition_attention_item", "record_milestone"] as const;
 export type CrmMutationKind = typeof CRM_MUTATION_KINDS[number];
 export type CrmDisposition = "Active" | "Nurture / Revisit" | "Not Pursued" | "Closed";
 export type CrmDncScope = "account" | "contact" | "channel";
@@ -15,6 +15,7 @@ export type CrmConversationInput = { participants: CrmConversationParticipant[];
 export type CrmMutationPayload =
   | { kind: "correct_record"; targetEntityType: "account" | "contact" | "salesPursuit"; targetRecordId: string; field: "displayName" | "relationshipStatus" | "name" | "currentTitle" | "contactRoute" | "buyingAuthority"; correctedValue: unknown; correctionOfRevision: number; reason: string; evidence: CrmEvidenceInput[] }
   | { kind: "add_evidence"; targetEntityType: "account" | "contact" | "salesPursuit"; targetRecordId: string; evidence: CrmEvidenceInput[]; resolvesState: "none" | "unknown" | "conflicting" }
+  | { kind: "initialize_conversation"; accountId: string; pursuitId: string; participants: CrmConversationParticipant[]; channelContext: "email" | "linkedin" | "sms" | "phone" | "meeting" | "other"; evidence: CrmEvidenceInput[] }
   | { kind: "record_interaction"; accountId: string; pursuitId: string | null; contactId: string | null; interactionType: "outbound_sent" | "inbound_received" | "meeting" | "manual_note"; exactStatement: string | null; summary: string; occurredAt: string; evidenceAuthenticity?: "authentic" | "synthetic" | "unknown"; conversation?: CrmConversationInput | null; evidence: CrmEvidenceInput[] }
   | { kind: "record_founder_decision"; accountId: string; pursuitId: string | null; decisionType: string; decision: string; rationale: string; effectiveAt: string; evidence: CrmEvidenceInput[] }
   | { kind: "transition_pursuit"; accountId: string; pursuitId: string; toStage: CrmStage | null; toDisposition: CrmDisposition | null; transitionType: "new_event" | "correction"; reason: string; evidence: CrmEvidenceInput[]; productionReference: { type: string; id: string; status: "pending" | "verified" } | null }
