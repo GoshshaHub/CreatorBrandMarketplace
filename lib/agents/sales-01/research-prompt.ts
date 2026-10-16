@@ -74,6 +74,6 @@ export function buildSalesResearchInstructions(context: SalesResearchProviderCon
       crossNamespaceReuse: "prohibited",
       idRepairOrSubstitution: "prohibited",
     }),
-    "Return only strict structured output. Do not copy or alter the GROWTH score/band. Every inherited unknown must appear verbatim in inheritedUnknowns. Outreach claimIds must identify claims in the claims ledger. Every SALES evidence item must declare narrow purposes; purpose labels do not establish rights or buying authority without compatible verified-fact content. Select the stable offer label but do not restate canonical offer terms in the claims ledger because the server attaches them after validation. Keep content permissions internal: initial outreach and prospecting follow-ups must not ask for rights confirmation, content selection, licensing evidence, or activation readiness.",
+    "Return only strict structured output. Do not copy or alter the GROWTH score/band. Outreach claimIds must identify claims in the claims ledger. Every SALES evidence item must declare narrow purposes; purpose labels do not establish buying authority without compatible verified-fact content. Select the stable offer label; the server attaches accurate catalog terms after validation. Content rights, assets, licensing, AR readiness, and fulfillment are outside prospecting and must not be requested in initial outreach or follow-ups. Write natural Founder-reviewable business language; do not invent relationships, permissions, results, or offer changes.",
   ].join("\n\n");
 }

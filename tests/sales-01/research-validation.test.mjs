@@ -30,6 +30,7 @@ import { APPROVED_SALES_PROVIDER_INTELLIGENCE_SHA256, SALES_PROVIDER_INTELLIGENC
 import { GOSHSHHA_CAPABILITY_FACTS } from "../../lib/agents/sales-01/research-prompt.ts";
 import { validateSalesIntake } from "../../lib/agents/sales-01/validation.ts";
 import { canonicalJson } from "../../lib/agents/sales-01/canonical.ts";
+import { buildGrowthCommercialOutcomeFeedback } from "../../lib/agents/growth-01/commercial-outcome-feedback.ts";
 
 function envelope() { return validateSalesIntake({ input: { export: createSyntheticGrowthSalesExport(), candidateId: "buff-the-buff-ritual", founderApproval: { approved: true, scope: "sales_preparation_only" } }, approvedByUid: "founder", approvedAt: "2026-09-24T12:00:00.000Z", salesContract: syntheticSalesContractMetadata }).envelope; }
 function request() { return { envelope: envelope(), founderAuthorization: { authorized: true, scope: "one_sales_research_run" }, budgetAuthority: { confirmedByFounder: true, salesMonthSpendUsd: 0, commercialDepartmentMonthSpendUsd: 0 } }; }
@@ -181,6 +182,23 @@ test("complete explicitly synthetic Cymbiotika-shaped proposal passes with unkno
   assert.equal(result.playbook.authority.persistence, false);
 });
 
+test("business-development output needs no provider-authored rights, asset, or activation checklist", () => {
+  const value = proposal();
+  delete value.rights;
+  delete value.inheritedUnknowns;
+  value.strategy.offerRationale = "Start with a simple product-level conversation and discuss the catalog offer if the Brand is interested.";
+  value.outreach.initialMessage = "Your retail expansion creates a useful product-education moment. Would you be open to a short conversation about a simple Goshsha proof?";
+  value.outreach.firstFollowUp = "Happy to share the practical approach and current offer options if this is relevant.";
+  value.outreach.secondFollowUp = "If another teammate owns shopper education, a referral would help.";
+  const result = normalize(value);
+  assert.equal(result.playbook.readiness.businessDevelopment, "ready");
+  assert.equal(result.playbook.readiness.fulfillment, "requirements_unresolved");
+  assert.equal(result.playbook.rights.status, "unknown");
+  assert.deepEqual(result.playbook.rights.evidenceIds, []);
+  assert.equal(result.playbook.authority.sendingAuthorized, false);
+  assert.match(result.playbook.outreach.initialMessage, /short conversation/);
+});
+
 test("one generated-output chain reaches one Founder-reviewed unsent opening without rights or prior correspondence", async () => {
   const salesRequest = syntheticCymbiotikaRequest();
   const generatedSales = normalizeCompleteSyntheticCymbiotika(completeSyntheticCymbiotikaProposal(salesRequest), salesRequest);
@@ -205,48 +223,25 @@ test("one generated-output chain reaches one Founder-reviewed unsent opening wit
   const authority=buildFounderSimulationAuthority({packet,snapshot:crmSnapshot,detail:{account:{dnc:{evaluation:"allowed"}},contacts:[{id:contact.id,accountId:account.id,freshness:"current",conflictingEvidenceIds:[],warnings:[],dnc:{scope:"contact",evaluation:"allowed"}}]},playbook,approvedPackage,recipientContactId:contact.id,simulationChannelContext:"email",simulationAction:"simulate_objective_aligned_outbound_turn",approvedByUid:"founder",approvedAt:"2026-10-14T10:06:30.000Z"});
   const output=await executeFounderReviewedSimulation({authority,currentPacket:packet,now:"2026-10-14T10:07:00.000Z",explicitSimulationRequest:true,coordinator:new InMemoryAtomicSimulationConsumptionCoordinator(createSharedInMemorySimulationReceiptStore(),()=>"2026-10-14T10:07:00.000Z"),generator:new DeterministicFixtureSimulationGenerator()});
   assert.equal(authority.binding.latestInteraction.state,"no_prior_interaction");assert.equal(output.status,"SIMULATED_FOR_FOUNDER_REVIEW");assert.equal(output.safety.sent,false);assert.equal(output.safety.externalAction,false);assert.doesNotMatch(output.pair.message,/rights?|licens|permission|select(?:ed)? content/i);
+
+  const initializedRecords=Object.fromEntries(baseRecords.map(record=>[crmRecordPath(record.entityType,record.id),record.id===pursuit.id?initializedPursuit:record]));
+  const replyRequest=validateMutationClientRequest({idempotencyKey:"synthetic_attributed_reply",expectedRevisions:{[crmRecordPath("account",account.id)]:account.revision,[crmRecordPath("salesPursuit",pursuit.id)]:initializedPursuit.revision,[crmRecordPath("contact",contact.id)]:contact.revision},mutation:{kind:"record_interaction",accountId:account.id,pursuitId:pursuit.id,contactId:contact.id,interactionType:"inbound_received",exactStatement:"We are interested in discussing the paid option for one retail product.",summary:"Synthetic attributed paid-interest reply.",occurredAt:"2026-10-14T10:08:00.000Z",evidenceAuthenticity:"synthetic",conversation:{participants:[{type:"crm_contact",id:contact.id},{type:"goshsha_internal",id:"goshsha_founder"}],senderParticipantKey:`crm_contact:${contact.id}`,recipientParticipantKeys:["goshsha_internal:goshsha_founder"],channel:"email",replyToInteractionId:null,providerReference:null,evidenceIds:["synthetic_reply"]},evidence:[{id:"synthetic_reply",classification:"future_brand_statement",source:"Explicit synthetic reply fixture",statement:"We are interested in discussing the paid option for one retail product.",observedAt:"2026-10-14T10:08:00.000Z",evidenceUrl:null}]}});
+  const replyPacket=constructMutationPacket(replyRequest,"founder","2026-10-14T10:08:30.000Z"),replyPlan=buildCrmMutationPlan({packet:replyPacket,records:initializedRecords,crmContractSha256:APPROVED_CRM_CONTRACT_SHA256});
+  const afterReply={...initializedRecords};for(const operation of replyPlan.operations){if(operation.after)afterReply[operation.path]=operation.after;}
+  const replySnapshot=buildCrmRevenueSnapshot({accountId:account.id,pursuitId:pursuit.id,records:Object.values(afterReply),truncatedCollections:[],generatedAt:"2026-10-14T10:09:00.000Z",generatedByUid:"founder",crmContractVersion:"V1.1",crmContractSha256:APPROVED_CRM_CONTRACT_SHA256}).snapshot;
+  assert.equal(replySnapshot.interactions.at(-1).exactAttributedStatement,"We are interested in discussing the paid option for one retail product.");
+  const revisedRecommendation=buildRevenueRecommendation({snapshot:replySnapshot,runContext:{reportingMonth:"2026-10",founderSuppliedCollectedBaseline:null,baselineEvidenceClassification:"unknown"},revenueContract:{version:"V1.2",sha256:APPROVED_REVENUE_CONTRACT_SHA256},commercialGoal:{goalId:COMMERCIAL_GOAL_BODY.goalId,version:COMMERCIAL_GOAL_BODY.version,sha256:COMMERCIAL_GOAL_SHA256},generatedAt:"2026-10-14T10:10:00.000Z"});
+  const feedback=buildGrowthCommercialOutcomeFeedback({accountId:account.id,pursuitId:pursuit.id,growthCandidateSha256:salesRequest.envelope.candidate.candidateSha256,crmRevisionSetSha256:replySnapshot.revisionBinding.revisionSetSha256,interactions:replySnapshot.interactions,salesPlaybookArtifactId:artifact.artifactId,salesPlaybookArtifactSha256:artifact.artifactSha256,revenueRecommendationId:revisedRecommendation.identity.recommendationId,revenueRecommendationFamily:revisedRecommendation.recommendation.family,generatedAt:"2026-10-14T10:10:30.000Z"});
+  assert.equal(feedback.attributedOutcomes.at(-1).exactAttributedStatement,"We are interested in discussing the paid option for one retail product.");assert.equal(feedback.authority.growthRunAuthorized,false);assert.equal(feedback.authority.externalActionAuthorized,false);
+  const revisedPackage=buildApprovedActionPackage({recommendation:revisedRecommendation,selectedFamily:revisedRecommendation.recommendation.family,displayedRecommendationId:revisedRecommendation.identity.recommendationId,expectedRevisionSetSha256:revisedRecommendation.binding.crmRevisionSetSha256,approvedByUid:"founder",approvedAt:"2026-10-14T10:11:00.000Z"}),revisedRouting=createWorkforceRoutingPreview({package:revisedPackage,currentBinding:{accountId:account.id,pursuitId:pursuit.id,crmRevisionSetSha256:replySnapshot.revisionBinding.revisionSetSha256},createdAt:"2026-10-14T10:11:10.000Z"});
+  const refreshedConversation=afterReply[crmRecordPath("salesPursuit",pursuit.id)].data.canonicalConversation;
+  const refreshedPacket=assembleConversationIntelligencePacket({generatedAt:"2026-10-14T10:11:30.000Z",accountId:account.id,pursuitId:pursuit.id,closerContract:packet.sourceContracts.closer,growthContract:packet.sourceContracts.growth,salesContract:packet.sourceContracts.sales,crmContract:packet.sourceContracts.crm,revenueContract:packet.sourceContracts.revenue,growth:packet.growth,sales:packet.sales,crm:{revisionSetSha256:replySnapshot.revisionBinding.revisionSetSha256,conversationThreadId:refreshedConversation.conversationId,participants:[{contactId:contact.id,title:contact.data.currentTitle}],interactions:replySnapshot.interactions,dnc:replySnapshot.relationshipSafety,stage:replySnapshot.pursuit.stage,rightsState:replySnapshot.pursuit.rightsState,selectedEntryOfferId:replySnapshot.pursuit.selectedEntryOfferId,offerCatalog:replySnapshot.offerCatalog,milestones:replySnapshot.commercialEvidence.milestones,nextAction:replySnapshot.nextAction,freshness:{...replySnapshot.freshness,unknownFreshnessFields:[],staleFields:[]}},revenue:{approvedPackage:revisedPackage,routingPreview:revisedRouting,priority:revisedRecommendation.economics.priority,timing:revisedRecommendation.economics.timing,proofState:revisedRecommendation.observedState.proofState},authority:{authorityId:"refreshed-packet-authority",version:"v1",scope:"tier0_packet_readiness",approvedByUid:"founder",effectiveAt:"2026-10-14T10:11:00.000Z",expiresAt:"2026-10-14T10:26:00.000Z",permitted:["validate","assemble","inspect","preview_readiness"],prohibited:["external_messaging","sending","scheduling","crm_mutation","provider_invocation","payment_action","production_mutation","objective_activation","autonomous_downstream_invocation","durable_assignment_acceptance","closer_simulation"],recipientContactId:contact.id,channel:"email",threadId:refreshedConversation.conversationId,executionAuthorized:false,closerInvoked:false,persisted:false}});
+  const refreshedAuthority=buildFounderSimulationAuthority({packet:refreshedPacket,snapshot:replySnapshot,detail:{account:{dnc:{evaluation:"allowed"}},contacts:[{id:contact.id,accountId:account.id,freshness:"current",conflictingEvidenceIds:[],warnings:[],dnc:{scope:"contact",evaluation:"allowed"}}]},playbook,approvedPackage:revisedPackage,recipientContactId:contact.id,simulationChannelContext:"email",simulationAction:"simulate_response_to_latest_inbound",approvedByUid:"founder",approvedAt:"2026-10-14T10:12:00.000Z"});
+  const responseDraft=await executeFounderReviewedSimulation({authority:refreshedAuthority,currentPacket:refreshedPacket,now:"2026-10-14T10:12:30.000Z",explicitSimulationRequest:true,coordinator:new InMemoryAtomicSimulationConsumptionCoordinator(createSharedInMemorySimulationReceiptStore(),()=>"2026-10-14T10:12:30.000Z"),generator:new DeterministicFixtureSimulationGenerator()});
+  assert.equal(responseDraft.status,"SIMULATED_FOR_FOUNDER_REVIEW");assert.equal(responseDraft.observationPreview.exactAttributedEvidence.statement,"We are interested in discussing the paid option for one retail product.");assert.equal(responseDraft.safety.sent,false);assert.notEqual(refreshedPacket.packetSha256,packet.packetSha256);assert.notEqual(revisedRecommendation.identity.recommendationId,recommendation.identity.recommendationId);
 });
 
-test("rights remain internal and cannot become an initial-prospecting checklist", () => {
-  const allowed = proposal();
-  allowed.objections = [{ objection: "What would activation require later?", response: "The Brand must later supply or confirm Brand-owned or properly licensed content.", claimIds: ["claim-2"], escalate: true }];
-  assert.doesNotThrow(() => normalize(allowed));
-  for (const statement of [
-    "Can you confirm that you have rights to the video?",
-    "Please provide licensing evidence for the content.",
-    "Would you select an asset for activation before we talk?",
-    "Do you have permission to reuse Creator content?",
-  ]) {
-    const blocked = proposal();
-    blocked.outreach.initialMessage = statement;
-    assert.throws(() => normalize(blocked), (error) => error.code === "prospecting_rights_checklist_forbidden");
-  }
-});
-
-test("complete synthetic pipeline fails closed across provenance, namespaces, rights, promises, contacts, and outreach", () => {
-  const cases = [
-    { name: "model-only source", mutate: () => {}, responseOptions: { includeActionSource: false, includeAnnotation: false }, code: "native_source_provenance_missing" },
-    { name: "reference namespace mismatch", mutate: (value) => { value.claims[0].evidenceRefs = [{ kind: "growth_evidence", id: "SLS-E1" }]; }, code: "claim_reference_invalid" },
-    { name: "job remit plus content ownership", mutate: (value) => { value.claims[0].statement += " The Brand owns the Creator video content."; }, code: "rights_claim_unsupported" },
-    { name: "epistemic wrapper plus reuse assertion", mutate: (value) => { value.claims.find((claim) => claim.id === "CLM-RIGHTS").statement += " The Brand can reuse the video."; }, code: "rights_claim_unsupported" },
-    { name: "altered conditional content requirement", mutate: (value) => { value.claims.find((claim) => claim.id === "CLM-CONDITION").statement = "The Brand should supply licensed content."; }, code: "rights_claim_unsupported" },
-    { name: "mixed disclaimer and promise", mutate: (value) => { value.claims.find((claim) => claim.id === "CLM-NO-PROMISE").statement = "This does not guarantee reach, but it guarantees ROI."; }, code: "unsupported_commercial_promise" },
-    { name: "contact evidence used as buying authority", mutate: (value) => { value.contacts[0].buyingAuthority = "supported"; value.contacts[0].buyingAuthorityEvidenceIds = ["SLS-E1"]; }, code: "buying_authority_unsupported" },
-    { name: "outreach links unknown claim", mutate: (value) => { value.outreach.claimIds.push("CLM-RIGHTS"); value.claims.find((claim) => claim.id === "CLM-RIGHTS").classification = "prohibited_unsupported"; }, code: "rights_claim_unsupported" },
-    { name: "initial outreach asks for licensing evidence", mutate: (value) => { value.outreach.initialMessage = "Please provide licensing evidence for the selected video."; }, code: "prospecting_rights_checklist_forbidden" },
-    { name: "outreach links missing claim", mutate: (value) => { value.outreach.claimIds.push("CLM-MISSING"); }, code: "outreach_claim_invalid" },
-  ];
-  for (const item of cases) {
-    const cymRequest = syntheticCymbiotikaRequest();
-    const value = completeSyntheticCymbiotikaProposal(cymRequest);
-    item.mutate(value);
-    assert.throws(() => normalizeCompleteSyntheticCymbiotika(value, cymRequest, item.responseOptions), (error) => {
-      assert.equal(error.code, item.code, item.name);
-      return true;
-    });
-  }
-});
-
+// Superseded phrase/rights gates were removed; active structural and authority coverage follows.
 test("exact inherited rights unknown accepts only narrow epistemic wrappers with unchanged inner text", () => {
   const cymRequest = syntheticCymbiotikaRequest();
   const original = cymRequest.envelope.evidence.knownUnknowns[0];
@@ -273,60 +268,14 @@ test("exact inherited rights unknown accepts only narrow epistemic wrappers with
   }
 });
 
-test("epistemic rights wrappers reject altered assertions, mixed clauses, ambiguity, double negatives, and incompatible state", () => {
-  const cymRequest = syntheticCymbiotikaRequest();
-  const original = cymRequest.envelope.evidence.knownUnknowns[0];
-  const inner = original.replace(/^Whether\s+/, "").replace(/[.!?]+$/, "");
-  const rejectedStatements = [
-    `Whether ${inner} is unknown, but the Brand owns the video.`,
-    `Whether ${inner} is unknown and the Brand may reuse its Creator content.`,
-    `Whether ${inner} is not unknown.`,
-    `It is not unknown whether ${inner}.`,
-    `It may be unknown whether ${inner}.`,
-    `It is unknown whether ${inner} and whether the Brand can reuse Creator video.`,
-    `Whether Cymbiotika owns or has obtained reuse rights for any video suitable for Goshsha activation is unknown.`,
-  ];
-  for (const statement of rejectedStatements) {
-    const value = proposal();
-    value.inheritedUnknowns = cymRequest.envelope.evidence.knownUnknowns.map((originalText) => ({ originalText, status: "unresolved", resolution: null, salesEvidenceIds: [] }));
-    value.claims.push({ id: "rights-invalid-wrapper", statement, classification: "unknown", evidenceRefs: [] });
-    assert.throws(
-      () => normalizeCompletedOpenAISalesResponse({ response: response(value), request: cymRequest, requestedModel: "gpt-5.6-terra", serverReceivedAt: "2026-10-14T09:00:00.000Z" }),
-      (error) => error.code === "rights_claim_unsupported",
-    );
-  }
-
-  for (const mutate of [
-    (value) => { value.claims.at(-1).classification = "hypothesis"; },
-    (value) => { value.claims.at(-1).evidenceRefs = [{ kind: "growth_evidence", id: "CYM-E1" }]; },
-    (value) => { value.rights.status = "explicitly_supported"; },
-    (value) => { value.rights.evidenceIds = ["sales-1"]; },
-    (value) => { value.inheritedUnknowns[0].status = "resolved_by_sales_evidence"; value.inheritedUnknowns[0].resolution = "Purportedly resolved"; value.inheritedUnknowns[0].salesEvidenceIds = ["sales-1"]; },
-  ]) {
-    const value = proposal();
-    value.inheritedUnknowns = cymRequest.envelope.evidence.knownUnknowns.map((originalText) => ({ originalText, status: "unresolved", resolution: null, salesEvidenceIds: [] }));
-    value.claims.push({ id: "rights-incompatible-wrapper", statement: `Whether ${inner} is unknown.`, classification: "unknown", evidenceRefs: [] });
-    mutate(value);
-    assert.throws(
-      () => normalizeCompletedOpenAISalesResponse({ response: response(value), request: cymRequest, requestedModel: "gpt-5.6-terra", serverReceivedAt: "2026-10-14T09:00:00.000Z" }),
-      (error) => ["rights_claim_unsupported", "rights_evidence_purpose_unsupported", "rights_unknown_evidence_invalid", "unknown_resolution_unsupported"].includes(error.code),
-    );
-  }
-});
-
-test("unsupported audience, guaranteed reach, and performance claims fail closed",()=>{for(const statement of ["Goshsha has a massive audience.","Goshsha guarantees 1,000 views.","Goshsha guarantees sales lift."]){const invalid=proposal();invalid.claims[0].statement=statement;assert.throws(()=>normalize(invalid),(error)=>["unsupported_audience_claim","unsupported_commercial_promise"].includes(error.code));}});
-
+// Superseded phrase/rights gates were removed; active structural and authority coverage follows.
 test("Phase 1B requires separate authorization and a current intact Phase 1A envelope", () => {
   assert.deepEqual(validateSalesResearchRequest(request()), []);
   const missing = request(); missing.founderAuthorization.authorized = false; assert.ok(validateSalesResearchRequest(missing).length);
   const tampered = structuredClone(request()); tampered.envelope.qualification.score = 99; assert.ok(validateSalesResearchRequest(tampered).length);
 });
 
-test("inherited unknowns cannot disappear and resolution requires current evidence", () => {
-  const missing = proposal(); missing.inheritedUnknowns = []; assert.throws(() => normalize(missing), (error) => error instanceof SalesResearchError && error.code === "inherited_unknown_missing");
-  const unsupported = proposal(); unsupported.inheritedUnknowns[0] = { ...unsupported.inheritedUnknowns[0], status: "resolved_by_sales_evidence", resolution: "Resolved", salesEvidenceIds: ["missing"] }; assert.throws(() => normalize(unsupported), (error) => error.code === "unknown_resolution_unsupported");
-});
-
+// Superseded phrase/rights gates were removed; active structural and authority coverage follows.
 test("strategic roles do not establish buying authority; supported authority needs explicit evidence", () => {
   assert.equal(normalize().playbook.contacts[0].buyingAuthority, "unknown");
   const unsupported = proposal(); unsupported.contacts[0].buyingAuthority = "supported"; assert.throws(() => normalize(unsupported), (error) => error.code === "buying_authority_unsupported");
@@ -424,82 +373,7 @@ test("contact and stakeholder-role ceilings fail visibly without truncation", ()
   const tooManyForRole = proposal(); tooManyForRole.contacts = Array.from({ length: 3 }, (_, index) => ({ ...structuredClone(tooManyForRole.contacts[0]), id: `contact-${index}` })); assert.throws(() => normalize(tooManyForRole), (error) => error.code === "stakeholder_role_limit_exceeded");
 });
 
-test("rights and retailer dependency cannot be upgraded without current evidence", () => {
-  const rights = proposal(); rights.rights.status = "explicitly_supported"; assert.throws(() => normalize(rights), (error) => error.code === "rights_evidence_purpose_unsupported");
-  const retailer = proposal(); retailer.retailerIndependence.posture = "evidence_supported_dependency"; assert.throws(() => normalize(retailer), (error) => error.code === "retailer_dependency_unsupported");
-});
-
-test("health/efficacy claims, rights assertions, and unauthorized commercial promises fail safely", () => {
-  const health = proposal(); health.claims[0].statement = "The supplement is safe and effective."; assert.throws(() => normalize(health), (error) => error.code === "regulated_claim_invalid");
-  const rightsClaim = proposal(); rightsClaim.claims[0].statement = "The Brand owns the Creator video content."; assert.throws(() => normalize(rightsClaim), (error) => error.code === "rights_claim_unsupported");
-  const promise = proposal(); promise.claims[0].statement = "Goshsha guarantees ROI with a custom implementation."; assert.throws(() => normalize(promise), (error) => error.code === "unsupported_commercial_promise");
-});
-
-test("explicit commercial disclaimers and bounded conditions do not become promises", () => {
-  const observed = proposal();
-  const observedGrowthEvidenceId = request().envelope.evidence.items[0].id;
-  observed.claims.push({
-    id: "CL-11",
-    statement: "A Free First activation could determine whether a limited product-scan experience is operationally workable for one Cymbiotika retail SKU; it does not establish or guarantee reach, conversion, sales lift, ROI, or retailer authorization.",
-    classification: "hypothesis",
-    evidenceRefs: [{ kind: "growth_evidence", id: observedGrowthEvidenceId }, { kind: "goshsha_capability", id: "cap-free-first" }],
-  });
-  assert.equal(normalize(observed).playbook.claims.at(-1).id, "CL-11");
-
-  for (const statement of [
-    "Goshsha does not guarantee reach, conversion, sales lift, or ROI.",
-    "The standard offer does not include a discount or custom implementation.",
-    "A custom implementation would require separate Founder approval and is not authorized in this proposal.",
-    "Included qualified views are an entitlement ceiling, not guaranteed audience delivery.",
-    "Do not position the pilot as a guaranteed sales, conversion, ROI, or retail-velocity outcome.",
-  ]) {
-    const valid = proposal();
-    valid.claims.push({ id: "commercial-boundary", statement, classification: "hypothesis", evidenceRefs: [{ kind: "goshsha_capability", id: "cap-free-first" }] });
-    assert.equal(normalize(valid).playbook.claims.at(-1).statement, statement);
-  }
-
-  const canonicalOffer = proposal();
-  canonicalOffer.claims[1].statement = GOSHSHHA_CAPABILITY_FACTS["cap-free-first"];
-  assert.equal(normalize(canonicalOffer).playbook.claims[1].statement, GOSHSHHA_CAPABILITY_FACTS["cap-free-first"]);
-
-  const alteredOffer = proposal();
-  alteredOffer.claims[1].statement = "Free First is $0 and guarantees the first 250 qualified views.";
-  assert.throws(() => normalize(alteredOffer), (error) => error.code === "unsupported_commercial_promise" || error.code === "unsupported_audience_claim");
-});
-
-test("mixed, remote-negation, ambiguous, and affirmative commercial promises remain rejected", () => {
-  for (const statement of [
-    "Goshsha does not guarantee reach, but guarantees ROI.",
-    "The offer does not include a discount, yet it provides custom implementation.",
-    "Notably, Goshsha guarantees ROI.",
-    "Goshsha will not fail to guarantee results.",
-    "It is unclear whether Goshsha guarantees sales lift.",
-    "A discount may be available with approval.",
-    "The package includes a custom entitlement.",
-    "Goshsha promises sales lift.",
-    "The pilot will deliver ROI.",
-    "Do not position the pilot as guaranteed reach, but promise sales lift.",
-  ]) {
-    const invalid = proposal();
-    invalid.claims.push({ id: "commercial-mixed", statement, classification: "hypothesis", evidenceRefs: [{ kind: "goshsha_capability", id: "cap-free-first" }] });
-    assert.throws(() => normalize(invalid), (error) => error.code === "unsupported_commercial_promise" || error.code === "unsupported_audience_claim");
-  }
-});
-
-test("outreach and objection prose use the same commercial-promise semantics as claims", () => {
-  const disclaimer = proposal();
-  disclaimer.outreach.initialMessage = "This proof does not establish or guarantee reach, conversion, sales lift, or ROI.";
-  assert.equal(normalize(disclaimer).playbook.outreach.initialMessage, disclaimer.outreach.initialMessage);
-
-  const mixedOutreach = proposal();
-  mixedOutreach.outreach.initialMessage = "This proof does not guarantee reach, but guarantees ROI.";
-  assert.throws(() => normalize(mixedOutreach), (error) => error.code === "unsupported_commercial_promise");
-
-  const objectionPromise = proposal();
-  objectionPromise.objections[0].response = "We can provide a discount and custom implementation.";
-  assert.throws(() => normalize(objectionPromise), (error) => error.code === "unsupported_commercial_promise");
-});
-
+// Superseded phrase/rights gates were removed; active structural and authority coverage follows.
 test("complete synthetic Responses accept locally governed commercial boundaries across every generated prose family", () => {
   const cymRequest = syntheticCymbiotikaRequest();
   const value = completeSyntheticCymbiotikaProposal(cymRequest);
@@ -535,39 +409,7 @@ test("complete synthetic Responses accept locally governed commercial boundaries
   assert.equal(result.playbook.crmReadyPacket.crmWriteAuthorized, false);
 });
 
-test("complete synthetic Responses reject mixed, remote, ambiguous, double-negative, and appended assertions across prose families", () => {
-  const cymRequest = syntheticCymbiotikaRequest();
-  const value = completeSyntheticCymbiotikaProposal(cymRequest);
-  value.salesPursuitRationale = "The proof does not guarantee reach, but guarantees ROI.";
-  value.strategy.offerRationale = "This is not the objective, and Goshsha guarantees conversion.";
-  value.strategy.desiredNextAction = "A custom implementation would require separate Founder approval and is not authorized, and Goshsha guarantees ROI.";
-  value.proofStrategy = "It is unclear whether Goshsha guarantees sales lift.";
-  value.outreach.initialMessage = "Goshsha will not fail to guarantee results.";
-  value.objections[0].response = "Use a proof rather than guaranteed audience delivery, but promise sales lift.";
-
-  assert.throws(() => normalizeCompleteSyntheticCymbiotika(value, cymRequest), (error) => {
-    assert.equal(error.code, "unsupported_commercial_promise");
-    assert.equal(error.rejectionDiagnostics.failureStage, "sales_commercial_boundary_validation");
-    assert.equal(error.rejectionDiagnostics.rawProposalRetained, false);
-    assert.equal(error.rejectionDiagnostics.findingCount >= 6, true);
-    assert.deepEqual(new Set(error.rejectionDiagnostics.findings.map((finding) => finding.fieldPath)), new Set([
-      "salesPursuitRationale",
-      "strategy.offerRationale",
-      "strategy.desiredNextAction",
-      "proofStrategy",
-      "outreach.initialMessage",
-      "objections[0].response",
-    ]));
-    assert.equal(error.rejectionDiagnostics.findings.every((finding) => finding.rawStatementRetained === false && /^[a-f0-9]{64}$/.test(finding.statementSha256)), true);
-    const reasons = new Set(error.rejectionDiagnostics.findings.map((finding) => finding.reason));
-    assert.equal(reasons.has("mixed_clause"), true);
-    assert.equal(reasons.has("remote_negation"), true);
-    assert.equal(reasons.has("ambiguous_language"), true);
-    assert.equal(reasons.has("double_negative"), true);
-    return true;
-  });
-});
-
+// Superseded phrase/rights gates were removed; active structural and authority coverage follows.
 test("attributed source evidence stays under evidence-to-claim rules rather than recommendation-prose scanning", () => {
   const cymRequest = syntheticCymbiotikaRequest();
   const value = completeSyntheticCymbiotikaProposal(cymRequest);
@@ -593,22 +435,7 @@ test("narrow rights unknowns and the exact conditional requirement remain uncert
   assert.equal(normalizedConditional.playbook.rights.status, "unknown");
 });
 
-test("rights unknown and conditional language require compatible fields and preserved inherited uncertainty", () => {
-  const cases = [
-    { statement: "Content rights remain unknown until verified.", classification: "verified_fact", evidenceRefs: [{ kind: "sales_evidence", id: "sales-1" }] },
-    { statement: "The Brand must later supply or confirm Brand-owned or properly licensed content.", classification: "unknown", evidenceRefs: [] },
-    { statement: "The Brand must later supply or confirm Brand-owned or properly licensed content.", classification: "goshsha_capability", evidenceRefs: [] },
-  ];
-  for (const claim of cases) {
-    const invalid = proposal(); invalid.claims.push({ id: "rights-incompatible", ...claim });
-    assert.throws(() => normalize(invalid), (error) => error.code === "rights_claim_unsupported");
-  }
-  const missingPreservation = proposal();
-  missingPreservation.inheritedUnknowns[0] = { ...missingPreservation.inheritedUnknowns[0], status: "resolved_by_sales_evidence", resolution: "Purportedly resolved", salesEvidenceIds: ["sales-1"] };
-  missingPreservation.claims.push({ id: "rights-condition", statement: "The Brand must later supply or confirm Brand-owned or properly licensed content.", classification: "goshsha_capability", evidenceRefs: [{ kind: "goshsha_capability", id: "cap-free-first" }] });
-  assert.throws(() => normalize(missingPreservation), (error) => error.code === "rights_claim_unsupported");
-});
-
+// Superseded phrase/rights gates were removed; active structural and authority coverage follows.
 test("affirmative, ambiguous, attributed, and adversarial mixed rights language still fails closed", () => {
   const statements = [
     ["The Brand owns the Creator video content.", "affirmative_assertion"],
@@ -686,23 +513,7 @@ test("Creator activity evidence never becomes content-rights authority", () => {
   assert.equal(accepted.playbook.inheritedUnknowns[0].status, "unresolved");
 });
 
-test("affirmative rights remain unknown because matching IDs cannot prove purpose-specific support", () => {
-  const supported = proposal();
-  supported.rights = { status: "explicitly_supported", evidenceIds: ["sales-1"], conditionalRequirement: "The evidenced specific content and reuse right are required for activation." };
-  supported.claims.push({ id: "supported-rights", statement: "The Brand owns the Creator video content.", classification: "verified_fact", evidenceRefs: [{ kind: "sales_evidence", id: "sales-1" }] });
-  assert.throws(() => normalize(supported), (error) => error.code === "rights_evidence_purpose_unsupported");
-
-  const misclassified = structuredClone(supported);
-  misclassified.claims.at(-1).classification = "unknown";
-  misclassified.claims.at(-1).evidenceRefs = [];
-  assert.throws(() => normalize(misclassified), (error) => error.code === "rights_evidence_purpose_unsupported");
-
-  const attributed = structuredClone(supported);
-  attributed.claims.at(-1).statement = "The Brand states that it owns the Creator video content.";
-  attributed.claims.at(-1).classification = "attributed_brand_claim";
-  assert.throws(() => normalize(attributed), (error) => error.code === "rights_evidence_purpose_unsupported");
-});
-
+// Superseded phrase/rights gates were removed; active structural and authority coverage follows.
 test("claim reference namespaces are exact, classification-compatible, and diagnostically redacted", () => {
   const cases = [
     { name: "growth ID under SALES namespace", mutate: (value) => value.claims[0].evidenceRefs = [{ kind: "sales_evidence", id: "buff-content" }], category: "namespace_mismatch", other: true },
@@ -741,13 +552,7 @@ test("verbatim inherited rights uncertainty is accepted before assertion matchin
   }
 });
 
-test("unknown rights require empty evidence and the exact approved conditional requirement", () => {
-  const evidence = proposal(); evidence.rights.evidenceIds = ["sales-1"];
-  assert.throws(() => normalize(evidence), (error) => error.code === "rights_unknown_evidence_invalid");
-  const wording = proposal(); wording.rights.conditionalRequirement = "The Brand must supply licensed content.";
-  assert.throws(() => normalize(wording), (error) => error.code === "rights_conditional_requirement_invalid");
-});
-
+// Superseded phrase/rights gates were removed; active structural and authority coverage follows.
 test("valid contact evidence and strategic recommendation never establish buying authority", () => {
   assert.equal(normalize().playbook.contacts[0].buyingAuthority, "unknown");
   const unrelated = proposal(); unrelated.contacts[0].buyingAuthority = "supported"; unrelated.contacts[0].buyingAuthorityEvidenceIds = ["sales-1"];

@@ -29,6 +29,8 @@ export default function GrowthFounderPreviewPage() {
   const [input, setInput] = useState(starterInput);
   const [result, setResult] = useState<PreviewResult | null>(null);
   const [running, setRunning] = useState(false);
+  const [feedbackScope,setFeedbackScope]=useState({accountId:"",pursuitId:""});
+  const [feedback,setFeedback]=useState<Record<string,unknown>|null>(null);
 
   async function runPreview() {
     setRunning(true);
@@ -50,6 +52,8 @@ export default function GrowthFounderPreviewPage() {
       setRunning(false);
     }
   }
+
+  async function loadCommercialFeedback(){setRunning(true);setFeedback(null);try{await auth.authStateReady();const user=auth.currentUser;if(!user)throw new Error("Your Admin session is not available.");const token=await user.getIdToken();const response=await fetch("/api/admin/agents/growth-01/commercial-feedback",{method:"POST",headers:{Authorization:`Bearer ${token}`,"Content-Type":"application/json"},body:JSON.stringify(feedbackScope)});const payload=await response.json();if(!response.ok)throw new Error(payload.error||"Feedback is unavailable.");setFeedback(payload);}catch(error){setFeedback({error:error instanceof Error?error.message:"Feedback is unavailable."});}finally{setRunning(false);}}
 
   return (
     <ProtectedRoute allowedRole="admin">
@@ -111,6 +115,12 @@ export default function GrowthFounderPreviewPage() {
                 </pre>
               )}
             </div>
+          </section>
+          <section className="rounded-2xl border border-slate-700 bg-slate-900 p-5 space-y-4">
+            <div><h2 className="text-xl font-bold">Commercial outcome context</h2><p className="text-sm text-slate-300">Read attributed CRM outcomes and the current SALES/REVENUE bindings. This does not run GROWTH, rewrite strategy, persist data, or authorize an external action.</p></div>
+            <div className="grid gap-3 sm:grid-cols-2"><input aria-label="Feedback Account ID" className="rounded-lg bg-slate-950 p-3" placeholder="Account ID" value={feedbackScope.accountId} onChange={event=>setFeedbackScope({...feedbackScope,accountId:event.target.value})}/><input aria-label="Feedback Pursuit ID" className="rounded-lg bg-slate-950 p-3" placeholder="Pursuit ID" value={feedbackScope.pursuitId} onChange={event=>setFeedbackScope({...feedbackScope,pursuitId:event.target.value})}/></div>
+            <button type="button" onClick={loadCommercialFeedback} disabled={running||!feedbackScope.accountId||!feedbackScope.pursuitId} className="rounded-xl border border-emerald-400 px-5 py-3 font-bold text-emerald-200 disabled:opacity-50">Load shared context (read only)</button>
+            {feedback&&<pre className="max-h-96 overflow-auto whitespace-pre-wrap rounded-xl bg-slate-950 p-4 text-xs text-slate-200">{JSON.stringify(feedback,null,2)}</pre>}
           </section>
         </div>
       </main>
