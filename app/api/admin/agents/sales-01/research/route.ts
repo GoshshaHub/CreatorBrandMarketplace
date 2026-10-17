@@ -44,8 +44,8 @@ export async function POST(request: Request) {
     const commercialPositioning = verifyCommercialPositioning();
     const provider = injected?.createProvider() ?? new OpenAIResponsesWebSalesProvider({ apiKey: process.env.OPENAI_API_KEY || "", model: process.env.OPENAI_SALES_MODEL || "gpt-5.6-terra" });
     const proposal = await provider.research(input, { salesContract: contract, providerProjection, envelope: input.envelope, commercialPositioning }, request.signal);
-    const result: SalesResearchResult = { outcome: "accepted", envelope: input.envelope, providerProfile: { timeoutMs: 150_000, maximumWebSearchCalls: 6, maximumContacts: 6, maximumContactsPerRole: 2, maximumSources: 30, maximumOutputTokens: 12_000 }, contract, providerProjection, spendingAuthority, proposal };
-    result.crmExport = buildCrmSalesIngestionExport(result);
+    const result: SalesResearchResult = { outcome: proposal.handoffEligible ? "accepted" : "review_required", envelope: input.envelope, providerProfile: { timeoutMs: 150_000, maximumWebSearchCalls: 6, maximumContacts: 6, maximumContactsPerRole: 2, maximumSources: 30, maximumOutputTokens: 12_000 }, contract, providerProjection, spendingAuthority, proposal };
+    if (result.outcome === "accepted") result.crmExport = buildCrmSalesIngestionExport(result);
     return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     if (error instanceof SalesAdminAuthError) return errorResponse(error.status, "authorization_failed", error.message);

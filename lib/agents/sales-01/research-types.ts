@@ -48,21 +48,6 @@ export type SalesSourceRejectionDiagnostics = {
   redirectResolutionAttempted: false;
 };
 
-export type SalesRightsRejectionDiagnostics = {
-  failureStage: "sales_claim_rights_validation";
-  failingClaimOrdinal: number;
-  failingClaimIdSha256: string;
-  statementSha256: string;
-  classification: SalesClaimClassification | "invalid";
-  rightsStatus: "unknown" | "explicitly_supported" | "not_applicable" | "invalid";
-  semanticCategory: "affirmative_assertion" | "unknown_qualification" | "conditional_requirement" | "attributed_rights_statement" | "ambiguous_rights_language";
-  evidenceReferenceCount: number;
-  rightsEvidenceCount: number;
-  inheritedRightsUnknownPresent: boolean;
-  inheritedRightsUnknownPreserved: boolean;
-  rawClaimRetained: false;
-};
-
 export type SalesClaimReferenceRejectionDiagnostics = {
   failureStage: "sales_claim_reference_validation";
   failingClaimOrdinal: number;
@@ -95,7 +80,7 @@ export type SalesCommercialBoundaryRejectionDiagnostics = {
   rawProposalRetained: false;
 };
 
-export type SalesResearchRejectionDiagnostics = SalesSourceRejectionDiagnostics | SalesRightsRejectionDiagnostics | SalesClaimReferenceRejectionDiagnostics | SalesCommercialBoundaryRejectionDiagnostics;
+export type SalesResearchRejectionDiagnostics = SalesSourceRejectionDiagnostics | SalesClaimReferenceRejectionDiagnostics | SalesCommercialBoundaryRejectionDiagnostics;
 
 export type SalesRejectedOutputDiagnostic = {
   schemaVersion: "sales-01-rejected-output-diagnostic-v1";
@@ -118,7 +103,7 @@ export type SalesRejectedOutputDiagnostic = {
 
 export type SalesProviderExecutionMetadata = {
   provider: "openai";
-  outcome: "accepted" | "provider_completed_local_rejection";
+  outcome: "accepted" | "review_required" | "provider_completed_local_rejection";
   requestedModel: string;
   returnedModel: string | null;
   providerResponseId: string | null;
@@ -128,6 +113,14 @@ export type SalesProviderExecutionMetadata = {
   serverReceivedAt: string;
   usage: SalesResearchUsage;
   rejectionDiagnostics?: SalesResearchRejectionDiagnostics;
+};
+
+export type SalesResearchReviewFinding = {
+  code: "existing_content_permission_unsupported" | "content_rights_language_ambiguous";
+  fieldPath: string;
+  message: string;
+  statementSha256: string;
+  blocking: true;
 };
 
 export type SalesEvidence = {
@@ -290,6 +283,8 @@ export type SalesResearchProposal = {
   playbook: SalesPlaybookV1;
   execution: SalesProviderExecutionMetadata;
   normalizedSourceCount: number;
+  reviewFindings: SalesResearchReviewFinding[];
+  handoffEligible: boolean;
 };
 
 export type SalesResearchProviderContext = {
@@ -300,7 +295,7 @@ export type SalesResearchProviderContext = {
 };
 
 export type SalesResearchResult = {
-  outcome: "accepted";
+  outcome: "accepted" | "review_required";
   envelope: GrowthSalesHandoffEnvelopeV1;
   providerProfile: {
     timeoutMs: 150_000;

@@ -3,7 +3,7 @@ import { createHash } from "crypto";
 import { canonicalizeResearchUrl } from "../growth-01/research-schema";
 import type { SalesCommercialBoundaryFinding } from "./commercial-boundary";
 import { GOSHSHHA_CAPABILITY_FACTS, SALES_CANONICAL_OFFER_FACTS } from "./research-prompt";
-import type { SalesClaim, SalesClaimClassification, SalesClaimReferenceRejectionDiagnostics, SalesCommercialBoundaryRejectionDiagnostics, SalesContact, SalesProviderExecutionMetadata, SalesRejectedOutputDiagnostic, SalesResearchProposal, SalesResearchRejectionDiagnostics, SalesResearchRequest, SalesRightsRejectionDiagnostics, SalesSourceRejectionDiagnostics } from "./research-types";
+import type { SalesClaim, SalesClaimClassification, SalesClaimReferenceRejectionDiagnostics, SalesCommercialBoundaryRejectionDiagnostics, SalesContact, SalesProviderExecutionMetadata, SalesRejectedOutputDiagnostic, SalesResearchProposal, SalesResearchRejectionDiagnostics, SalesResearchRequest, SalesResearchReviewFinding, SalesSourceRejectionDiagnostics } from "./research-types";
 import { verifySalesEnvelopeIntegrity } from "./validation";
 import { APPROVED_SALES_CONTRACT_SHA256 } from "./contract";
 import { verifyCommercialPositioning } from "../commercial-positioning";
@@ -64,7 +64,8 @@ const RIGHTS_ASSERTION = { test: (value: string) => OWNERSHIP_OR_CONTROL_RIGHTS_
 const RIGHTS_TOPIC = new RegExp(String.raw`\b(?:content\s+rights?|activation\s+rights?|reuse\s+rights?|rights?\s+to\s+(?:use|reuse)|licensed\s+content|creator\s+(?:content|videos?))\b`, "i");
 const ATTRIBUTED_RIGHTS = /\b(?:states?|claims?|reports?|says?|according to)\b/i;
 const CONDITIONAL_RIGHTS_REQUIREMENT = "The Brand must later supply or confirm Brand-owned or properly licensed content.";
-const PROSPECTING_RIGHTS_CHECKLIST = /(?:\b(?:do|can|could|would)\s+you\b(?:(?![.!?]).){0,100}\b(?:rights?|permission|licensed|licensing|clearance|content|videos?|assets?)\b|\b(?:confirm|provide|prove|submit|select|choose|identify|clear|license)\b(?:(?![.!?]).){0,100}\b(?:rights?|permission|licensing|clearance|content|videos?|assets?)\b|\b(?:rights?|permission|licensing|clearance)\b(?:(?![.!?]).){0,100}\b(?:confirm|provide|prove|submit|select|choose|identify|have|own)\b)/i;
+const PRESENT_PERMISSION_ASSERTION = /(?:\b(?:the\s+)?(?:brand|prospect|company|it)\s+(?:already\s+)?(?:owns?|controls?|has\s+(?:cleared|licensed)|can\s+reuse|may\s+reuse|has\s+(?:permission|rights?)\s+to\s+(?:use|reuse))\b|\b(?:content|videos?)\s+(?:is|has\s+been)\s+(?:cleared|licensed)\b|\b(?:can|may)\s+(?:reuse|be\s+reused)\b)/i;
+const FUTURE_FULFILLMENT_CONDITION = /(?:\b(?:must|will\s+need\s+to|would\s+(?:need|require)|is\s+required\s+to|needs?\s+to)\b|\b(?:before|prior\s+to|if|once|later|at\s+(?:activation|fulfillment))\b)/i;
 const UNKNOWN_RIGHTS_PATTERNS = [
   /^(?:the brand(?:'s)? )?(?:content|activation|reuse) rights? (?:remain|remains|are|is) (?:unknown|unresolved|not verified|not confirmed)(?: until (?:verified|confirmed))?[.!]?$/i,
   /^rights? to (?:use|reuse) (?:specific )?(?:creator )?(?:video )?content (?:remain|remains|are|is) (?:unknown|unresolved|not verified|not confirmed)(?: until (?:verified|confirmed))?[.!]?$/i,
@@ -165,7 +166,7 @@ function sourceRejectionDiagnostics(params: { evidenceItem: any; evidenceOrdinal
   };
 }
 
-type RightsSemanticCategory = SalesRightsRejectionDiagnostics["semanticCategory"];
+type RightsSemanticCategory = "affirmative_assertion" | "unknown_qualification" | "conditional_requirement" | "attributed_rights_statement" | "ambiguous_rights_language";
 function normalizedRightsText(value: string): string { return value.trim().replace(/\s+/g, " "); }
 function withoutTerminalPunctuation(value: string): string { return value.replace(/[.!?]+$/, ""); }
 function inheritedRightsUnknownWrapperMatches(value: string, originalUnknowns: string[]): boolean {
@@ -193,7 +194,8 @@ function isRightsUnknownText(value: string, originalUnknowns: string[]): boolean
 }
 function classifyRightsClaim(statement: string, originalUnknowns: string[]): RightsSemanticCategory | null {
   const normalized = normalizedRightsText(statement);
-  if (normalized === CONDITIONAL_RIGHTS_REQUIREMENT) return "conditional_requirement";
+  if (PRESENT_PERMISSION_ASSERTION.test(normalized)) return ATTRIBUTED_RIGHTS.test(normalized) ? "attributed_rights_statement" : "affirmative_assertion";
+  if (RIGHTS_TOPIC.test(normalized) && FUTURE_FULFILLMENT_CONDITION.test(normalized) && !PRESENT_PERMISSION_ASSERTION.test(normalized)) return "conditional_requirement";
   if (isRightsUnknownText(normalized, originalUnknowns)) return "unknown_qualification";
   if (RIGHTS_ASSERTION.test(normalized)) return ATTRIBUTED_RIGHTS.test(normalized) ? "attributed_rights_statement" : "affirmative_assertion";
   if (RIGHTS_TOPIC.test(normalized) || OWNERSHIP_OR_CONTROL_RIGHTS_ASSERTION.test(normalized)) return ATTRIBUTED_RIGHTS.test(normalized) ? "attributed_rights_statement" : "ambiguous_rights_language";
@@ -204,28 +206,6 @@ function rightsUnknownState(originalUnknowns: string[], inheritedUnknowns: any[]
   const preserved = originals.length > 0 && originals.every((originalText) => inheritedUnknowns.some((item) => item?.originalText === originalText && item.status === "unresolved" && item.resolution === null && Array.isArray(item.salesEvidenceIds) && item.salesEvidenceIds.length === 0));
   return { present: originals.length > 0, preserved };
 }
-function rightsRejectionDiagnostics(params: { claim: any; claimOrdinal: number; category: RightsSemanticCategory; rights: any; originalUnknowns: string[]; inheritedUnknowns: any[] }): SalesRightsRejectionDiagnostics {
-  const unknownState = rightsUnknownState(params.originalUnknowns, params.inheritedUnknowns);
-  const classifications = new Set(["verified_fact", "attributed_brand_claim", "goshsha_capability", "reasonable_inference", "hypothesis", "unknown", "prohibited_unsupported"]);
-  const statuses = new Set(["unknown", "explicitly_supported", "not_applicable"]);
-  const claimId = typeof params.claim?.id === "string" ? params.claim.id : "";
-  const statement = typeof params.claim?.statement === "string" ? params.claim.statement : "";
-  return {
-    failureStage: "sales_claim_rights_validation",
-    failingClaimOrdinal: Math.max(0, Math.min(params.claimOrdinal, 39)),
-    failingClaimIdSha256: sha256Diagnostic(claimId),
-    statementSha256: sha256Diagnostic(statement),
-    classification: classifications.has(params.claim?.classification) ? params.claim.classification : "invalid",
-    rightsStatus: statuses.has(params.rights?.status) ? params.rights.status : "invalid",
-    semanticCategory: params.category,
-    evidenceReferenceCount: Math.min(Array.isArray(params.claim?.evidenceRefs) ? params.claim.evidenceRefs.length : 0, 12),
-    rightsEvidenceCount: Math.min(Array.isArray(params.rights?.evidenceIds) ? params.rights.evidenceIds.length : 0, 8),
-    inheritedRightsUnknownPresent: unknownState.present,
-    inheritedRightsUnknownPreserved: unknownState.preserved,
-    rawClaimRetained: false,
-  };
-}
-
 export function validateSalesResearchRequest(value: unknown): string[] {
   if (!value || typeof value !== "object") return ["Request must be an object."];
   const input = value as Partial<SalesResearchRequest>; const errors: string[] = [];
@@ -372,8 +352,13 @@ function compatibleReferenceKinds(classification: SalesClaimClassification): Set
   return new Set(["growth_evidence", "sales_evidence", "goshsha_capability"]);
 }
 
+function reviewFinding(code: SalesResearchReviewFinding["code"], fieldPath: string, message: string, statement: string): SalesResearchReviewFinding {
+  return { code, fieldPath, message, statementSha256: sha256Diagnostic(statement), blocking: true };
+}
+
 function validateClaims(claims: SalesClaim[], growthIds: Set<string>, salesIds: Set<string>, rights: RawProposal["rights"], originalUnknowns: string[], inheritedUnknowns: RawProposal["inheritedUnknowns"]) {
   const claimIds = new Set<string>();
+  const reviewFindings: SalesResearchReviewFinding[] = [];
   const unknownState = rightsUnknownState(originalUnknowns, inheritedUnknowns);
   for (const [claimOrdinal, claim] of claims.entries()) {
     if (claimIds.has(claim.id)) throw new SalesResearchError("duplicate_claim_id", "Claims must have unique IDs.", 422); claimIds.add(claim.id);
@@ -381,11 +366,15 @@ function validateClaims(claims: SalesClaim[], growthIds: Set<string>, salesIds: 
     if (REGULATED_OR_EFFICACY.test(claim.statement) && claim.classification === "verified_fact") throw new SalesResearchError("regulated_claim_invalid", `Claim ${claim.id} cannot turn Brand health, safety, or efficacy messaging into an independently verified fact.`, 422);
     const rightsCategory = classifyRightsClaim(claim.statement, originalUnknowns);
     if (rightsCategory) {
-      const diagnostics = rightsRejectionDiagnostics({ claim, claimOrdinal, category: rightsCategory, rights, originalUnknowns, inheritedUnknowns });
       const unknownContext = rights?.status === "unknown" && Array.isArray(rights?.evidenceIds) && rights.evidenceIds.length === 0 && unknownState.present && unknownState.preserved;
       const unknownQualificationValid = rightsCategory === "unknown_qualification" && unknownContext && claim.classification === "unknown" && Array.isArray(claim.evidenceRefs) && claim.evidenceRefs.length === 0;
       const conditionalRequirementValid = rightsCategory === "conditional_requirement" && unknownContext && claim.classification === "goshsha_capability" && Array.isArray(claim.evidenceRefs) && claim.evidenceRefs.length === 1 && claim.evidenceRefs[0]?.kind === "goshsha_capability" && claim.evidenceRefs[0]?.id === "cap-free-first";
-      if (!unknownQualificationValid && !conditionalRequirementValid) throw new SalesResearchError("rights_claim_unsupported", `Claim ${claim.id} has unsupported or incompatible content-rights semantics. Canonical offer facts are attached server-side and must not be restated as prospect facts.`, 422, null, diagnostics);
+      if (!unknownQualificationValid && !conditionalRequirementValid) {
+        const code = rightsCategory === "affirmative_assertion" || rightsCategory === "attributed_rights_statement"
+          ? "existing_content_permission_unsupported"
+          : "content_rights_language_ambiguous";
+        reviewFindings.push(reviewFinding(code, `claims[${claimOrdinal}].statement`, `Claim ${claim.id} cannot establish that content permission already exists. Founder review is required; no permission or fulfillment authority is inferred.`, claim.statement));
+      }
     }
     if (["verified_fact", "attributed_brand_claim"].includes(claim.classification) && !claim.evidenceRefs.length) throw new SalesResearchError("factual_claim_unlinked", `Claim ${claim.id} lacks evidence.`, 422);
     const compatibleKinds = compatibleReferenceKinds(claim.classification);
@@ -394,13 +383,7 @@ function validateClaims(claims: SalesClaim[], growthIds: Set<string>, salesIds: 
       if (!valid || !compatibleKinds.has(ref.kind)) throw new SalesResearchError("claim_reference_invalid", `Claim ${claim.id} has an invalid evidence reference.`, 422, null, claimReferenceDiagnostics({ claim, claimOrdinal, ref, refOrdinal, growthIds, salesIds, compatibleKinds }));
     }
   }
-  return claimIds;
-}
-
-function validateProspectingOutreach(outreach: RawProposal["outreach"]) {
-  for (const [field, statement] of Object.entries({ initialMessage: outreach?.initialMessage, firstFollowUp: outreach?.firstFollowUp, secondFollowUp: outreach?.secondFollowUp, closeTheLoop: outreach?.closeTheLoop })) {
-    if (typeof statement === "string" && PROSPECTING_RIGHTS_CHECKLIST.test(statement)) throw new SalesResearchError("prospecting_rights_checklist_forbidden", `Initial prospecting ${field} cannot request content selection, rights confirmation, licensing evidence, or activation readiness.`, 422);
-  }
+  return { claimIds, reviewFindings };
 }
 
 export function normalizeCompletedOpenAISalesResponse(params: { response: Record<string, unknown>; request: SalesResearchRequest; requestedModel: string; serverReceivedAt: string }): SalesResearchProposal {
@@ -426,7 +409,8 @@ export function normalizeCompletedOpenAISalesResponse(params: { response: Record
     const originals = params.request.envelope.evidence.knownUnknowns;
     const inheritedUnknowns = originals.map((originalText) => ({ originalText, status: "unresolved" as const, resolution: null, salesEvidenceIds: [] as string[] }));
     const rights = { status: "unknown" as const, evidenceIds: [] as string[], conditionalRequirement: CONDITIONAL_RIGHTS_REQUIREMENT };
-    const claimIds = validateClaims(proposal.claims, growthIds, salesIds, rights, originals, inheritedUnknowns);
+    const claimValidation = validateClaims(proposal.claims, growthIds, salesIds, rights, originals, inheritedUnknowns);
+    const claimIds = claimValidation.claimIds;
     if (proposal.retailerIndependence.posture === "evidence_supported_dependency" && (!proposal.retailerIndependence.evidenceIds.length || proposal.retailerIndependence.evidenceIds.some((id: string) => !salesIds.has(id)))) throw new SalesResearchError("retailer_dependency_unsupported", "Retailer dependency requires explicit SALES evidence.", 422);
     const claimsById = new Map<string, SalesClaim>(proposal.claims.map((claim: SalesClaim) => [claim.id, claim]));
     for (const id of proposal.outreach.claimIds || []) {
@@ -434,6 +418,8 @@ export function normalizeCompletedOpenAISalesResponse(params: { response: Record
       if (claimsById.get(id)?.classification === "prohibited_unsupported") throw new SalesResearchError("outreach_prohibited_claim", "Outreach cannot use a prohibited unsupported claim.", 422);
     }
     for (const objection of proposal.objections || []) for (const id of objection.claimIds || []) if (!claimIds.has(id)) throw new SalesResearchError("objection_claim_invalid", "An objection response references an unapproved claim.", 422);
+    const reviewFindings = claimValidation.reviewFindings;
+    execution.outcome = reviewFindings.length ? "review_required" : "accepted";
     const best = proposal.contactSelection.status === "recommended" ? proposal.contactSelection.bestFirstContactId : null;
     const envelope = params.request.envelope;
     const positioning = verifyCommercialPositioning();
@@ -443,7 +429,7 @@ export function normalizeCompletedOpenAISalesResponse(params: { response: Record
       { id: "positioning-audience-distinction", statement: positioning.body.audienceDistinction.goshshaPosition, classification: "goshsha_capability" as const },
     ];
     const audienceObjection = { objection: positioning.body.userCountObjection.objection, response: positioning.body.userCountObjection.response, deeperQualification: positioning.body.userCountObjection.deeperQualification };
-    return { execution, normalizedSourceCount: referenced.size, playbook: {
+    return { execution, normalizedSourceCount: referenced.size, reviewFindings, handoffEligible: reviewFindings.length === 0, playbook: {
       schemaVersion: "sales-playbook-v1.2", createdAt: params.serverReceivedAt,
       growthQualification: { candidateId: envelope.candidate.candidateId, brand: envelope.opportunity.brand, productOrEvent: envelope.opportunity.productOrEvent, score: envelope.qualification.score, band: envelope.qualification.band, confidence: envelope.qualification.confidence, feasibility: envelope.qualification.founderStagePursuitFeasibility, candidateSha256: envelope.candidate.candidateSha256 },
       salesPursuitDecision: proposal.salesPursuitDecision, salesPursuitRationale: requiredText(proposal.salesPursuitRationale, "salesPursuitRationale"), opportunityStrategy: { ...proposal.strategy, offerFacts: SALES_CANONICAL_OFFER_FACTS }, positioningFoundation: { schemaVersion: positioning.schemaVersion, version: positioning.version, sha256: positioning.sha256, opportunitySpecificPositioning: requiredText(proposal.strategy.goshshaWedge, "strategy.goshshaWedge"), approvedPlatformClaims: platformClaims, mechanicsQualifications: [positioning.body.productMechanics.shopperDevice, positioning.body.productMechanics.shopperAction, positioning.body.productMechanics.contentAvailability, positioning.body.measurableMeaning.definition], audienceObjection, prohibitedClaims: positioning.body.prohibitedClaims, offerBindings: { catalogVersion: positioning.body.offerBindings.catalogVersion, catalogSha256: positioning.body.offerBindings.catalogSha256, product2OfferId: positioning.body.offerBindings.product2OfferId, freeFirstOfferId: positioning.body.offerBindings.freeFirstOfferId } }, contacts: proposal.contacts, contactSelection: proposal.contactSelection, proofStrategy: requiredText(proposal.proofStrategy, "proofStrategy"), claims: proposal.claims, inheritedUnknowns, rights, readiness: { businessDevelopment: "ready", fulfillment: "requirements_unresolved", unresolvedRequirements: ["Asset selection, content permission, upload, publication, activation, and payment execution remain downstream of prospect interest."], doesNotAuthorizeFulfillment: true }, retailerIndependence: proposal.retailerIndependence, objections: [{ objection: audienceObjection.objection, response: `${audienceObjection.response} ${audienceObjection.deeperQualification}`, claimIds: platformClaims.map(x=>x.id), escalate: false }, ...proposal.objections],

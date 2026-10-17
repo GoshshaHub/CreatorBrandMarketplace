@@ -75,7 +75,7 @@ export default function SalesIntakePage() {
   }
 
   function downloadCrmExport() {
-    if (!researchResult?.crmExport) return;
+    if (researchResult?.outcome !== "accepted" || !researchResult.crmExport) return;
     const blob = new Blob([JSON.stringify(researchResult.crmExport, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
@@ -158,13 +158,14 @@ export default function SalesIntakePage() {
             <button type="button" onClick={runSalesResearch} disabled={!researchAuthorized || researching} className="w-full rounded-xl bg-violet-300 px-5 py-3 font-bold text-slate-950 disabled:opacity-50">{researching ? "Researching public Sales intelligence…" : "Run one SALES-01 research request"}</button>
           </section>}
 
-          {researchResult && <section className={`space-y-3 rounded-2xl border p-5 ${researchResult.outcome === "accepted" ? "border-emerald-700 bg-emerald-950/20" : "border-red-800 bg-red-950/40"}`}>
-            <h2 className="text-xl font-bold">{researchResult.outcome === "accepted" ? "Sales Playbook ready for Founder review" : "SALES research did not complete"}</h2>
+          {researchResult && <section className={`space-y-3 rounded-2xl border p-5 ${researchResult.outcome === "accepted" ? "border-emerald-700 bg-emerald-950/20" : researchResult.outcome === "review_required" ? "border-amber-700 bg-amber-950/30" : "border-red-800 bg-red-950/40"}`}>
+            <h2 className="text-xl font-bold">{researchResult.outcome === "accepted" ? "Sales Playbook ready for Founder review" : researchResult.outcome === "review_required" ? "Founder review required — not handoff eligible" : "SALES research did not complete"}</h2>
             {researchResult.error && <p>{researchResult.error}{researchResult.code ? ` (${researchResult.code})` : ""}</p>}
             {researchResult.proposal && <>
               <div className="grid gap-2 text-sm sm:grid-cols-2"><p>Decision: {researchResult.proposal.playbook.salesPursuitDecision}</p><p>Contacts: {researchResult.proposal.playbook.contacts.length}</p><p>Sources: {researchResult.proposal.normalizedSourceCount}</p><p>Web searches: {researchResult.proposal.execution.usage.webSearchCalls}</p><p>Total tokens: {researchResult.proposal.execution.usage.totalTokens ?? "Unavailable"}</p><p>Sending/CRM: Not authorized</p></div>
               <details open><summary className="cursor-pointer font-semibold">Session-only Sales Playbook and CRM-ready preview</summary><pre className="mt-3 max-h-[50rem] overflow-auto whitespace-pre-wrap rounded-xl bg-slate-950 p-4 text-xs">{JSON.stringify(researchResult.proposal.playbook, null, 2)}</pre></details>
-              {researchResult.crmExport && <div className="flex flex-wrap gap-3"><button type="button" onClick={() => void navigator.clipboard.writeText(JSON.stringify(researchResult.crmExport, null, 2))} className="rounded-lg border border-sky-400 px-4 py-2 text-sm font-semibold text-sky-200">Copy CRM export</button><button type="button" onClick={downloadCrmExport} className="rounded-lg bg-sky-400 px-4 py-2 text-sm font-bold text-slate-950">Download CRM export</button><span className="self-center text-xs text-slate-400">Export only · no CRM write · no downstream authority</span></div>}
+              {!!researchResult.proposal.reviewFindings?.length && <div className="rounded-xl border border-amber-600 bg-amber-950/40 p-4"><h3 className="font-semibold text-amber-100">Blocking review findings</h3><ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-amber-100">{researchResult.proposal.reviewFindings.map((finding, index) => <li key={`${finding.code}-${finding.fieldPath}-${index}`}><span className="font-mono">{finding.fieldPath}</span>: {finding.message} ({finding.code})</li>)}</ul><p className="mt-2 text-xs text-amber-200">No CRM export, sending authority, fulfillment authority, or downstream execution is available.</p></div>}
+              {researchResult.outcome === "accepted" && researchResult.crmExport && <div className="flex flex-wrap gap-3"><button type="button" onClick={() => void navigator.clipboard.writeText(JSON.stringify(researchResult.crmExport, null, 2))} className="rounded-lg border border-sky-400 px-4 py-2 text-sm font-semibold text-sky-200">Copy CRM export</button><button type="button" onClick={downloadCrmExport} className="rounded-lg bg-sky-400 px-4 py-2 text-sm font-bold text-slate-950">Download CRM export</button><span className="self-center text-xs text-slate-400">Export only · no CRM write · no downstream authority</span></div>}
             </>}
             {researchResult.providerExecution && <details><summary className="cursor-pointer font-semibold">Safe provider execution metadata</summary><pre className="mt-3 overflow-auto rounded-xl bg-slate-950 p-4 text-xs">{JSON.stringify(researchResult.providerExecution, null, 2)}</pre></details>}
             {researchResult.rejectedOutputDiagnostic && <section className="space-y-3 rounded-xl border border-red-500 bg-red-950/50 p-4">

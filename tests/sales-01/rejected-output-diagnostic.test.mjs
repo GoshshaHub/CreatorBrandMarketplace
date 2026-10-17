@@ -78,6 +78,11 @@ test("route keeps the test factory internal and rejected UI has no export or dow
   assert.doesNotMatch(route, /console\.(?:log|info|debug).*rejectedOutputDiagnostic/);
   assert.match(page, /UNTRUSTED · REJECTED · NOT HANDOFF ELIGIBLE/);
   assert.match(page, /exactStructuredOutput/);
+  assert.match(page, /researchResult\.outcome === "accepted"/);
+  assert.match(page, /researchResult\.outcome === "review_required"/);
+  assert.match(page, /Founder review required — not handoff eligible/);
+  assert.match(page, /researchResult\.outcome === "accepted" && researchResult\.crmExport/);
+  assert.match(page, /researchResult\?\.outcome !== "accepted" \|\| !researchResult\.crmExport/);
   assert.doesNotMatch(page, /dangerouslySetInnerHTML/);
 });
 
@@ -124,7 +129,69 @@ test("actual POST handler authenticates before mocked provider access and disclo
   assert.equal(accepted.status, 200);
   assert.equal(acceptedBody.outcome, "accepted");
   assert.equal(acceptedBody.rejectedOutputDiagnostic, undefined);
+  assert.ok(acceptedBody.crmExport);
   assert.equal(acceptedBody.proposal.playbook.authority.persistence, false);
+
+  globalThis.__salesResearchRouteTestDependencies = {
+    authorize: async () => {},
+    createProvider: () => ({ research: async () => { throw new SalesResearchError("provider_timeout", "Provider request timed out.", 504); } }),
+  };
+  const providerError = await route.POST(request());
+  const providerErrorBody = await providerError.json();
+  assert.equal(providerError.status, 504);
+  assert.equal(providerErrorBody.code, "provider_timeout");
+  assert.equal(providerErrorBody.crmExportAuthorized, false);
+  assert.equal(providerErrorBody.crmExport, undefined);
+  assert.equal(providerErrorBody.proposal, undefined);
+  delete globalThis.__salesResearchRouteTestDependencies;
+});
+
+test("actual POST handler accepts future fulfillment conditions and returns present-permission assertions for review", async () => {
+  process.env.NODE_ENV = "test";
+  register(`data:text/javascript,${encodeURIComponent(`export async function resolve(specifier, context, nextResolve) { return nextResolve(specifier === "next/server" ? "next/server.js" : specifier, context); }`)}`, import.meta.url);
+  const route = await import(`../../app/api/admin/agents/sales-01/research/route.ts?rights-boundary=${Date.now()}`);
+  const request = () => new Request("http://localhost/api/admin/agents/sales-01/research", { method: "POST", headers: { authorization: "Bearer synthetic", "content-type": "application/json" }, body: JSON.stringify(requestFixture()) });
+  const run = async (statement) => {
+    globalThis.__salesResearchRouteTestDependencies = {
+      authorize: async () => {},
+      createProvider: () => ({ research: async (input) => {
+        const value = validProposal(input);
+        if (statement !== null) value.claims.push({ id: "rights-boundary", statement, classification: "goshsha_capability", evidenceRefs: [{ kind: "goshsha_capability", id: "cap-free-first" }] });
+        return normalizeCompletedOpenAISalesResponse({ response: completedResponse(JSON.stringify(value)), request: input, requestedModel: "gpt-5.6-terra", serverReceivedAt: "2026-10-16T12:00:00.000Z" });
+      } }),
+    };
+    const response = await route.POST(request());
+    return { response, body: await response.json() };
+  };
+
+  for (const statement of [
+    null,
+    "Free First is a zero-dollar, nonrevenue proof wedge; Brand-owned or properly licensed content must be supplied or confirmed later.",
+    "If the prospect later chooses an activation, it will need to supply Brand-owned or properly licensed content before fulfillment.",
+    "A future activation would require properly licensed content.",
+  ]) {
+    const { response, body } = await run(statement);
+    assert.equal(response.status, 200, JSON.stringify(body));
+    assert.equal(body.outcome, "accepted", statement ?? "no rights language");
+    assert.equal(body.proposal.handoffEligible, true);
+    assert.deepEqual(body.proposal.reviewFindings, []);
+    assert.ok(body.crmExport);
+    assert.equal(body.proposal.playbook.rights.status, "unknown");
+    assert.deepEqual(body.proposal.playbook.rights.evidenceIds, []);
+  }
+
+  const fabricated = await run("The Brand has licensed its existing video for Goshsha reuse.");
+  assert.equal(fabricated.response.status, 200, JSON.stringify(fabricated.body));
+  assert.equal(fabricated.body.outcome, "review_required");
+  assert.equal(fabricated.body.proposal.handoffEligible, false);
+  assert.equal(fabricated.body.proposal.reviewFindings.length, 1);
+  assert.equal(fabricated.body.proposal.reviewFindings[0].code, "existing_content_permission_unsupported");
+  assert.equal(fabricated.body.proposal.reviewFindings[0].fieldPath, "claims[2].statement");
+  assert.equal(fabricated.body.crmExport, undefined);
+  assert.equal(fabricated.body.proposal.playbook.rights.status, "unknown");
+  assert.deepEqual(fabricated.body.proposal.playbook.rights.evidenceIds, []);
+  assert.equal(fabricated.body.proposal.playbook.authority.crmWriteAuthorized, false);
+  assert.equal(fabricated.body.proposal.playbook.authority.sendingAuthorized, false);
   delete globalThis.__salesResearchRouteTestDependencies;
 });
 

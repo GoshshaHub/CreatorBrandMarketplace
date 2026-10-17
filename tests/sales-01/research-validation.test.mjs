@@ -419,7 +419,7 @@ test("attributed source evidence stays under evidence-to-claim rules rather than
   assert.equal(result.playbook.outreach.sendingAuthorized, false);
 });
 
-test("narrow rights unknowns and the exact conditional requirement remain uncertainty, not activation authority", () => {
+test("rights unknowns and ordinary future fulfillment conditions do not gate prospecting", () => {
   const unknown = proposal();
   unknown.claims.push({ id: "rights-unknown", statement: "Content rights remain unknown until verified.", classification: "unknown", evidenceRefs: [] });
   const normalizedUnknown = normalize(unknown);
@@ -428,15 +428,40 @@ test("narrow rights unknowns and the exact conditional requirement remain uncert
   assert.deepEqual(normalizedUnknown.playbook.rights.evidenceIds, []);
   assert.equal(normalizedUnknown.playbook.inheritedUnknowns[0].status, "unresolved");
 
-  const conditional = proposal();
-  conditional.claims.push({ id: "rights-condition", statement: "The Brand must later supply or confirm Brand-owned or properly licensed content.", classification: "goshsha_capability", evidenceRefs: [{ kind: "goshsha_capability", id: "cap-free-first" }] });
-  const normalizedConditional = normalize(conditional);
-  assert.equal(normalizedConditional.playbook.claims.at(-1).classification, "goshsha_capability");
-  assert.equal(normalizedConditional.playbook.rights.status, "unknown");
+  for (const statement of [
+    "The Brand must later supply or confirm Brand-owned or properly licensed content.",
+    "Free First is a zero-dollar, nonrevenue proof wedge; Brand-owned or properly licensed content must be supplied or confirmed later.",
+    "If an activation proceeds, the Brand will need to provide content that is Brand-owned or properly licensed.",
+    "Before fulfillment, properly licensed content is required.",
+  ]) {
+    const conditional = proposal();
+    conditional.claims.push({ id: "rights-condition", statement, classification: "goshsha_capability", evidenceRefs: [{ kind: "goshsha_capability", id: "cap-free-first" }] });
+    const normalizedConditional = normalize(conditional);
+    assert.equal(normalizedConditional.playbook.claims.at(-1).statement, statement);
+    assert.equal(normalizedConditional.playbook.rights.status, "unknown");
+    assert.equal(normalizedConditional.handoffEligible, true);
+    assert.deepEqual(normalizedConditional.reviewFindings, []);
+  }
+
+  const noRightsLanguage = proposal();
+  const normalizedNoRightsLanguage = normalize(noRightsLanguage);
+  assert.equal(normalizedNoRightsLanguage.handoffEligible, true);
+  assert.deepEqual(normalizedNoRightsLanguage.reviewFindings, []);
+
+  for (const statement of [
+    "Free First requires properly licensed content later, and the Brand can reuse its Creator video now.",
+    "If activation proceeds, it owns the video content.",
+    "Before fulfillment, the video has been licensed.",
+  ]) {
+    const mixed = proposal();
+    mixed.claims.push({ id: "mixed-rights-condition", statement, classification: "goshsha_capability", evidenceRefs: [{ kind: "goshsha_capability", id: "cap-free-first" }] });
+    const normalizedMixed = normalize(mixed);
+    assert.equal(normalizedMixed.handoffEligible, false);
+    assert.equal(normalizedMixed.reviewFindings.at(-1).code, "existing_content_permission_unsupported");
+  }
 });
 
-// Superseded phrase/rights gates were removed; active structural and authority coverage follows.
-test("affirmative, ambiguous, attributed, and adversarial mixed rights language still fails closed", () => {
+test("unsupported present permission and ambiguous rights assertions require review without becoming accepted facts", () => {
   const statements = [
     ["The Brand owns the Creator video content.", "affirmative_assertion"],
     ["The Brand may have usable Creator content.", "ambiguous_rights_language"],
@@ -448,19 +473,14 @@ test("affirmative, ambiguous, attributed, and adversarial mixed rights language 
   for (const [statement, category] of statements) {
     const invalid = proposal();
     invalid.claims.push({ id: "private-rights-claim", statement, classification: "unknown", evidenceRefs: [] });
-    assert.throws(() => normalize(invalid), (error) => {
-      assert.equal(error.code, "rights_claim_unsupported");
-      const diagnostics = error.providerExecution.rejectionDiagnostics;
-      assert.equal(diagnostics.failureStage, "sales_claim_rights_validation");
-      assert.equal(diagnostics.semanticCategory, category);
-      assert.equal(diagnostics.rawClaimRetained, false);
-      assert.equal(diagnostics.rightsStatus, "unknown");
-      assert.equal(diagnostics.inheritedRightsUnknownPresent, true);
-      assert.equal(diagnostics.inheritedRightsUnknownPreserved, true);
-      const serialized = JSON.stringify(diagnostics);
-      assert.doesNotMatch(serialized, /private-rights-claim|Creator video|properly licensed|Brand can reuse/);
-      return true;
-    });
+    const result = normalize(invalid);
+    assert.equal(result.handoffEligible, false, category);
+    assert.equal(result.playbook.rights.status, "unknown");
+    assert.deepEqual(result.playbook.rights.evidenceIds, []);
+    assert.equal(result.playbook.inheritedUnknowns[0].status, "unresolved");
+    assert.equal(result.reviewFindings.at(-1).fieldPath, `claims[${invalid.claims.length - 1}].statement`);
+    assert.equal(result.reviewFindings.at(-1).blocking, true);
+    assert.match(result.reviewFindings.at(-1).code, /existing_content_permission_unsupported|content_rights_language_ambiguous/);
   }
 });
 
@@ -485,7 +505,9 @@ test("job-responsibility context cannot hide actual content ownership, clearance
   ]) {
     const invalid = proposal();
     invalid.claims.push({ id: "mixed-job-rights", statement, classification: "verified_fact", evidenceRefs: [{ kind: "sales_evidence", id: "sales-1" }] });
-    assert.throws(() => normalize(invalid), (error) => error.code === "rights_claim_unsupported");
+    const result = normalize(invalid);
+    assert.equal(result.handoffEligible, false);
+    assert.equal(result.reviewFindings.at(-1).code, "existing_content_permission_unsupported");
   }
 });
 
@@ -500,7 +522,9 @@ test("exact Free First capability states a licensing prerequisite without establ
   ]) {
     const invalid = proposal();
     invalid.claims[1].statement = statement;
-    assert.throws(() => normalize(invalid), (error) => error.code === "rights_claim_unsupported");
+    const result = normalize(invalid);
+    assert.equal(result.handoffEligible, false);
+    assert.equal(result.reviewFindings.at(-1).code, "existing_content_permission_unsupported");
   }
 });
 
@@ -548,7 +572,9 @@ test("verbatim inherited rights uncertainty is accepted before assertion matchin
   ]) {
     const invalid = proposal();
     invalid.claims.push({ id: "rights-altered", statement, classification: "unknown", evidenceRefs: [] });
-    assert.throws(() => normalize(invalid), (error) => error.code === "rights_claim_unsupported");
+    const result = normalize(invalid);
+    assert.equal(result.handoffEligible, false);
+    assert.equal(result.reviewFindings.at(-1).blocking, true);
   }
 });
 
