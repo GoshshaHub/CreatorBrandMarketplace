@@ -3,7 +3,7 @@ import type { EligibilityRecord, RevenueAssessment, RevenueBlocker, RevenueObjec
 
 const FAMILIES:RevenueObjectiveFamily[]=["resolve_evidence_or_safety_blocker","establish_qualified_engagement","complete_proof_milestone","pursue_standard_paid_conversion","pursue_repeat_or_retention","pause_no_commercial_action"];
 const verifiedMilestone=(s:CrmRevenueSnapshotV1,...types:string[])=>s.commercialEvidence.milestones.some(x=>types.includes(x.type??"")&&(x.verification==="verified"||x.evidence.length>0));
-const hasEngagement=(s:CrmRevenueSnapshotV1)=>s.interactions.some(x=>x.type==="inbound_received"&&Boolean(x.exactAttributedStatement||x.evidence.length));
+const hasEngagement=(s:CrmRevenueSnapshotV1)=>s.interactions.some(x=>x.type==="inbound_received"&&x.evidenceAuthenticity==="authentic"&&x.authenticCommercialLearningEligible===true&&Boolean(x.exactAttributedStatement||x.evidence.length));
 const salesIdentityComplete=(s:CrmRevenueSnapshotV1)=>Boolean(s.upstream.sales.salesArtifactSha256&&s.upstream.sales.playbookSchemaVersion&&s.upstream.sales.salesContractVersion&&s.upstream.sales.salesContractSha256&&s.upstream.sales.providerProjectionVersion&&s.upstream.sales.providerProjectionSha256);
 const hardIncomplete=(s:CrmRevenueSnapshotV1)=>s.snapshotIdentity.incompletenessReasons.some(x=>/Linked immutable GROWTH|Pursuit Contacts|SALES source identity|bounded snapshot read limit/i.test(x));
 

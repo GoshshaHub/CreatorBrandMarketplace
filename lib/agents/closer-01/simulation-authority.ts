@@ -2,6 +2,7 @@ import type { CrmAccountDetailReadModel } from "../crm-01/read-types";
 import type { CrmRevenueSnapshotV1 } from "../crm-01/revenue-snapshot-types";
 import type { CurrentSalesPlaybookProjectionV1 } from "../crm-01/sales-playbook-artifact";
 import { getCommercialOfferCatalog } from "../crm-01/commercial-offers";
+import { assertCloserLocalDemoEnvironment } from "./local-demo-guard";
 import { revenueSha256, revenueStableId } from "../revenue-01/canonical";
 import type { ApprovedActionPackageV1 } from "../revenue-01/approved-action";
 import type { ConversationIntelligencePacketV1 } from "./types";
@@ -139,7 +140,13 @@ export function buildFounderSimulationAuthority(params: {
   if (!CLOSER_SIMULATION_ACTIONS.includes(params.simulationAction)) throw new CloserSimulationAuthorityError("action_invalid", "Simulation action is unsupported.");
   const interactions = packet.crm.interactions;
   const latest = interactions.at(-1) ?? null;
-  if (params.simulationAction === "simulate_response_to_latest_inbound" && latest?.type !== "inbound_received") throw new CloserSimulationAuthorityError("action_context_mismatch", "A response simulation requires the latest canonical Interaction to be inbound.");
+  if (params.simulationAction === "simulate_response_to_latest_inbound") {
+    if (latest?.type !== "inbound_received") throw new CloserSimulationAuthorityError("action_context_mismatch", "A response simulation requires the latest canonical Interaction to be inbound.");
+    if (latest.evidenceAuthenticity !== "authentic" || latest.authenticCommercialLearningEligible !== true) {
+      if (latest.evidenceAuthenticity !== "synthetic") throw new CloserSimulationAuthorityError("interaction_authenticity_unverified", "A production reply draft requires an explicitly authentic current inbound Interaction; missing or unknown historical authenticity fails closed.");
+      try { assertCloserLocalDemoEnvironment(); } catch { throw new CloserSimulationAuthorityError("interaction_authenticity_unverified", "Synthetic interactions may be consumed only by the explicitly guarded isolated local-demo context."); }
+    }
+  }
   if (!packet.sales.positioningArtifact || !packet.sales.audienceObjection || !packet.sales.mechanicsQualifications.length) throw new CloserSimulationAuthorityError("positioning_binding_missing", "Current commercial-positioning identity, mechanics, and audience objection are required.");
   if (playbook.positioningArtifact?.version !== packet.sales.positioningArtifact.version || playbook.positioningArtifact.sha256 !== packet.sales.positioningArtifact.sha256) throw new CloserSimulationAuthorityError("positioning_binding_mismatch", "The Sales Playbook commercial-positioning identity does not match the CLOSER packet.");
   const claimsBody = { positioning: packet.sales.positioning!, approvedClaims: packet.sales.approvedClaims, mechanicsQualifications: packet.sales.mechanicsQualifications, audienceObjection: packet.sales.audienceObjection, prohibitedClaims: packet.sales.prohibitedClaims, objections: packet.sales.objections, escalationBoundaries: packet.sales.escalationBoundaries };
