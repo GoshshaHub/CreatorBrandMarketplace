@@ -1,14 +1,16 @@
 import type { CrmEntityType, CrmProvenance, CrmStage, CrmStoredRecord } from "./types";
+import type { CrmSuppressionCheckV1 } from "./suppression-check";
 
 export const CRM_MUTATION_KINDS = ["correct_record", "add_evidence", "initialize_conversation", "record_interaction", "record_founder_decision", "transition_pursuit", "update_dnc", "set_next_action", "create_attention_item", "transition_attention_item", "record_milestone"] as const;
 export type CrmMutationKind = typeof CRM_MUTATION_KINDS[number];
 export type CrmDisposition = "Active" | "Nurture / Revisit" | "Not Pursued" | "Closed";
-export type CrmDncScope = "account" | "contact" | "channel";
+export type CrmDncScope = "account" | "contact" | "channel" | "company_route";
 export type CrmDncState = "active" | "inactive" | "unknown" | "conflicting";
 
 export type CrmEvidenceInput = { id: string; classification: CrmProvenance; source: string; statement: string; observedAt: string | null; evidenceUrl: string | null };
 export type CrmNextAction = { actionId: string; type: string; description: string; accountId: string; pursuitId: string | null; contactId: string | null; owner: "Founder"; status: "open" | "completed" | "cancelled"; dueAt: string | null; timingBasis: string | null; approvalRequired: boolean; executionAuthorized: false; sourceEvidenceIds: string[]; completionEvidenceIds: string[] };
-export type CrmConversationParticipant = { type: "crm_contact"; id: string } | { type: "goshsha_internal"; id: "goshsha_founder" };
+export type CrmCompanyRouteParticipant = { type: "company_route"; id: string; channel: "email" | "linkedin" | "sms" | "phone" | "meeting" | "other"; routeType: "general_company"; value: string; evidenceIds: string[] };
+export type CrmConversationParticipant = { type: "crm_contact"; id: string } | CrmCompanyRouteParticipant | { type: "goshsha_internal"; id: "goshsha_founder" };
 export type CrmProviderReference = { provider: string; externalMessageId: string | null; externalThreadId: string | null; externalConversationId: string | null; evidenceIds: string[] };
 export type CrmConversationInput = { participants: CrmConversationParticipant[]; senderParticipantKey: string | null; recipientParticipantKeys: string[]; channel: "email" | "linkedin" | "sms" | "phone" | "meeting" | "other" | null; replyToInteractionId: string | null; providerReference: CrmProviderReference | null; evidenceIds: string[] };
 
@@ -19,7 +21,7 @@ export type CrmMutationPayload =
   | { kind: "record_interaction"; accountId: string; pursuitId: string | null; contactId: string | null; interactionType: "outbound_sent" | "inbound_received" | "meeting" | "manual_note"; exactStatement: string | null; summary: string; occurredAt: string; evidenceAuthenticity?: "authentic" | "synthetic" | "unknown"; conversation?: CrmConversationInput | null; evidence: CrmEvidenceInput[] }
   | { kind: "record_founder_decision"; accountId: string; pursuitId: string | null; decisionType: string; decision: string; rationale: string; effectiveAt: string; evidence: CrmEvidenceInput[] }
   | { kind: "transition_pursuit"; accountId: string; pursuitId: string; toStage: CrmStage | null; toDisposition: CrmDisposition | null; transitionType: "new_event" | "correction"; reason: string; evidence: CrmEvidenceInput[]; productionReference: { type: string; id: string; status: "pending" | "verified" } | null }
-  | { kind: "update_dnc"; accountId: string; pursuitId: string | null; contactId: string | null; channel: string | null; scope: CrmDncScope; state: CrmDncState; changeType: "new_evidence" | "correction" | "documented_resolution"; reason: string; effectiveAt: string; expiresAt: string | null; evidence: CrmEvidenceInput[] }
+  | { kind: "update_dnc"; accountId: string; pursuitId: string | null; contactId: string | null; routeRecipientId?: string | null; channel: string | null; scope: CrmDncScope; state: CrmDncState; changeType: "new_evidence" | "correction" | "documented_resolution"; reason: string; effectiveAt: string; expiresAt: string | null; suppressionCheck?: CrmSuppressionCheckV1 | null; evidence: CrmEvidenceInput[] }
   | { kind: "set_next_action"; accountId: string; pursuitId: string; nextAction: CrmNextAction; evidence: CrmEvidenceInput[] }
   | { kind: "create_attention_item"; accountId: string; pursuitId: string | null; contactId: string | null; attentionType: "reminder" | "condition_alert"; reason: string; priority: "low" | "normal" | "medium" | "high" | "critical"; dueAt: string | null; triggeringCondition: string | null; evidence: CrmEvidenceInput[] }
   | { kind: "transition_attention_item"; accountId: string; attentionItemId: string; toStatus: "open" | "snoozed" | "resolved" | "dismissed"; reason: string; evidence: CrmEvidenceInput[] }

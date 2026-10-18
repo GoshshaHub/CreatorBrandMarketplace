@@ -2,7 +2,7 @@ import { crmSha256, crmStableId } from "./canonical";
 import type { CrmConversationInput, CrmConversationParticipant, CrmProviderReference } from "./mutation-types";
 
 export const CRM_CONVERSATION_SCHEMA = "crm-canonical-conversation-v1" as const;
-export const CRM_CONVERSATION_VERSION = "v1" as const;
+export const CRM_CONVERSATION_VERSION = "v1.1" as const;
 export const CRM_CONVERSATION_CANONICALIZATION = "crm-canonical-conversation-json-v1" as const;
 
 export const CRM_CONVERSATION_CONTRACT = {
@@ -12,12 +12,15 @@ export const CRM_CONVERSATION_CONTRACT = {
   identityScope: ["accountId", "pursuitId"],
   providerIndependentIdentity: true,
   requiresExplicitParticipants: true,
+  recipientKinds: ["crm_contact", "company_route"],
+  companyRouteRequiresEvidence: true,
   interactionContinuity: "append_only_references",
   communicationAuthority: false,
   externalActionAuthority: false,
 } as const;
 export const CRM_CONVERSATION_CONTRACT_SHA256 = crmSha256(CRM_CONVERSATION_CONTRACT);
-export const APPROVED_CRM_CONVERSATION_CONTRACT_SHA256 = "d8c7b5cd455d4c563922cf24f28974a2a9075b3580100392ec293156fbb2527f" as const;
+export const APPROVED_CRM_CONVERSATION_CONTRACT_SHA256 = "1de4759eb65d83c668a0d1059c95c9f31573d9c6ff5d8adbb8d63b2301fd2555" as const;
+export const HISTORICAL_CRM_CONVERSATION_V1_CONTRACT_SHA256 = "d8c7b5cd455d4c563922cf24f28974a2a9075b3580100392ec293156fbb2527f" as const;
 
 export type CrmConversationInteractionReference = { interactionId: string; occurredAt: string; orderKey: string };
 export type CrmCanonicalConversationV1 = {
@@ -42,6 +45,7 @@ export type CrmCanonicalConversationV1 = {
 };
 
 export const canonicalConversationId = (accountId: string, pursuitId: string) => crmStableId("conversation", { accountId, pursuitId, scope: "commercial_pursuit" });
+export const companyRouteRecipientId = (input: { accountId: string; channel: string; routeType: "general_company"; value: string; evidenceIds: string[] }) => crmStableId("companyroute", { ...input, evidenceIds: [...input.evidenceIds].sort() });
 export const participantKey = (participant: CrmConversationParticipant) => `${participant.type}:${participant.id}`;
 const uniqueBy = <T>(items: T[], key: (item: T) => string) => [...new Map(items.map((item) => [key(item), item])).values()];
 

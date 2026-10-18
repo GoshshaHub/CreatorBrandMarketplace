@@ -7,9 +7,9 @@ import { revenueSha256, revenueStableId } from "../revenue-01/canonical";
 import type { ApprovedActionPackageV1 } from "../revenue-01/approved-action";
 import type { ConversationIntelligencePacketV1 } from "./types";
 
-export const CLOSER_SIMULATION_AUTHORITY_SCHEMA = "closer-01-founder-simulation-authority-v1.2" as const;
-export const CLOSER_SIMULATION_AUTHORITY_VERSION = "v1.2" as const;
-export const CLOSER_SIMULATION_AUTHORITY_CANONICALIZATION = "closer-01-founder-simulation-authority-canonical-json-v1.2" as const;
+export const CLOSER_SIMULATION_AUTHORITY_SCHEMA = "closer-01-founder-simulation-authority-v1.3" as const;
+export const CLOSER_SIMULATION_AUTHORITY_VERSION = "v1.3" as const;
+export const CLOSER_SIMULATION_AUTHORITY_CANONICALIZATION = "closer-01-founder-simulation-authority-canonical-json-v1.3" as const;
 export const CLOSER_SIMULATION_AUTHORITY_PREVIEW_SCHEMA = "closer-01-founder-simulation-authority-preview-v1" as const;
 export const CLOSER_SIMULATION_AUTHORITY_PREVIEW_VERSION = "v1" as const;
 export const CLOSER_SIMULATION_AUTHORITY_PREVIEW_CANONICALIZATION = "closer-01-founder-simulation-authority-preview-canonical-json-v1" as const;
@@ -36,9 +36,10 @@ export const CLOSER_SIMULATION_AUTHORITY_CONTRACT = {
   externalChannelUseAuthorized: false,
   exactPreviewApprovalRequired: true,
   commercialPositioningBindingRequired: true,
+  recipientIdentityKinds: ["crm_contact", "company_route"],
 } as const;
 export const CLOSER_SIMULATION_AUTHORITY_CONTRACT_SHA256 = revenueSha256(CLOSER_SIMULATION_AUTHORITY_CONTRACT);
-export const APPROVED_CLOSER_SIMULATION_AUTHORITY_CONTRACT_SHA256 = "eb48544f608a64c9f17b7add1662095d6302c99c07a69a4d0f9b85f87aea6bdb" as const;
+export const APPROVED_CLOSER_SIMULATION_AUTHORITY_CONTRACT_SHA256 = "30343841818f24c9c42f254e6e89a8d0754690813ec59ccecb559f81f746b3f4" as const;
 
 export class CloserSimulationAuthorityError extends Error {
   code: string;
@@ -82,7 +83,7 @@ export type CloserSimulationAuthorityV1 = {
     latestInteraction: { state: "present"; interactionId: string; orderKey: string } | { state: "no_prior_interaction" };
     contracts: ConversationIntelligencePacketV1["sourceContracts"];
   };
-  selection: { recipientContactId: string; simulationChannelContext: CloserSimulationChannel; simulationAction: CloserSimulationAction; objectiveCompatiblePurpose: string };
+  selection: { recipientType: "crm_contact" | "company_route"; recipientContactId: string; simulationChannelContext: CloserSimulationChannel; simulationAction: CloserSimulationAction; objectiveCompatiblePurpose: string };
   recipientContext: { salesBestFirstContactId: string | null; selectedAsSalesBestFirstContact: boolean; buyingAuthority: "supported" | "unknown"; buyingAuthorityEvidenceIds: string[] };
   claimsEnvelope: { positioning: string; approvedClaims: ConversationIntelligencePacketV1["sales"]["approvedClaims"]; mechanicsQualifications: string[]; audienceObjection: NonNullable<ConversationIntelligencePacketV1["sales"]["audienceObjection"]>; prohibitedClaims: readonly string[]; objections: ConversationIntelligencePacketV1["sales"]["objections"]; escalationBoundaries: string[]; sha256: string };
   offerEnvelope: { selectedOfferId: string; offerCatalogVersion: string; offerCatalogSha256: string; selectedOffer: ReturnType<typeof getCommercialOfferCatalog>["offers"][number]; sha256: string };
@@ -127,15 +128,16 @@ export function buildFounderSimulationAuthority(params: {
   if (packet.sales.artifactSha256 !== playbook.artifactSha256 || packet.sales.playbookId !== playbook.artifactId || playbook.superseded) throw new CloserSimulationAuthorityError("sales_playbook_mismatch", "The Sales Playbook is not the current bound artifact.");
   const conversation = snapshot.pursuit.canonicalConversation;
   if (!conversation || packet.binding.conversationThreadId !== conversation.conversationId) throw new CloserSimulationAuthorityError("conversation_binding_mismatch", "Canonical conversation identity is missing or changed.");
-  const contact = currentContact(detail, params.recipientContactId), stakeholder = snapshot.stakeholders.find(item => item.contactId === params.recipientContactId);
-  if (!contact) throw new CloserSimulationAuthorityError("recipient_missing", "The Founder-selected Contact does not exist.");
-  if (contact.accountId !== packet.binding.accountId) throw new CloserSimulationAuthorityError("recipient_account_mismatch", "The Founder-selected Contact does not belong to the Account.");
-  if (!conversation.participants.some(item => item.type === "crm_contact" && item.id === params.recipientContactId) || !packet.crm.participants.some(item => item.contactId === params.recipientContactId) || !stakeholder) throw new CloserSimulationAuthorityError("recipient_not_participant", "The Founder-selected Contact is not a current canonical conversation participant.");
-  if (contact.conflictingEvidenceIds.length || contact.freshness !== "current" || contact.warnings.some(item => ["conflicting_state","unknown_state"].includes(item.code))) throw new CloserSimulationAuthorityError("recipient_identity_unresolved", "The Founder-selected Contact has conflicting, stale, or unresolved identity state.");
+  const recipient = conversation.participants.find(item => (item.type === "crm_contact" || item.type === "company_route") && item.id === params.recipientContactId);
+  if (!recipient || !packet.crm.participants.some(item => item.recipientId === params.recipientContactId && item.recipientType === recipient.type)) throw new CloserSimulationAuthorityError("recipient_not_participant", "The Founder-selected recipient is not a current canonical conversation participant.");
+  const contact = recipient.type === "crm_contact" ? currentContact(detail, params.recipientContactId) : null, stakeholder = recipient.type === "crm_contact" ? snapshot.stakeholders.find(item => item.contactId === params.recipientContactId) : null;
+  if (recipient.type === "crm_contact" && (!contact || !stakeholder)) throw new CloserSimulationAuthorityError("recipient_missing", "The Founder-selected Contact does not exist.");
+  if (contact && contact.accountId !== packet.binding.accountId) throw new CloserSimulationAuthorityError("recipient_account_mismatch", "The Founder-selected Contact does not belong to the Account.");
+  if (contact && (contact.conflictingEvidenceIds.length || contact.freshness !== "current" || contact.warnings.some(item => ["conflicting_state","unknown_state"].includes(item.code)))) throw new CloserSimulationAuthorityError("recipient_identity_unresolved", "The Founder-selected Contact has conflicting, stale, or unresolved identity state.");
   if (detail.account.dnc.evaluation !== "allowed" || snapshot.relationshipSafety.accountDnc.evaluation !== "allowed") throw new CloserSimulationAuthorityError("account_dnc_blocked", "Account DNC is active or requires review.");
-  if (contact.dnc.evaluation !== "allowed") throw new CloserSimulationAuthorityError(contact.dnc.scope === "channel" ? "channel_dnc_blocked" : "contact_dnc_blocked", "Selected Contact or channel DNC is active or requires review.");
-  const snapshotContactDnc = snapshot.relationshipSafety.contactDnc.find(item => item.contactId === params.recipientContactId);
-  if (!snapshotContactDnc || snapshotContactDnc.evaluation !== "allowed" || snapshot.relationshipSafety.effectiveExecutionState !== "eligible_for_separate_authorization") throw new CloserSimulationAuthorityError("dnc_not_clear", "Canonical DNC state is blocked, unknown, conflicting, or incomplete.");
+  if (contact && contact.dnc.evaluation !== "allowed") throw new CloserSimulationAuthorityError(contact.dnc.scope === "channel" ? "channel_dnc_blocked" : "contact_dnc_blocked", "Selected Contact or channel DNC is active or requires review.");
+  const recipientSuppressionClear = recipient.type === "crm_contact" ? snapshot.relationshipSafety.contactDnc.some(item => item.contactId === params.recipientContactId && item.evaluation === "allowed") : snapshot.relationshipSafety.companyRouteSuppression.some(item => item.routeRecipientId === params.recipientContactId && item.channel === params.simulationChannelContext && item.result === "no_applicable_suppression_found");
+  if (!recipientSuppressionClear || snapshot.relationshipSafety.effectiveExecutionState !== "eligible_for_separate_authorization") throw new CloserSimulationAuthorityError("dnc_not_clear", "Authoritative Account and selected-recipient DNC/suppression checks are blocked, unavailable, conflicting, or incomplete.");
   if (!CLOSER_SIMULATION_CHANNELS.includes(params.simulationChannelContext)) throw new CloserSimulationAuthorityError("channel_invalid", "Simulation channel context is unsupported.");
   if (!CLOSER_SIMULATION_ACTIONS.includes(params.simulationAction)) throw new CloserSimulationAuthorityError("action_invalid", "Simulation action is unsupported.");
   const interactions = packet.crm.interactions;
@@ -165,8 +167,8 @@ export function buildFounderSimulationAuthority(params: {
     schemaVersion: CLOSER_SIMULATION_AUTHORITY_SCHEMA, version: CLOSER_SIMULATION_AUTHORITY_VERSION, canonicalizationVersion: CLOSER_SIMULATION_AUTHORITY_CANONICALIZATION, contractSha256: CLOSER_SIMULATION_AUTHORITY_CONTRACT_SHA256,
     state: "PREPARED" as const, approvedByUid: params.approvedByUid, approvedAt: approvedAt.toISOString(), effectiveAt: approvedAt.toISOString(), expiresAt: new Date(approvedAt.getTime() + 15 * 60_000).toISOString(), authorityTier: "tier0_simulation" as const, permittedOperations: ["simulate_one_turn"] as ["simulate_one_turn"], simulationCountLimit: 1 as const, turnCountLimit: 1 as const,
     binding: { accountId: packet.binding.accountId, pursuitId: packet.binding.pursuitId, closerPacketId: packet.packetId, closerPacketSha256: packet.packetSha256, approvedPackageId: approved.packageId, approvedPackageSha256: approved.packageSha256, revenueObjectiveId: approved.identities.freshRecommendationId, revenueObjectiveVersion: approved.identities.recommendationSchemaVersion, revenueObjectiveFamily: approved.selectedRecommendation.family, selectedEconomicOutcome: approved.selectedRecommendation.objective, salesPlaybookArtifactId: playbook.artifactId, salesPlaybookArtifactSha256: playbook.artifactSha256, commercialPositioningVersion: packet.sales.positioningArtifact.version, commercialPositioningSha256: packet.sales.positioningArtifact.sha256, crmRevisionSetSha256: snapshot.revisionBinding.revisionSetSha256, conversationId: conversation.conversationId, conversationRevision: conversation.revision, latestInteraction, contracts: packet.sourceContracts },
-    selection: { recipientContactId: params.recipientContactId, simulationChannelContext: params.simulationChannelContext, simulationAction: params.simulationAction, objectiveCompatiblePurpose: purpose },
-    recipientContext: { salesBestFirstContactId: playbook.bestFirstContactId, selectedAsSalesBestFirstContact: playbook.bestFirstContactId === params.recipientContactId, buyingAuthority: stakeholder.buyingAuthority, buyingAuthorityEvidenceIds: stakeholder.buyingAuthorityEvidenceIds },
+    selection: { recipientType: recipient.type as "crm_contact" | "company_route", recipientContactId: params.recipientContactId, simulationChannelContext: params.simulationChannelContext, simulationAction: params.simulationAction, objectiveCompatiblePurpose: purpose },
+    recipientContext: { salesBestFirstContactId: playbook.bestFirstContactId, selectedAsSalesBestFirstContact: recipient.type === "crm_contact" && playbook.bestFirstContactId === params.recipientContactId, buyingAuthority: stakeholder?.buyingAuthority ?? "unknown", buyingAuthorityEvidenceIds: stakeholder?.buyingAuthorityEvidenceIds ?? [] },
     claimsEnvelope: { ...claimsBody, sha256: revenueSha256(claimsBody) }, offerEnvelope: { ...offerBody, sha256: revenueSha256(offerBody) },
     prohibited: ["sending","external_channel_use","crm_mutation","scheduling","payment_action","production_mutation","objective_activation","workforce_delivery","autonomous_continuation","discounts_or_concessions","nonstandard_entitlements","guarantees","unsupported_claims","legal_or_contractual_commitments","custom_engineering","retailer_commitments","rights_exceptions"] as CloserSimulationAuthorityV1["prohibited"],
     safety: { dncClear: true as const, externalChannelUseAuthorized: false as const, sendingAuthorized: false as const, crmMutationAuthorized: false as const, providerInvocationAuthorized: true as const, providerRequestLimit: 1 as const, schedulingAuthorized: false as const, paymentActionAuthorized: false as const, externalActionAuthorized: false as const, simulationCapabilityEnabled: true as const, simulationExecutionAuthorized: false as const },
