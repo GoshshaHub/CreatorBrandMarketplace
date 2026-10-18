@@ -146,17 +146,17 @@ test("actual POST handler authenticates before mocked provider access and disclo
   delete globalThis.__salesResearchRouteTestDependencies;
 });
 
-test("actual POST handler accepts future fulfillment conditions and returns present-permission assertions for review", async () => {
+test("actual POST handler accepts nonblocking rights ambiguity and returns present-permission assertions for review", async () => {
   process.env.NODE_ENV = "test";
   register(`data:text/javascript,${encodeURIComponent(`export async function resolve(specifier, context, nextResolve) { return nextResolve(specifier === "next/server" ? "next/server.js" : specifier, context); }`)}`, import.meta.url);
   const route = await import(`../../app/api/admin/agents/sales-01/research/route.ts?rights-boundary=${Date.now()}`);
   const request = () => new Request("http://localhost/api/admin/agents/sales-01/research", { method: "POST", headers: { authorization: "Bearer synthetic", "content-type": "application/json" }, body: JSON.stringify(requestFixture()) });
-  const run = async (statement) => {
+  const run = async (statement, classification = "goshsha_capability", evidenceRefs = [{ kind: "goshsha_capability", id: "cap-free-first" }]) => {
     globalThis.__salesResearchRouteTestDependencies = {
       authorize: async () => {},
       createProvider: () => ({ research: async (input) => {
         const value = validProposal(input);
-        if (statement !== null) value.claims.push({ id: "rights-boundary", statement, classification: "goshsha_capability", evidenceRefs: [{ kind: "goshsha_capability", id: "cap-free-first" }] });
+        if (statement !== null) value.claims.push({ id: "rights-boundary", statement, classification, evidenceRefs });
         return normalizeCompletedOpenAISalesResponse({ response: completedResponse(JSON.stringify(value)), request: input, requestedModel: "gpt-5.6-terra", serverReceivedAt: "2026-10-16T12:00:00.000Z" });
       } }),
     };
@@ -180,18 +180,44 @@ test("actual POST handler accepts future fulfillment conditions and returns pres
     assert.deepEqual(body.proposal.playbook.rights.evidenceIds, []);
   }
 
+  for (const statement of [
+    "There is no public evidence here that Cymbiotika has selected a pilot SKU, confirmed content reuse rights, obtained retailer authorization, allocated budget, or committed to a timeline.",
+    "Available research does not establish whether the Brand has content reuse rights.",
+    "The status of content reuse rights is not established by supplied sources.",
+  ]) {
+    const { response, body } = await run(statement, "unknown", []);
+    assert.equal(response.status, 200, JSON.stringify(body));
+    assert.equal(body.outcome, "accepted");
+    assert.equal(body.proposal.handoffEligible, true);
+    assert.ok(body.crmExport);
+    assert.equal(body.proposal.reviewFindings.length, 1);
+    assert.equal(body.proposal.reviewFindings[0].code, "content_rights_language_ambiguous");
+    assert.equal(body.proposal.reviewFindings[0].blocking, false);
+    assert.equal(body.proposal.playbook.rights.status, "unknown");
+    assert.deepEqual(body.proposal.playbook.rights.evidenceIds, []);
+    assert.equal(body.proposal.playbook.authority.sendingAuthorized, false);
+  }
+
   const fabricated = await run("The Brand has licensed its existing video for Goshsha reuse.");
   assert.equal(fabricated.response.status, 200, JSON.stringify(fabricated.body));
   assert.equal(fabricated.body.outcome, "review_required");
   assert.equal(fabricated.body.proposal.handoffEligible, false);
   assert.equal(fabricated.body.proposal.reviewFindings.length, 1);
   assert.equal(fabricated.body.proposal.reviewFindings[0].code, "existing_content_permission_unsupported");
+  assert.equal(fabricated.body.proposal.reviewFindings[0].blocking, true);
   assert.equal(fabricated.body.proposal.reviewFindings[0].fieldPath, "claims[2].statement");
   assert.equal(fabricated.body.crmExport, undefined);
   assert.equal(fabricated.body.proposal.playbook.rights.status, "unknown");
   assert.deepEqual(fabricated.body.proposal.playbook.rights.evidenceIds, []);
   assert.equal(fabricated.body.proposal.playbook.authority.crmWriteAuthorized, false);
   assert.equal(fabricated.body.proposal.playbook.authority.sendingAuthorized, false);
+
+  const mixed = await run("No source verifies content permission, but the Brand can reuse its Creator video now.", "unknown", []);
+  assert.equal(mixed.body.outcome, "review_required");
+  assert.equal(mixed.body.proposal.handoffEligible, false);
+  assert.equal(mixed.body.proposal.reviewFindings[0].code, "existing_content_permission_unsupported");
+  assert.equal(mixed.body.proposal.reviewFindings[0].blocking, true);
+  assert.equal(mixed.body.crmExport, undefined);
   delete globalThis.__salesResearchRouteTestDependencies;
 });
 
@@ -200,4 +226,12 @@ test("component keeps diagnostics only in React memory and declares no browser p
   assert.match(page, /rejectedOutputDiagnostic\?: SalesRejectedOutputDiagnostic/);
   assert.doesNotMatch(page, /localStorage|sessionStorage|indexedDB/);
   assert.doesNotMatch(page, /persist.*rejectedOutputDiagnostic|rejectedOutputDiagnostic.*persist/i);
+});
+
+test("UI distinguishes blocking findings from nonblocking notes and gates export only on accepted outcome", async () => {
+  const page = await readFile("app/admin/sales-01/page.tsx", "utf8");
+  assert.match(page, /finding\.blocking \? "Blocking" : "Nonblocking note"/);
+  assert.match(page, /reviewFindings\.some\(\(finding\) => finding\.blocking\)/);
+  assert.match(page, /Nonblocking notes remain attached to the session result and CRM preview/);
+  assert.match(page, /researchResult\.outcome === "accepted" && researchResult\.crmExport/);
 });

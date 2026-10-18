@@ -464,7 +464,7 @@ test("rights unknowns and ordinary future fulfillment conditions do not gate pro
   }
 });
 
-test("unsupported present permission and ambiguous rights assertions require review without becoming accepted facts", () => {
+test("unsupported present permission blocks while ambiguous rights language remains advisory", () => {
   const statements = [
     ["The Brand owns the Creator video content.", "affirmative_assertion"],
     ["The Brand may have usable Creator content.", "ambiguous_rights_language"],
@@ -477,13 +477,46 @@ test("unsupported present permission and ambiguous rights assertions require rev
     const invalid = proposal();
     invalid.claims.push({ id: "private-rights-claim", statement, classification: "unknown", evidenceRefs: [] });
     const result = normalize(invalid);
-    assert.equal(result.handoffEligible, false, category);
+    assert.equal(result.handoffEligible, category === "ambiguous_rights_language", category);
     assert.equal(result.playbook.rights.status, "unknown");
     assert.deepEqual(result.playbook.rights.evidenceIds, []);
     assert.equal(result.playbook.inheritedUnknowns[0].status, "unresolved");
     assert.equal(result.reviewFindings.at(-1).fieldPath, `claims[${invalid.claims.length - 1}].statement`);
-    assert.equal(result.reviewFindings.at(-1).blocking, true);
+    assert.equal(result.reviewFindings.at(-1).blocking, category !== "ambiguous_rights_language");
     assert.match(result.reviewFindings.at(-1).code, /existing_content_permission_unsupported|content_rights_language_ambiguous/);
+  }
+});
+
+test("rights-language ambiguity is advisory while actual existing-permission assertions block handoff", () => {
+  for (const statement of [
+    "There is no public evidence here that Cymbiotika has selected a pilot SKU, confirmed content reuse rights, obtained retailer authorization, allocated budget, or committed to a timeline.",
+    "Available evidence does not establish content reuse rights.",
+    "The research is inconclusive about content reuse rights.",
+  ]) {
+    const value = proposal();
+    value.claims.push({ id: "absence-of-rights-evidence", statement, classification: "unknown", evidenceRefs: [] });
+    const result = normalize(value);
+    assert.equal(result.handoffEligible, true, statement);
+    assert.equal(result.execution.outcome, "accepted");
+    assert.equal(result.reviewFindings.at(-1).code, "content_rights_language_ambiguous");
+    assert.equal(result.reviewFindings.at(-1).blocking, false);
+    assert.equal(result.playbook.rights.status, "unknown");
+    assert.deepEqual(result.playbook.rights.evidenceIds, []);
+    assert.equal(result.playbook.authority.crmWriteAuthorized, false);
+    assert.equal(result.playbook.authority.sendingAuthorized, false);
+  }
+
+  for (const statement of [
+    "No source confirms rights, but the Brand can reuse the Creator video.",
+    "Permission is unknown; the Brand nevertheless owns the video content.",
+  ]) {
+    const value = proposal();
+    value.claims.push({ id: "mixed-present-permission", statement, classification: "unknown", evidenceRefs: [] });
+    const result = normalize(value);
+    assert.equal(result.handoffEligible, false, statement);
+    assert.equal(result.execution.outcome, "review_required");
+    assert.equal(result.reviewFindings.at(-1).code, "existing_content_permission_unsupported");
+    assert.equal(result.reviewFindings.at(-1).blocking, true);
   }
 });
 

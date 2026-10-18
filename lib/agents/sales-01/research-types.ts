@@ -120,7 +120,7 @@ export type SalesResearchReviewFinding = {
   fieldPath: string;
   message: string;
   statementSha256: string;
-  blocking: true;
+  blocking: boolean;
 };
 
 export type SalesEvidence = {

@@ -352,8 +352,8 @@ function compatibleReferenceKinds(classification: SalesClaimClassification): Set
   return new Set(["growth_evidence", "sales_evidence", "goshsha_capability"]);
 }
 
-function reviewFinding(code: SalesResearchReviewFinding["code"], fieldPath: string, message: string, statement: string): SalesResearchReviewFinding {
-  return { code, fieldPath, message, statementSha256: sha256Diagnostic(statement), blocking: true };
+function reviewFinding(code: SalesResearchReviewFinding["code"], fieldPath: string, message: string, statement: string, blocking: boolean): SalesResearchReviewFinding {
+  return { code, fieldPath, message, statementSha256: sha256Diagnostic(statement), blocking };
 }
 
 function validateClaims(claims: SalesClaim[], growthIds: Set<string>, salesIds: Set<string>, rights: RawProposal["rights"], originalUnknowns: string[], inheritedUnknowns: RawProposal["inheritedUnknowns"]) {
@@ -373,7 +373,11 @@ function validateClaims(claims: SalesClaim[], growthIds: Set<string>, salesIds: 
         const code = rightsCategory === "affirmative_assertion" || rightsCategory === "attributed_rights_statement"
           ? "existing_content_permission_unsupported"
           : "content_rights_language_ambiguous";
-        reviewFindings.push(reviewFinding(code, `claims[${claimOrdinal}].statement`, `Claim ${claim.id} cannot establish that content permission already exists. Founder review is required; no permission or fulfillment authority is inferred.`, claim.statement));
+        const blocking = code === "existing_content_permission_unsupported";
+        const message = blocking
+          ? `Claim ${claim.id} asserts or attributes unsupported existing content permission. Founder review is required; no permission or fulfillment authority is inferred.`
+          : `Claim ${claim.id} contains ambiguous rights language. It is retained as a nonblocking internal note for prospecting; no permission or fulfillment authority is inferred.`;
+        reviewFindings.push(reviewFinding(code, `claims[${claimOrdinal}].statement`, message, claim.statement, blocking));
       }
     }
     if (["verified_fact", "attributed_brand_claim"].includes(claim.classification) && !claim.evidenceRefs.length) throw new SalesResearchError("factual_claim_unlinked", `Claim ${claim.id} lacks evidence.`, 422);
@@ -419,7 +423,8 @@ export function normalizeCompletedOpenAISalesResponse(params: { response: Record
     }
     for (const objection of proposal.objections || []) for (const id of objection.claimIds || []) if (!claimIds.has(id)) throw new SalesResearchError("objection_claim_invalid", "An objection response references an unapproved claim.", 422);
     const reviewFindings = claimValidation.reviewFindings;
-    execution.outcome = reviewFindings.length ? "review_required" : "accepted";
+    const blockingReviewFindings = reviewFindings.filter((finding) => finding.blocking);
+    execution.outcome = blockingReviewFindings.length ? "review_required" : "accepted";
     const best = proposal.contactSelection.status === "recommended" ? proposal.contactSelection.bestFirstContactId : null;
     const envelope = params.request.envelope;
     const positioning = verifyCommercialPositioning();
@@ -429,7 +434,7 @@ export function normalizeCompletedOpenAISalesResponse(params: { response: Record
       { id: "positioning-audience-distinction", statement: positioning.body.audienceDistinction.goshshaPosition, classification: "goshsha_capability" as const },
     ];
     const audienceObjection = { objection: positioning.body.userCountObjection.objection, response: positioning.body.userCountObjection.response, deeperQualification: positioning.body.userCountObjection.deeperQualification };
-    return { execution, normalizedSourceCount: referenced.size, reviewFindings, handoffEligible: reviewFindings.length === 0, playbook: {
+    return { execution, normalizedSourceCount: referenced.size, reviewFindings, handoffEligible: blockingReviewFindings.length === 0, playbook: {
       schemaVersion: "sales-playbook-v1.2", createdAt: params.serverReceivedAt,
       growthQualification: { candidateId: envelope.candidate.candidateId, brand: envelope.opportunity.brand, productOrEvent: envelope.opportunity.productOrEvent, score: envelope.qualification.score, band: envelope.qualification.band, confidence: envelope.qualification.confidence, feasibility: envelope.qualification.founderStagePursuitFeasibility, candidateSha256: envelope.candidate.candidateSha256 },
       salesPursuitDecision: proposal.salesPursuitDecision, salesPursuitRationale: requiredText(proposal.salesPursuitRationale, "salesPursuitRationale"), opportunityStrategy: { ...proposal.strategy, offerFacts: SALES_CANONICAL_OFFER_FACTS }, positioningFoundation: { schemaVersion: positioning.schemaVersion, version: positioning.version, sha256: positioning.sha256, opportunitySpecificPositioning: requiredText(proposal.strategy.goshshaWedge, "strategy.goshshaWedge"), approvedPlatformClaims: platformClaims, mechanicsQualifications: [positioning.body.productMechanics.shopperDevice, positioning.body.productMechanics.shopperAction, positioning.body.productMechanics.contentAvailability, positioning.body.measurableMeaning.definition], audienceObjection, prohibitedClaims: positioning.body.prohibitedClaims, offerBindings: { catalogVersion: positioning.body.offerBindings.catalogVersion, catalogSha256: positioning.body.offerBindings.catalogSha256, product2OfferId: positioning.body.offerBindings.product2OfferId, freeFirstOfferId: positioning.body.offerBindings.freeFirstOfferId } }, contacts: proposal.contacts, contactSelection: proposal.contactSelection, proofStrategy: requiredText(proposal.proofStrategy, "proofStrategy"), claims: proposal.claims, inheritedUnknowns, rights, readiness: { businessDevelopment: "ready", fulfillment: "requirements_unresolved", unresolvedRequirements: ["Asset selection, content permission, upload, publication, activation, and payment execution remain downstream of prospect interest."], doesNotAuthorizeFulfillment: true }, retailerIndependence: proposal.retailerIndependence, objections: [{ objection: audienceObjection.objection, response: `${audienceObjection.response} ${audienceObjection.deeperQualification}`, claimIds: platformClaims.map(x=>x.id), escalate: false }, ...proposal.objections],
