@@ -168,21 +168,31 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <Link
-            href="/creators"
-            className="rounded-2xl border border-slate-300 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:-translate-y-[1px] hover:bg-slate-50"
-          >
-            Creator Directory
-          </Link>
+        <div className="flex flex-col items-center gap-4">
 
-          <a
-            href="mailto:support@goshsha.com?subject=Goshsha%20IRL%20Campaign%20Network%20Inquiry"
-            className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-600 shadow-sm transition hover:-translate-y-[1px] hover:bg-slate-100"
-          >
-            Contact Us
-          </a>
+          <AppStoreCta
+            description="Get Goshsha app."
+            className="text-center"
+          />
+
+          <div className="flex items-center gap-3">
+            <Link
+              href="/creators"
+              className="rounded-2xl border border-slate-300 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:-translate-y-[1px] hover:bg-slate-50"
+            >
+              Creator Directory
+            </Link>
+
+            <a
+              href="mailto:support@goshsha.com?subject=Goshsha%20IRL%20Campaign%20Network%20Inquiry"
+              className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-600 shadow-sm transition hover:-translate-y-[1px] hover:bg-slate-100"
+            >
+              Contact Us
+            </a>
+          </div>
+
         </div>
+
           </header>
 
           <div className="max-w-4xl pt-4 lg:pt-6">
@@ -387,11 +397,6 @@ export default function LoginPage() {
                 </Link>
               </p>
             </div>
-
-            <AppStoreCta
-              description="Download the Goshsha app to scan products and experience IRL content."
-              className="mt-5 text-left"
-            />
           </div>
 
 
